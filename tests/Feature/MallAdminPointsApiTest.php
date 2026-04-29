@@ -22,21 +22,21 @@ class MallAdminPointsApiTest extends TestCase
 
     public function test_store_account_requires_token(): void
     {
-        $this->postJson('/api/bet/admin/points/accounts', ['uid' => 1])
+        $this->postJson('/api/bet/admin/points', ['uid' => 1])
             ->assertStatus(403);
     }
 
     public function test_store_account_503_when_token_not_configured(): void
     {
         config()->set('bet_agg.admin.api_token', '');
-        $this->withHeader('Authorization', 'Bearer x')->postJson('/api/bet/admin/points/accounts', ['uid' => 1])
+        $this->withHeader('Authorization', 'Bearer x')->postJson('/api/bet/admin/points', ['uid' => 1])
             ->assertStatus(503);
     }
 
     public function test_store_account_creates_balance_and_optional_flow(): void
     {
         $this->withHeader('Authorization', 'Bearer test-admin-secret')
-            ->postJson('/api/bet/admin/points/accounts', [
+            ->postJson('/api/bet/admin/points', [
                 'uid' => 42,
                 'balance_minor' => 100,
             ])
@@ -52,18 +52,18 @@ class MallAdminPointsApiTest extends TestCase
     public function test_store_account_duplicate_returns_422(): void
     {
         $this->withHeader('Authorization', 'Bearer test-admin-secret')
-            ->postJson('/api/bet/admin/points/accounts', ['uid' => 7, 'balance_minor' => 0])
+            ->postJson('/api/bet/admin/points', ['uid' => 7, 'balance_minor' => 0])
             ->assertCreated();
 
         $this->withHeader('Authorization', 'Bearer test-admin-secret')
-            ->postJson('/api/bet/admin/points/accounts', ['uid' => 7, 'balance_minor' => 0])
+            ->postJson('/api/bet/admin/points', ['uid' => 7, 'balance_minor' => 0])
             ->assertStatus(422)
             ->assertJsonPath('errorCode', 40001);
     }
 
     public function test_adjust_updates_balance_and_inserts_flow(): void
     {
-        MallPointsBalance::query()->create([
+        $balance = MallPointsBalance::query()->create([
             'uid' => 99,
             'balance_minor' => 50,
             'ct' => 1,
@@ -71,8 +71,7 @@ class MallAdminPointsApiTest extends TestCase
         ]);
 
         $this->withHeader('Authorization', 'Bearer test-admin-secret')
-            ->postJson('/api/bet/admin/points/adjust', [
-                'uid' => 99,
+            ->postJson('/api/bet/admin/points/'.$balance->id, [
                 'delta_minor' => 25,
                 'oid' => 0,
             ])
@@ -88,14 +87,14 @@ class MallAdminPointsApiTest extends TestCase
     public function test_adjust_without_account_returns_422(): void
     {
         $this->withHeader('Authorization', 'Bearer test-admin-secret')
-            ->postJson('/api/bet/admin/points/adjust', ['uid' => 1, 'delta_minor' => 10])
+            ->postJson('/api/bet/admin/points/999999', ['delta_minor' => 10])
             ->assertStatus(422)
             ->assertJsonPath('errorCode', 40001);
     }
 
     public function test_adjust_insufficient_returns_422(): void
     {
-        MallPointsBalance::query()->create([
+        $balance = MallPointsBalance::query()->create([
             'uid' => 3,
             'balance_minor' => 5,
             'ct' => 1,
@@ -103,7 +102,7 @@ class MallAdminPointsApiTest extends TestCase
         ]);
 
         $this->withHeader('Authorization', 'Bearer test-admin-secret')
-            ->postJson('/api/bet/admin/points/adjust', ['uid' => 3, 'delta_minor' => -10])
+            ->postJson('/api/bet/admin/points/'.$balance->id, ['delta_minor' => -10])
             ->assertStatus(422);
     }
 }

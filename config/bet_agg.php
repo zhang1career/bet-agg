@@ -1,7 +1,5 @@
 <?php
 
-use App\Services\mall\aggregation\LocalSportOddsProvider;
-
 return [
     'api' => [
         'log_http_errors' => (bool) env('BET_AGG_API_LOG_HTTP_ERRORS', true),
@@ -18,24 +16,6 @@ return [
         'me_endpoint' => '/api/user/me',
         'timeout_seconds' => 3,
         'unauthorized_code' => 40101,
-    ],
-
-    /*
-    | ProviderContract: resolves selection odds / open state when context contains bet_selection_ids.
-    */
-    'business_services' => [
-        ['class' => LocalSportOddsProvider::class, 'enabled' => true],
-    ],
-
-    'execution' => [
-        'mode' => env('SM_EXECUTION_MODE', 'serial'),
-    ],
-
-    'degrade' => [
-        'strategy' => env('SM_DEGRADE_STRATEGY', 'mask_null'),
-        'mask_error_message' => env('BET_AGG_DEGRADE_MASK_ERROR_MESSAGE', 'Service temporarily unavailable.'),
-        'partial_failure_code' => (int) env('SM_PARTIAL_FAILURE_CODE', 20601),
-        'partial_failure_message' => env('SM_PARTIAL_FAILURE_MESSAGE', 'Partially failed, degraded by aggregator.'),
     ],
 
     'payment' => [

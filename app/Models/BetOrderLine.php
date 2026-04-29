@@ -11,13 +11,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * @property int $id
- * @property int $oid bet_order.id
- * @property int $selection_id
+ * @property int $oid order.id
+ * @property int $kid biz_selection.id
  * @property int $stake_points
  * @property array<string, mixed>|null $odds_snapshot
  * @property int $decimal_odds_millis
  * @property int $potential_return_points
- * @property BetLineResult|null $line_result
+ * @property BetLineResult $result
  * @property int $ct
  * @property int $ut
  */
@@ -27,28 +27,28 @@ class BetOrderLine extends Model
 
     public $timestamps = false;
 
-    protected $table = 'bet_order_line';
+    protected $table = 'order_item';
 
     protected $fillable = [
         'oid',
-        'selection_id',
+        'kid',
         'stake_points',
         'odds_snapshot',
         'decimal_odds_millis',
         'potential_return_points',
-        'line_result',
+        'result',
         'ct',
         'ut',
     ];
 
     protected $casts = [
         'oid' => 'integer',
-        'selection_id' => 'integer',
+        'kid' => 'integer',
         'stake_points' => 'integer',
         'odds_snapshot' => 'array',
         'decimal_odds_millis' => 'integer',
         'potential_return_points' => 'integer',
-        'line_result' => BetLineResult::class,
+        'result' => BetLineResult::class,
         'ct' => 'integer',
         'ut' => 'integer',
     ];
@@ -66,6 +66,6 @@ class BetOrderLine extends Model
      */
     public function selection(): BelongsTo
     {
-        return $this->belongsTo(SportSelection::class, 'selection_id');
+        return $this->belongsTo(SportSelection::class, 'kid');
     }
 }

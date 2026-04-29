@@ -15,7 +15,7 @@ use RuntimeException;
 final readonly class SportSelectionBookService
 {
     /**
-     * Lines reuse shape {@code product_id} = selection_id, {@code quantity} = stake_points.
+     * Lines reuse shape {@code product_id} = biz_selection.id (kid), {@code quantity} = stake_points.
      *
      * @param  list<array{product_id: int, quantity: int}>  $lines
      */

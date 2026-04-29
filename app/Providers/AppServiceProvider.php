@@ -32,7 +32,6 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\ServiceProvider;
 use Monolog\Logger;
 use Monolog\Processor\PsrLogMessageProcessor;
-use Paganini\Capability\ProviderRegistry;
 use Paganini\ServiceDiscovery\Contracts\ServiceUriResolverInterface;
 use Paganini\ServiceDiscovery\RedisServiceUriResolver;
 
@@ -90,25 +89,6 @@ class AppServiceProvider extends ServiceProvider
             $registry->scanAndRegister('Jobs');
 
             return $registry;
-        });
-
-        $this->app->singleton(ProviderRegistry::class, function ($app) {
-            $serviceDefs = (array) config('bet_agg.business_services');
-            $serviceClasses = [];
-            foreach ($serviceDefs as $def) {
-                if (is_string($def)) {
-                    $serviceClasses[] = $def;
-
-                    continue;
-                }
-                if (is_array($def) && ($def['enabled'] ?? true) === true && is_string($def['class'] ?? null)) {
-                    $serviceClasses[] = $def['class'];
-                }
-            }
-
-            $services = array_map(fn (string $class) => $app->make($class), $serviceClasses);
-
-            return new ProviderRegistry($services);
         });
     }
 

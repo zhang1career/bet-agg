@@ -83,7 +83,6 @@
                             <th>OID</th>
                             <th class="text-end">Amount</th>
                             <th>State</th>
-                            <th>TCC key</th>
                             <th class="text-end text-nowrap">Actions</th>
                         </tr>
                         </thead>
@@ -101,7 +100,6 @@
                                           data-mall-dict-code="points_hold_state"
                                           data-mall-dict-value="{{ $f->state->value }}">{{ $f->state->value }}</span>
                                 </td>
-                                <td class="small font-monospace text-break">{{ $f->tcc_idem_key ?? '—' }}</td>
                                 <td class="text-end text-nowrap">
                                     <button type="button" class="mall-icon-btn d-inline-flex p-1 rounded" title="View"
                                             data-bs-toggle="modal" data-bs-target="#mallModalFlowView"
@@ -110,7 +108,6 @@
                                             data-flow-oid="{{ $f->oid }}"
                                             data-flow-amount="{{ $f->amount_minor }}"
                                             data-flow-state="{{ $f->state->value }}"
-                                            data-flow-tcc="{{ $f->tcc_idem_key ?? '' }}"
                                             data-flow-ct="{{ \App\Support\MillisTimestampDisplay::format($f->ct) }}"
                                             data-flow-ut="{{ \App\Support\MillisTimestampDisplay::format($f->ut) }}">
                                         @include('admin.partials.icon_pencil')
@@ -119,7 +116,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="7" class="text-center text-muted py-4">No flow rows.</td>
+                                <td colspan="6" class="text-center text-muted py-4">No flow rows.</td>
                             </tr>
                         @endforelse
                         </tbody>
@@ -216,8 +213,6 @@
                         <dd class="col-8 font-monospace" id="m-flow-amount"></dd>
                         <dt class="col-4">State</dt>
                         <dd class="col-8" id="m-flow-state"></dd>
-                        <dt class="col-4">TCC</dt>
-                        <dd class="col-8 font-monospace text-break" id="m-flow-tcc"></dd>
                         <dt class="col-4">ct / ut</dt>
                         <dd class="col-8" id="m-flow-ctut"></dd>
                     </dl>
@@ -259,7 +254,6 @@
                         ['m-flow-uid', 'data-flow-uid'],
                         ['m-flow-oid', 'data-flow-oid'],
                         ['m-flow-amount', 'data-flow-amount'],
-                        ['m-flow-tcc', 'data-flow-tcc'],
                     ];
                     map.forEach(function (pair) {
                         var el = document.getElementById(pair[0]);

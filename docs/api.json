@@ -2,8 +2,8 @@
   "openapi": "3.0.3",
   "info": {
     "title": "bet-agg HTTP API",
-    "description": "Laravel bet aggregation service: public `/api/*` JSON APIs and health check. Most JSON responses use the `ApiResponse` envelope (`data`, `errorCode`, `message`, `_req_id`). XXL-Job executor endpoints use a different envelope (`code`, `msg`, `data`).",
-    "version": "1.0.0"
+    "description": "Laravel bet aggregation service: public `/api/*` JSON APIs and health check. User profile is **not** served here—call the Foundation (or API gateway) user API; bet-agg only **outbounds** to that service to resolve `X-User-Access-Token`. Most JSON responses use the `ApiResponse` envelope (`data`, `errorCode`, `message`, `_req_id`). XXL-Job executor endpoints use a different envelope (`code`, `msg`, `data`). Catalog data is stored in `biz_event`, `biz_market`, and `biz_selection`; order lines reference a selection via `kid`.\n\n**Examples:** Reusable request/response samples are under `components.examples` and referenced from operations. **Contract tests:** `Tests\\Feature\\OpenApiRoutesContractTest` asserts every path/method in this file is registered in the app.",
+    "version": "1.2.0"
   },
   "servers": [
     {
@@ -12,10 +12,6 @@
     }
   ],
   "tags": [
-    {
-      "name": "User",
-      "description": "User aggregation (Foundation JWT)"
-    },
     {
       "name": "Bet",
       "description": "Betting catalog, orders, points, checkout"
@@ -43,7 +39,7 @@
         "type": "apiKey",
         "in": "header",
         "name": "X-User-Access-Token",
-        "description": "Raw JWT from Foundation login (no `Bearer` prefix)."
+        "description": "Raw JWT from the Foundation (or BFF) auth service; not issued by bet-agg. Send on bet APIs that require a logged-in user."
       },
       "AdminBearer": {
         "type": "http",
@@ -109,8 +105,9 @@
       "BetOrderLine": {
         "type": "object",
         "properties": {
-          "selection_id": {
-            "type": "integer"
+          "kid": {
+            "type": "integer",
+            "description": "biz_selection.id"
           },
           "stake_points": {
             "type": "integer"
@@ -122,9 +119,9 @@
             "type": "integer"
           },
           "odds_snapshot": {},
-          "line_result": {
-            "type": "string",
-            "nullable": true
+          "result": {
+            "type": "integer",
+            "description": "BetLineResult: 0 pending, 1 win, 2 lose, 3 void"
           }
         }
       },
@@ -211,6 +208,7 @@
       },
       "SportSelection": {
         "type": "object",
+        "description": "Public catalog row; persisted in `biz_selection` with market/event from `biz_market` / `biz_event`.",
         "properties": {
           "id": {
             "type": "integer"
@@ -232,7 +230,8 @@
                 "type": "integer"
               },
               "market_type": {
-                "type": "string"
+                "type": "integer",
+                "description": "SportMarketType backed int (e.g. 1 = 1X2)"
               },
               "status": {
                 "type": "integer"
@@ -297,16 +296,89 @@
           "state": {
             "type": "string"
           },
-          "tcc_idem_key": {
-            "type": "string",
-            "nullable": true
-          },
           "ct": {
             "type": "string"
           },
           "ut": {
             "type": "string"
           }
+        }
+      }
+    },
+    "examples": {
+      "BetOrderCreateBody": {
+        "summary": "Draft order with one line",
+        "description": "See `Tests\\Feature\\BetOrderControllerTest::test_create_order_persists_draft_bet_line`. Replace `kid` with an open `biz_selection.id` from GET `/api/bet/selections`.",
+        "value": {
+          "lines": [
+            {
+              "kid": 1,
+              "stake_points": 100
+            }
+          ]
+        }
+      },
+      "BetCheckoutBody": {
+        "summary": "Checkout: pay with points",
+        "description": "See `Tests\\Feature\\MallCheckoutControllerTest`.",
+        "value": {
+          "order_id": 1,
+          "points_minor": 100
+        }
+      },
+      "BetOrderPatchBody": {
+        "summary": "Transition order status",
+        "value": {
+          "status": "cancelled"
+        }
+      },
+      "PaymentCallbackBody": {
+        "summary": "Payment gateway acknowledges paid",
+        "description": "See `Tests\\Feature\\PaymentCallbackControllerTest`.",
+        "value": {
+          "order_id": 1,
+          "status": "paid"
+        }
+      },
+      "AdminPointsOpenAccountBody": {
+        "summary": "Open mall points account",
+        "description": "See `Tests\\Feature\\MallAdminPointsApiTest`.",
+        "value": {
+          "uid": 42,
+          "balance_minor": 100
+        }
+      },
+      "AdminPointsAdjustBody": {
+        "summary": "Adjust balance by delta",
+        "value": {
+          "delta_minor": 25,
+          "oid": 0
+        }
+      },
+      "XxlJobRunBody": {
+        "summary": "Executor run payload (flat JSON)",
+        "description": "See `Tests\\Feature\\XxlJobControllerTest::test_run_dispatches_close_expired_orders_and_cancels_pending`.",
+        "value": {
+          "jobId": 9001,
+          "executorHandler": "closeExpiredOrders",
+          "executorParams": "",
+          "logId": 55001,
+          "logDateTime": 1700000000000
+        }
+      },
+      "XxlJobKillBody": {
+        "summary": "Kill job lock by id",
+        "value": {
+          "jobId": "777"
+        }
+      },
+      "ApiEnvelopeSuccess": {
+        "summary": "Typical API envelope success",
+        "value": {
+          "data": {},
+          "errorCode": 0,
+          "message": "",
+          "_req_id": "abc123def0"
         }
       }
     }
@@ -325,77 +397,6 @@
         }
       }
     },
-    "/api/user/me": {
-      "get": {
-        "tags": [
-          "User"
-        ],
-        "summary": "Aggregated current user (Foundation + biz providers)",
-        "security": [
-          {
-            "UserAccessToken": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "X-Trace-Id",
-            "in": "header",
-            "schema": {
-              "type": "string"
-            },
-            "required": false
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success or partial degrade (`errorCode` may be degrade code when providers fail)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/ApiEnvelope"
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "data": {
-                          "type": "object",
-                          "properties": {
-                            "user": {
-                              "type": "object",
-                              "additionalProperties": true
-                            },
-                            "biz": {
-                              "type": "object",
-                              "additionalProperties": true
-                            },
-                            "meta": {
-                              "type": "object",
-                              "additionalProperties": true
-                            }
-                          }
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Missing or invalid `X-User-Access-Token`",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiEnvelope"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/bet/dict": {
       "get": {
         "tags": [
@@ -410,7 +411,8 @@
             "schema": {
               "type": "string"
             },
-            "description": "Comma-separated dictionary codes"
+            "description": "Comma-separated dictionary codes",
+            "example": "points_hold_state"
           },
           {
             "name": "X-Request-Id",
@@ -440,7 +442,7 @@
         "tags": [
           "Bet"
         ],
-        "summary": "Paginated open sport selections",
+        "summary": "Paginated open selections (biz_selection)",
         "parameters": [
           {
             "name": "page",
@@ -648,11 +650,11 @@
                     "items": {
                       "type": "object",
                       "required": [
-                        "selection_id",
+                        "kid",
                         "stake_points"
                       ],
                       "properties": {
-                        "selection_id": {
+                        "kid": {
                           "type": "integer",
                           "minimum": 1
                         },
@@ -663,6 +665,11 @@
                       }
                     }
                   }
+                }
+              },
+              "examples": {
+                "oneLineDraft": {
+                  "$ref": "#/components/examples/BetOrderCreateBody"
                 }
               }
             }
@@ -824,6 +831,11 @@
                     ]
                   }
                 }
+              },
+              "examples": {
+                "cancel": {
+                  "$ref": "#/components/examples/BetOrderPatchBody"
+                }
               }
             }
           }
@@ -977,6 +989,11 @@
                     "minimum": 0
                   }
                 }
+              },
+              "examples": {
+                "fullStake": {
+                  "$ref": "#/components/examples/BetCheckoutBody"
+                }
               }
             }
           }
@@ -1084,6 +1101,11 @@
                   }
                 },
                 "additionalProperties": true
+              },
+              "examples": {
+                "paid": {
+                  "$ref": "#/components/examples/PaymentCallbackBody"
+                }
               }
             }
           }
@@ -1142,7 +1164,7 @@
         }
       }
     },
-    "/api/bet/admin/points/accounts": {
+    "/api/bet/admin/points": {
       "post": {
         "tags": [
           "Bet Admin"
@@ -1171,6 +1193,11 @@
                     "type": "integer",
                     "minimum": 0
                   }
+                }
+              },
+              "examples": {
+                "open": {
+                  "$ref": "#/components/examples/AdminPointsOpenAccountBody"
                 }
               }
             }
@@ -1237,7 +1264,7 @@
         }
       }
     },
-    "/api/bet/admin/points/adjust": {
+    "/api/bet/admin/points/{balance_id}": {
       "post": {
         "tags": [
           "Bet Admin"
@@ -1248,6 +1275,18 @@
             "AdminBearer": []
           }
         ],
+        "parameters": [
+          {
+            "name": "balance_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "Mall points balance row id (`mall_points_balances.id`)"
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -1255,14 +1294,9 @@
               "schema": {
                 "type": "object",
                 "required": [
-                  "uid",
                   "delta_minor"
                 ],
                 "properties": {
-                  "uid": {
-                    "type": "integer",
-                    "minimum": 1
-                  },
                   "delta_minor": {
                     "type": "integer",
                     "not": {
@@ -1275,6 +1309,11 @@
                     "type": "integer",
                     "minimum": 0
                   }
+                }
+              },
+              "examples": {
+                "credit": {
+                  "$ref": "#/components/examples/AdminPointsAdjustBody"
                 }
               }
             }
@@ -1390,7 +1429,7 @@
                     "type": "integer",
                     "description": "Must be > 0"
                   },
-                  "jobHandler": {
+                  "executorHandler": {
                     "type": "string"
                   },
                   "executorParams": {
@@ -1405,8 +1444,10 @@
                 },
                 "additionalProperties": true
               },
-              "example": {
-                "logDateTime": 1735689600000
+              "examples": {
+                "closeExpired": {
+                  "$ref": "#/components/examples/XxlJobRunBody"
+                }
               }
             }
           }
@@ -1445,6 +1486,11 @@
                   "jobId": {
                     "type": "string"
                   }
+                }
+              },
+              "examples": {
+                "byId": {
+                  "$ref": "#/components/examples/XxlJobKillBody"
                 }
               }
             }

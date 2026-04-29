@@ -40,15 +40,14 @@ final class BetAdminPointsController extends Controller
             return response()->json(ApiResponse::error(40001, $e->getMessage()), 422);
         }
 
-        $this->logHandledApiRequest($request, ['handler' => 'bet.admin.points.accounts.store', 'uid' => $balance->uid]);
+        $this->logHandledApiRequest($request, ['handler' => 'bet.admin.points.store', 'uid' => $balance->uid]);
 
         return response()->json(ApiResponse::ok(['account' => $this->accountRow($balance)]), 201);
     }
 
-    public function adjust(Request $request): JsonResponse
+    public function adjust(Request $request, int $balance_id): JsonResponse
     {
         $v = Validator::make($request->all(), [
-            'uid' => 'required|integer|min:1',
             'delta_minor' => 'required|integer|not_in:0',
             'oid' => 'sometimes|integer|min:0',
         ]);
@@ -57,8 +56,8 @@ final class BetAdminPointsController extends Controller
         }
 
         try {
-            $out = $this->adminPoints->adjustBalance(
-                (int) $request->input('uid'),
+            $out = $this->adminPoints->adjustBalanceByBalanceId(
+                $balance_id,
                 (int) $request->input('delta_minor'),
                 (int) $request->input('oid', 0),
             );
@@ -68,6 +67,7 @@ final class BetAdminPointsController extends Controller
 
         $this->logHandledApiRequest($request, [
             'handler' => 'bet.admin.points.adjust',
+            'balance_id' => $balance_id,
             'uid' => $out['balance']->uid,
             'flow_id' => $out['flow']->id,
         ]);
@@ -99,7 +99,6 @@ final class BetAdminPointsController extends Controller
             'oid' => $f->oid,
             'amount_minor' => $f->amount_minor,
             'state' => $f->state->value,
-            'tcc_idem_key' => $f->tcc_idem_key,
             'ct' => MillisTimestampDisplay::format($f->ct),
             'ut' => MillisTimestampDisplay::format($f->ut),
         ];

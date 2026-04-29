@@ -42,7 +42,7 @@ final readonly class MallPaymentCallbackService
             throw new RuntimeException('Payment callback only applies to orders awaiting payment.');
         }
 
-        $this->pointsTcc->confirm(BetCheckoutService::pointsHoldKey($orderId));
+        $this->pointsTcc->confirmHoldForBetOrder($orderId);
 
         $order = $this->orders->transitionStatus($order, BetOrderStatus::Accepted, false);
         $order->checkout_phase = CheckoutPhase::Completed;

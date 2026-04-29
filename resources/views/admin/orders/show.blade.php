@@ -25,7 +25,7 @@
         <tbody>
         @foreach($order->items as $item)
             <tr>
-                <td>{{ $item->selection_id }} — {{ $item->odds_snapshot['label'] ?? '' }}</td>
+                <td>{{ $item->kid }} — {{ $item->odds_snapshot['label'] ?? '' }}</td>
                 <td>{{ $item->stake_points }}</td>
                 <td>{{ $item->decimal_odds_millis }}</td>
                 <td>{{ $item->potential_return_points }}</td>

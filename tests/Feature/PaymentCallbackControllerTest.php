@@ -22,11 +22,11 @@ final class PaymentCallbackControllerTest extends TestCase
     {
         $sid = SportSeeder::openSelection(2000);
         $order = app(OrderCommandService::class)
-            ->createDraftPendingOrder(7, [['selection_id' => $sid, 'stake_points' => 10]]);
+            ->createDraftPendingOrder(7, [['kid' => $sid, 'stake_points' => 10]]);
 
         MallPointsBalance::query()->create(['uid' => 7, 'balance_minor' => 100]);
 
-        app(\App\Services\mall\BetCheckoutService::class)->checkoutExistingOrder(7, $order, 3);
+        app(BetCheckoutService::class)->checkoutExistingOrder(7, $order, 3);
 
         $fresh = BetOrder::query()->find($order->id);
         $this->assertNotNull($fresh);
@@ -48,7 +48,7 @@ final class PaymentCallbackControllerTest extends TestCase
     {
         $sid = SportSeeder::openSelection(2000);
         $order = app(OrderCommandService::class)
-            ->createDraftPendingOrder(8, [['selection_id' => $sid, 'stake_points' => 5]]);
+            ->createDraftPendingOrder(8, [['kid' => $sid, 'stake_points' => 5]]);
         MallPointsBalance::query()->create(['uid' => 8, 'balance_minor' => 50]);
         app(BetCheckoutService::class)->checkoutExistingOrder(8, $order, 2);
 

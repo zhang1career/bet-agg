@@ -39,21 +39,28 @@ final class MallPointsTccService
     }
 
     /**
-     * TCC Try: move amount from available balance into hold.
+     * Move amount from available balance into hold, keyed by bet order id (points_flow.oid).
      */
-    public function tryFreeze(int $uid, int $amountMinor, ?int $orderId, string $tccIdemKey): void
+    public function tryFreeze(int $uid, int $amountMinor, int $betOrderId): void
     {
+        if ($betOrderId < 1) {
+            throw new RuntimeException('Bet order id is required for points hold.');
+        }
         if ($amountMinor < 1) {
             throw new RuntimeException('Points amount must be positive.');
         }
 
-        DB::transaction(function () use ($uid, $amountMinor, $orderId, $tccIdemKey): void {
-            $existing = PointsFlow::query()->where('tcc_idem_key', $tccIdemKey)->first();
+        DB::transaction(function () use ($uid, $amountMinor, $betOrderId): void {
+            $existing = PointsFlow::query()
+                ->where('uid', $uid)
+                ->where('oid', $betOrderId)
+                ->where('state', PointsHoldState::TrySucceeded)
+                ->first();
             if ($existing !== null) {
-                if ($existing->state === PointsHoldState::TrySucceeded) {
+                if ((int) $existing->amount_minor === $amountMinor) {
                     return;
                 }
-                throw new RuntimeException('Duplicate tcc_idem_key with invalid state.');
+                throw new RuntimeException('Existing points hold for this order with a different amount.');
             }
 
             $balance = MallPointsBalance::query()->where('uid', $uid)->lockForUpdate()->first();
@@ -76,59 +83,75 @@ final class MallPointsTccService
 
             $hold = new PointsFlow([
                 'uid' => $uid,
-                'oid' => $orderId ?? 0,
+                'oid' => $betOrderId,
                 'amount_minor' => $amountMinor,
                 'state' => PointsHoldState::TrySucceeded,
-                'tcc_idem_key' => $tccIdemKey,
             ]);
             $hold->save();
         });
     }
 
-    public function confirm(string $tccIdemKey): void
+    public function confirmHoldForBetOrder(int $betOrderId): void
     {
-        DB::transaction(function () use ($tccIdemKey): void {
-            $hold = PointsFlow::query()->where('tcc_idem_key', $tccIdemKey)->lockForUpdate()->first();
-            if ($hold === null) {
-                return;
+        if ($betOrderId < 1) {
+            return;
+        }
+
+        DB::transaction(function () use ($betOrderId): void {
+            $holds = PointsFlow::query()
+                ->where('oid', $betOrderId)
+                ->where('state', PointsHoldState::TrySucceeded)
+                ->lockForUpdate()
+                ->orderBy('id')
+                ->get();
+            foreach ($holds as $hold) {
+                if ($hold->state === PointsHoldState::Confirmed) {
+                    continue;
+                }
+                if ($hold->state !== PointsHoldState::TrySucceeded) {
+                    throw new RuntimeException('Points hold not in try-succeeded state.');
+                }
+                $hold->state = PointsHoldState::Confirmed;
+                $hold->save();
             }
-            if ($hold->state === PointsHoldState::Confirmed) {
-                return;
-            }
-            if ($hold->state !== PointsHoldState::TrySucceeded) {
-                throw new RuntimeException('Points hold not in try-succeeded state.');
-            }
-            $hold->state = PointsHoldState::Confirmed;
-            $hold->save();
         });
     }
 
-    public function cancel(string $tccIdemKey): void
+    public function cancelHoldForBetOrder(int $betOrderId): void
     {
-        DB::transaction(function () use ($tccIdemKey): void {
-            $hold = PointsFlow::query()->where('tcc_idem_key', $tccIdemKey)->lockForUpdate()->first();
-            if ($hold === null) {
-                return;
-            }
-            if ($hold->state === PointsHoldState::RolledBack) {
-                return;
-            }
-            if ($hold->state === PointsHoldState::Confirmed) {
-                throw new RuntimeException('Cannot cancel confirmed hold.');
-            }
-            if ($hold->state !== PointsHoldState::TrySucceeded) {
-                throw new RuntimeException('Points hold not in try-succeeded state.');
-            }
+        if ($betOrderId < 1) {
+            return;
+        }
 
-            $balance = MallPointsBalance::query()->where('uid', $hold->uid)->lockForUpdate()->first();
-            if ($balance === null) {
-                throw new RuntimeException('Points balance missing.');
-            }
-            $balance->balance_minor += $hold->amount_minor;
-            $balance->save();
+        DB::transaction(function () use ($betOrderId): void {
+            $holds = PointsFlow::query()
+                ->where('oid', $betOrderId)
+                ->where('state', PointsHoldState::TrySucceeded)
+                ->lockForUpdate()
+                ->orderBy('id')
+                ->get();
 
-            $hold->state = PointsHoldState::RolledBack;
-            $hold->save();
+            foreach ($holds as $hold) {
+                if ($hold->state === PointsHoldState::RolledBack) {
+                    continue;
+                }
+                if ($hold->state === PointsHoldState::Confirmed) {
+                    throw new RuntimeException('Cannot cancel confirmed hold.');
+                }
+                if ($hold->state !== PointsHoldState::TrySucceeded) {
+                    throw new RuntimeException('Points hold not in try-succeeded state.');
+                }
+
+                $balance = MallPointsBalance::query()->where('uid', $hold->uid)->lockForUpdate()->first();
+                if ($balance === null) {
+                    throw new RuntimeException('Points balance missing.');
+                }
+                $balance->balance_minor += $hold->amount_minor;
+                $balance->save();
+
+                $hold->state = PointsHoldState::RolledBack;
+                $hold->save();
+            }
         });
     }
 }

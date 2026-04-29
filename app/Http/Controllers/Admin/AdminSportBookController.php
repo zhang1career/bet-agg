@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\SportMarketType;
 use App\Http\Controllers\Controller;
 use App\Models\SportEvent;
 use App\Models\SportMarket;
 use App\Models\SportSelection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class AdminSportBookController extends Controller
@@ -35,7 +37,7 @@ class AdminSportBookController extends Controller
         $v = $request->validate([
             'event_name' => 'required|string|max:500',
             'starts_at' => 'nullable|integer|min:0',
-            'market_type' => 'required|string|max:128',
+            'market_type' => ['required', 'integer', Rule::enum(SportMarketType::class)->except(SportMarketType::Unknown)],
             'selection_label' => 'required|string|max:256',
             'current_odds_millis' => 'required|integer|min:1000',
         ]);
@@ -48,9 +50,10 @@ class AdminSportBookController extends Controller
         ]);
         $event->save();
 
+        $marketType = SportMarketType::from((int) $v['market_type']);
         $market = new SportMarket([
             'event_id' => $event->id,
-            'market_type' => $v['market_type'],
+            'market_type' => $marketType,
             'status' => SportMarket::STATUS_OPEN,
         ]);
         $market->save();

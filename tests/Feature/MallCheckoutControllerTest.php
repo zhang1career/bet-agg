@@ -50,7 +50,7 @@ class MallCheckoutControllerTest extends TestCase
         $sid = SportSeeder::openSelection(2000);
 
         $create = $this->withHeader('X-User-Access-Token', 'tok')->postJson('/api/bet/orders', [
-            'lines' => [['selection_id' => $sid, 'stake_points' => 100]],
+            'lines' => [['kid' => $sid, 'stake_points' => 100]],
         ]);
         $create->assertCreated();
         $orderId = (int) $create->json('data.id');
@@ -79,7 +79,7 @@ class MallCheckoutControllerTest extends TestCase
         $sid = SportSeeder::openSelection(2000);
 
         $orderId = (int) $this->withHeader('X-User-Access-Token', 'tok')->postJson('/api/bet/orders', [
-            'lines' => [['selection_id' => $sid, 'stake_points' => 100]],
+            'lines' => [['kid' => $sid, 'stake_points' => 100]],
         ])->json('data.id');
 
         MallPointsBalance::query()->create(['uid' => 42, 'balance_minor' => 30]);
@@ -106,7 +106,7 @@ class MallCheckoutControllerTest extends TestCase
         $sid = SportSeeder::openSelection(2000);
 
         $orderId = (int) $this->withHeader('X-User-Access-Token', 'tok')->postJson('/api/bet/orders', [
-            'lines' => [['selection_id' => $sid, 'stake_points' => 50]],
+            'lines' => [['kid' => $sid, 'stake_points' => 50]],
         ])->json('data.id');
 
         BetOrder::query()->whereKey($orderId)->update(['checkout_phase' => CheckoutPhase::AwaitPayment->value]);

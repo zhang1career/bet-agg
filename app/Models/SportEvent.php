@@ -7,13 +7,13 @@ namespace App\Models;
 use App\Models\Concerns\HasMillisTimestamps;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
  * @property int $id
  * @property string $name
  * @property int $starts_at Unix ms
  * @property int $status 1 open, 2 closed, 3 settled
+ * @property list<int>|null $winning_selection_ids JSON when settled
  * @property int $ct
  * @property int $ut
  */
@@ -29,13 +29,14 @@ class SportEvent extends Model
 
     public $timestamps = false;
 
-    protected $table = 'sport_event';
+    protected $table = 'biz_event';
 
-    protected $fillable = ['name', 'starts_at', 'status', 'ct', 'ut'];
+    protected $fillable = ['name', 'starts_at', 'status', 'winning_selection_ids', 'ct', 'ut'];
 
     protected $casts = [
         'starts_at' => 'integer',
         'status' => 'integer',
+        'winning_selection_ids' => 'array',
         'ct' => 'integer',
         'ut' => 'integer',
     ];
@@ -46,13 +47,5 @@ class SportEvent extends Model
     public function markets(): HasMany
     {
         return $this->hasMany(SportMarket::class, 'event_id');
-    }
-
-    /**
-     * @return HasOne<SportEventResult, $this>
-     */
-    public function result(): HasOne
-    {
-        return $this->hasOne(SportEventResult::class, 'event_id');
     }
 }

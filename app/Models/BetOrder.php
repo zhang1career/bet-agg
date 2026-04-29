@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * @property int $id
- * @property int $uid Foundation user id (from GET /api/user/me)
+ * @property int $uid Foundation user id (from `UserFoundationGateway` / outbound profile)
  * @property BetOrderStatus $status
  * @property int $total_price Total stake points (integer); denormalized from lines
  * @property int $points_deduct_minor Points frozen at checkout; 0 until checkout
@@ -31,7 +31,7 @@ class BetOrder extends Model
 
     public $timestamps = false;
 
-    protected $table = 'bet_order';
+    protected $table = 'order';
 
     protected $fillable = [
         'uid',

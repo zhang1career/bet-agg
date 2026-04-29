@@ -56,22 +56,52 @@ final class MallPointsAdminService
 
         return DB::transaction(function () use ($uid, $deltaMinor, $oid): array {
             $balance = MallPointsBalance::query()->where('uid', $uid)->lockForUpdate()->first();
-            if ($balance === null) {
-                throw new RuntimeException('Points account does not exist. Open an account first.');
-            }
 
-            $next = (int) $balance->balance_minor + $deltaMinor;
-            if ($next < 0) {
-                throw new RuntimeException('Insufficient points for this adjustment.');
-            }
-
-            $balance->balance_minor = $next;
-            $balance->save();
-
-            $flow = $this->insertLedgerRow($uid, $oid, $deltaMinor);
-
-            return ['balance' => $balance, 'flow' => $flow];
+            return $this->applyAdjustmentToBalance($balance, $uid, $deltaMinor, $oid);
         });
+    }
+
+    /** @return array{balance: MallPointsBalance, flow: PointsFlow} */
+    public function adjustBalanceByBalanceId(int $balanceId, int $deltaMinor, int $oid = 0): array
+    {
+        if ($balanceId < 1) {
+            throw new RuntimeException('Invalid balance id.');
+        }
+        if ($deltaMinor === 0) {
+            throw new RuntimeException('Adjustment amount must be non-zero.');
+        }
+        if ($oid < 0) {
+            throw new RuntimeException('Invalid order id.');
+        }
+
+        return DB::transaction(function () use ($balanceId, $deltaMinor, $oid): array {
+            $balance = MallPointsBalance::query()->where('id', $balanceId)->lockForUpdate()->first();
+            $uid = $balance === null ? 0 : (int) $balance->uid;
+
+            return $this->applyAdjustmentToBalance($balance, $uid, $deltaMinor, $oid);
+        });
+    }
+
+    /**
+     * @return array{balance: MallPointsBalance, flow: PointsFlow}
+     */
+    private function applyAdjustmentToBalance(?MallPointsBalance $balance, int $uid, int $deltaMinor, int $oid): array
+    {
+        if ($balance === null) {
+            throw new RuntimeException('Points account does not exist. Open an account first.');
+        }
+
+        $next = (int) $balance->balance_minor + $deltaMinor;
+        if ($next < 0) {
+            throw new RuntimeException('Insufficient points for this adjustment.');
+        }
+
+        $balance->balance_minor = $next;
+        $balance->save();
+
+        $flow = $this->insertLedgerRow($uid, $oid, $deltaMinor);
+
+        return ['balance' => $balance, 'flow' => $flow];
     }
 
     public function deleteBalanceById(int $id): void
@@ -125,7 +155,6 @@ final class MallPointsAdminService
                 'oid' => $oid,
                 'amount_minor' => $deltaMinor,
                 'state' => $state,
-                'tcc_idem_key' => null,
             ]);
             $flow->save();
 
@@ -140,7 +169,6 @@ final class MallPointsAdminService
             'oid' => $oid,
             'amount_minor' => $amountMinor,
             'state' => PointsHoldState::AdminLedger,
-            'tcc_idem_key' => null,
         ]);
         $flow->save();
 

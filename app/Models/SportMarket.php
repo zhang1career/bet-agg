@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\SportMarketType;
 use App\Models\Concerns\HasMillisTimestamps;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -12,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 /**
  * @property int $id
  * @property int $event_id
- * @property string $market_type
+ * @property SportMarketType $market_type
  * @property int $status 1 open, 2 suspended, 3 settled
  * @property int $ct
  * @property int $ut
@@ -29,12 +30,13 @@ class SportMarket extends Model
 
     public $timestamps = false;
 
-    protected $table = 'sport_market';
+    protected $table = 'biz_market';
 
     protected $fillable = ['event_id', 'market_type', 'status', 'ct', 'ut'];
 
     protected $casts = [
         'event_id' => 'integer',
+        'market_type' => SportMarketType::class,
         'status' => 'integer',
         'ct' => 'integer',
         'ut' => 'integer',

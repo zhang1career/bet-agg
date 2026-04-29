@@ -27,7 +27,7 @@
                         <tr>
                             <td class="font-monospace">{{ $sel->id }}</td>
                             <td>{{ $sel->market->event->name ?? '—' }}</td>
-                            <td>{{ $sel->market->market_type ?? '—' }}</td>
+                            <td>{{ $sel->market?->market_type->label() ?? '—' }} ({{ $sel->market?->market_type->value ?? '—' }})</td>
                             <td>{{ $sel->label }}</td>
                             <td class="text-end font-monospace">{{ $sel->current_odds_millis }}</td>
                             <td>{{ $sel->status }}</td>

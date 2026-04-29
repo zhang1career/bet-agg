@@ -80,7 +80,7 @@ final readonly class SportMarketCatalogService
             'status' => (int) $sel->status,
             'market' => $market === null ? null : [
                 'id' => (int) $market->id,
-                'market_type' => $market->market_type,
+                'market_type' => (int) $market->market_type->value,
                 'status' => (int) $market->status,
             ],
             'event' => $event === null ? null : [

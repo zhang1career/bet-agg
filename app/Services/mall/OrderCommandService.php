@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\mall;
 
+use App\Enums\BetLineResult;
 use App\Enums\BetOrderStatus;
 use App\Enums\CheckoutPhase;
 use App\Models\BetOrder;
@@ -26,7 +27,7 @@ final readonly class OrderCommandService
     /**
      * Draft bet: single line only (selection + stake). Odds snapshot is persisted from current quote.
      *
-     * @param  list<array{selection_id: int, stake_points: int}>  $lines
+     * @param  list<array{kid: int, stake_points: int}>  $lines
      */
     public function createDraftPendingOrder(int $userId, array $lines): BetOrder
     {
@@ -39,19 +40,19 @@ final readonly class OrderCommandService
 
         return DB::transaction(function () use ($userId, $lines): BetOrder {
             $line = $lines[0];
-            $selectionId = (int) ($line['selection_id'] ?? 0);
+            $kid = (int) ($line['kid'] ?? 0);
             $stake = (int) ($line['stake_points'] ?? 0);
-            if ($selectionId < 1 || $stake < 1) {
+            if ($kid < 1 || $stake < 1) {
                 throw new RuntimeException('Invalid bet line.');
             }
 
             $this->book->assertSelectionsAcceptingBets($userId, [
-                ['product_id' => $selectionId, 'quantity' => $stake],
+                ['product_id' => $kid, 'quantity' => $stake],
             ]);
 
             $selection = SportSelection::query()
                 ->with(['market.event'])
-                ->whereKey($selectionId)
+                ->whereKey($kid)
                 ->first();
             if ($selection === null) {
                 throw new RuntimeException('Selection not found.');
@@ -66,11 +67,11 @@ final readonly class OrderCommandService
             }
 
             $snapshot = [
-                'selection_id' => $selectionId,
+                'kid' => $kid,
                 'market_id' => $market ? (int) $market->id : 0,
                 'event_id' => $event ? (int) $event->id : 0,
                 'event_name' => $event ? $event->name : '',
-                'market_type' => $market ? $market->market_type : '',
+                'market_type' => $market ? $market->market_type->value : 0,
                 'label' => $selection->label,
                 'decimal_odds_millis' => $millis,
             ];
@@ -89,11 +90,12 @@ final readonly class OrderCommandService
 
             $item = new BetOrderLine([
                 'oid' => $order->id,
-                'selection_id' => $selectionId,
+                'kid' => $kid,
                 'stake_points' => $stake,
                 'odds_snapshot' => $snapshot,
                 'decimal_odds_millis' => $millis,
                 'potential_return_points' => $potentialReturn,
+                'result' => BetLineResult::Pending,
             ]);
             $item->save();
 
@@ -110,7 +112,7 @@ final readonly class OrderCommandService
         $lines = [];
         foreach ($order->lines as $item) {
             $lines[] = [
-                'product_id' => (int) $item->selection_id,
+                'product_id' => (int) $item->kid,
                 'quantity' => (int) $item->stake_points,
             ];
         }

@@ -7,9 +7,7 @@ namespace App\Services\mall;
 use App\Contracts\InventoryOutboundContract;
 use App\Enums\BetOrderStatus;
 use App\Enums\CheckoutPhase;
-use App\Enums\PointsHoldState;
 use App\Models\BetOrder;
-use App\Models\PointsFlow;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -78,22 +76,10 @@ final readonly class MallOverdueOrderSweepService
 
         $extId = $order->ext_inventory ? trim($order->ext_id) : '';
 
-        $holds = PointsFlow::query()
-            ->where('oid', $order->id)
-            ->where('state', PointsHoldState::TrySucceeded)
-            ->whereNotNull('tcc_idem_key')
-            ->get();
-
-        foreach ($holds as $hold) {
-            $k = (string) $hold->tcc_idem_key;
-            if ($k === '') {
-                continue;
-            }
-            try {
-                $this->pointsTcc->cancel($k);
-            } catch (Throwable $e) {
-                Log::warning('[bet-sweep] points cancel failed', ['order_id' => $order->id, 'message' => $e->getMessage()]);
-            }
+        try {
+            $this->pointsTcc->cancelHoldForBetOrder((int) $order->id);
+        } catch (Throwable $e) {
+            Log::warning('[bet-sweep] points cancel failed', ['order_id' => $order->id, 'message' => $e->getMessage()]);
         }
 
         try {

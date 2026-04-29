@@ -29,7 +29,7 @@ class SportSelection extends Model
 
     public $timestamps = false;
 
-    protected $table = 'sport_selection';
+    protected $table = 'biz_selection';
 
     protected $fillable = ['market_id', 'label', 'current_odds_millis', 'status', 'ct', 'ut'];
 

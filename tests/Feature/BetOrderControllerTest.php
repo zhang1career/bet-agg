@@ -25,7 +25,7 @@ class BetOrderControllerTest extends TestCase
     public function test_create_order_requires_auth(): void
     {
         $response = $this->postJson('/api/bet/orders', [
-            'lines' => [['selection_id' => 1, 'stake_points' => 1]],
+            'lines' => [['kid' => 1, 'stake_points' => 1]],
         ]);
 
         $response->assertStatus(401)
@@ -45,7 +45,7 @@ class BetOrderControllerTest extends TestCase
         $sid = SportSeeder::openSelection(2000);
 
         $response = $this->withHeader('X-User-Access-Token', 'tok')->postJson('/api/bet/orders', [
-            'lines' => [['selection_id' => $sid, 'stake_points' => 100]],
+            'lines' => [['kid' => $sid, 'stake_points' => 100]],
         ]);
 
         $response->assertCreated()
@@ -56,6 +56,6 @@ class BetOrderControllerTest extends TestCase
 
         $order = BetOrder::query()->where('uid', 42)->first();
         $this->assertNotNull($order);
-        $this->assertSame($sid, (int) $order->lines->first()->selection_id);
+        $this->assertSame($sid, (int) $order->lines->first()->kid);
     }
 }

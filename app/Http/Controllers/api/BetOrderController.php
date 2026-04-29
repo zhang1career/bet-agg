@@ -37,21 +37,21 @@ class BetOrderController extends Controller
 
         $validator = Validator::make($request->all(), [
             'lines' => 'required|array|min:1|max:1',
-            'lines.0.selection_id' => 'required|integer|min:1',
+            'lines.0.kid' => 'required|integer|min:1',
             'lines.0.stake_points' => 'required|integer|min:1',
         ]);
         if ($validator->fails()) {
             return response()->json(ApiResponse::error(100, $validator->errors()->first()), 422);
         }
 
-        /** @var list<array{selection_id: int, stake_points: int}> $lines */
+        /** @var list<array{kid: int, stake_points: int}> $lines */
         $lines = [];
         foreach ($request->input('lines', []) as $line) {
             if (! is_array($line)) {
                 continue;
             }
             $lines[] = [
-                'selection_id' => (int) $line['selection_id'],
+                'kid' => (int) $line['kid'],
                 'stake_points' => (int) $line['stake_points'],
             ];
         }
@@ -193,12 +193,12 @@ class BetOrderController extends Controller
         $lines = [];
         foreach ($order->lines as $item) {
             $lines[] = [
-                'selection_id' => $item->selection_id,
+                'kid' => $item->kid,
                 'stake_points' => $item->stake_points,
                 'decimal_odds_millis' => $item->decimal_odds_millis,
                 'potential_return_points' => $item->potential_return_points,
                 'odds_snapshot' => $item->odds_snapshot,
-                'line_result' => $item->line_result?->value,
+                'result' => $item->result->value,
             ];
         }
 

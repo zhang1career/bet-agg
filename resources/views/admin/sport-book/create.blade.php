@@ -17,7 +17,16 @@
             </div>
             <div class="mb-3">
                 <label class="form-label" for="market_type">Market type</label>
-                <input type="text" name="market_type" id="market_type" class="form-control" required maxlength="128" value="{{ old('market_type', '1x2') }}">
+                <select name="market_type" id="market_type" class="form-select" required>
+                    @foreach(\App\Enums\SportMarketType::cases() as $case)
+                        @if($case === \App\Enums\SportMarketType::Unknown)
+                            @continue
+                        @endif
+                        <option value="{{ $case->value }}" @selected((int) old('market_type', \App\Enums\SportMarketType::MatchResult1x2->value) === $case->value)>
+                            {{ $case->label() }} ({{ $case->value }})
+                        </option>
+                    @endforeach
+                </select>
             </div>
             <div class="mb-3">
                 <label class="form-label" for="selection_label">Selection label</label>

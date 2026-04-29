@@ -46,7 +46,7 @@ final class XxlJobControllerTest extends TestCase
 
         $sid = SportSeeder::openSelection(2000);
         $order = app(OrderCommandService::class)
-            ->createDraftPendingOrder(7, [['selection_id' => $sid, 'stake_points' => 1]]);
+            ->createDraftPendingOrder(7, [['kid' => $sid, 'stake_points' => 1]]);
 
         BetOrder::query()->where('id', $order->id)->update([
             'ct' => BetOrder::nowMillis() - 120_000,

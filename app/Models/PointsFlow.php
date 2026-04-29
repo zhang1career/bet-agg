@@ -10,14 +10,13 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * Points ledger rows: TCC hold lifecycle (try / confirm / cancel), manual admin entries, settlement postings.
+ * Points ledger rows: hold lifecycle (try / confirm / cancel), manual admin entries, settlement postings.
  *
  * @property int $id
  * @property int $uid
- * @property int $oid 0 = not linked to a bet order
+ * @property int $oid 0 = not linked to an order row
  * @property int $amount_minor
  * @property PointsHoldState $state
- * @property string|null $tcc_idem_key
  * @property int $ct
  * @property int $ut
  */
@@ -34,7 +33,6 @@ class PointsFlow extends Model
         'oid',
         'amount_minor',
         'state',
-        'tcc_idem_key',
         'ct',
         'ut',
     ];

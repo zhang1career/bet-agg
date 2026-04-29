@@ -7,7 +7,6 @@ use App\Http\Controllers\api\BetOrderController;
 use App\Http\Controllers\api\BetPointsController;
 use App\Http\Controllers\api\PaymentCallbackController;
 use App\Http\Controllers\api\SportSelectionController;
-use App\Http\Controllers\UserAggregationController;
 use App\Http\Controllers\XxlJobController;
 use App\Http\Middleware\XxljobAuthentication;
 use Illuminate\Support\Facades\Route;
@@ -19,8 +18,6 @@ Route::prefix('xxl-job')->middleware([XxljobAuthentication::class])->group(funct
 });
 
 Route::prefix('')->middleware([])->group(function () {
-    Route::get('user/me', [UserAggregationController::class, 'me']);
-
     Route::prefix('bet')->group(function () {
         Route::get('dict', BetDictController::class);
         Route::get('selections', [SportSelectionController::class, 'index']);
@@ -34,8 +31,8 @@ Route::prefix('')->middleware([])->group(function () {
         Route::post('payment/callback', PaymentCallbackController::class);
 
         Route::prefix('admin')->middleware(['admin.api'])->group(function () {
-            Route::post('points/accounts', [BetAdminPointsController::class, 'storeAccount']);
-            Route::post('points/adjust', [BetAdminPointsController::class, 'adjust']);
+            Route::post('points', [BetAdminPointsController::class, 'storeAccount']);
+            Route::post('points/{balance_id}', [BetAdminPointsController::class, 'adjust'])->whereNumber('balance_id');
         });
     });
 });

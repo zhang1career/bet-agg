@@ -23,11 +23,6 @@ final readonly class BetCheckoutService
         private PaymentOutboundContract $payment,
     ) {}
 
-    public static function pointsHoldKey(int $orderId): string
-    {
-        return 'bet:order:'.$orderId.':hold';
-    }
-
     /**
      * @return array{order: BetOrder, prepay: array<string, mixed>}
      */
@@ -63,14 +58,13 @@ final readonly class BetCheckoutService
             $order->points_deduct_minor = $pointsMinor;
             $order->cash_payable_minor = $cash;
 
-            $holdKey = self::pointsHoldKey((int) $order->id);
             if ($pointsMinor > 0) {
-                $this->points->tryFreeze($uid, $pointsMinor, (int) $order->id, $holdKey);
+                $this->points->tryFreeze($uid, $pointsMinor, (int) $order->id);
             }
 
             if ($cash < 1) {
                 if ($pointsMinor > 0) {
-                    $this->points->confirm($holdKey);
+                    $this->points->confirmHoldForBetOrder((int) $order->id);
                 }
                 $order = $this->orders->transitionStatus($order, BetOrderStatus::Accepted, false);
                 $order->checkout_phase = CheckoutPhase::Completed;

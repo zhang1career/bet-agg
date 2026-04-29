@@ -104,12 +104,12 @@ class BetCheckoutController extends Controller
         $lines = [];
         foreach ($order->lines as $item) {
             $lines[] = [
-                'selection_id' => $item->selection_id,
+                'kid' => $item->kid,
                 'stake_points' => $item->stake_points,
                 'decimal_odds_millis' => $item->decimal_odds_millis,
                 'potential_return_points' => $item->potential_return_points,
                 'odds_snapshot' => $item->odds_snapshot,
-                'line_result' => $item->line_result?->value,
+                'result' => $item->result->value,
             ];
         }
 

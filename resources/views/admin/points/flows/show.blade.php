@@ -25,8 +25,6 @@
                           data-mall-dict-code="points_hold_state"
                           data-mall-dict-value="{{ $flow->state->value }}">{{ $flow->state->value }}</span>
                 </dd>
-                <dt class="col-sm-3">TCC idem key</dt>
-                <dd class="col-sm-9 font-monospace text-break">{{ $flow->tcc_idem_key ?? '—' }}</dd>
                 <dt class="col-sm-3">ct / ut</dt>
                 <dd class="col-sm-9 text-muted small">{{ \App\Support\MillisTimestampDisplay::format($flow->ct) }}
                     / {{ \App\Support\MillisTimestampDisplay::format($flow->ut) }}</dd>
