@@ -1,0 +1,258 @@
+/* Mall admin: Bootstrap dark via data-bs-theme; extra rules for sidebar + Tailwind utilities. */
+
+body.mall-admin {
+    background-color: var(--bs-body-bg);
+    color: var(--bs-body-color);
+}
+
+#console-sidebar {
+    --sidebar-width: 256px;
+}
+
+#sidebar-handle {
+    width: 6px;
+    cursor: col-resize;
+    z-index: 10;
+}
+
+#sidebar-handle:hover,
+#sidebar-handle:active {
+    background: rgba(59, 130, 246, 0.4);
+}
+
+#sidebar-toggle {
+    transition: transform 0.2s ease;
+}
+
+#sidebar-toggle:hover {
+    transform: scale(1.05);
+}
+
+.sidebar-collapsed .sidebar-link {
+    justify-content: center;
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+}
+
+.sidebar-collapsed nav ul {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+}
+
+.console-toggle-wrap {
+    position: relative;
+    display: inline-block;
+    width: 2.25rem;
+    height: 1.25rem;
+    vertical-align: middle;
+    flex-shrink: 0;
+}
+
+.console-toggle-input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+    margin: 0;
+}
+
+.console-toggle-track {
+    display: block;
+    width: 2.25rem;
+    height: 1.25rem;
+    background: #d1d5db;
+    border-radius: 9999px;
+    transition: background 0.2s;
+    position: relative;
+}
+
+.console-toggle-track::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 1rem;
+    height: 1rem;
+    background: #fff;
+    border: 1px solid #d1d5db;
+    border-radius: 9999px;
+    transition: transform 0.2s;
+    box-sizing: border-box;
+}
+
+.console-toggle-input:focus-visible + .console-toggle-track {
+    outline: 2px solid rgba(59, 130, 246, 0.45);
+    outline-offset: 2px;
+}
+
+.console-toggle-input:checked + .console-toggle-track {
+    background: #3b82f6;
+}
+
+.console-toggle-input:checked + .console-toggle-track::after {
+    transform: translateX(1rem);
+    border-color: #fff;
+}
+
+html[data-bs-theme="dark"] {
+    color-scheme: dark;
+}
+
+html[data-bs-theme="dark"] .theme-header {
+    background: #1f2937;
+    border-bottom: 1px solid #374151;
+}
+
+html[data-bs-theme="dark"] .theme-title {
+    color: #f3f4f6;
+}
+
+html[data-bs-theme="dark"] .theme-toggle-icon {
+    color: #9ca3af;
+}
+
+html[data-bs-theme="dark"] main.mall-admin-main {
+    background: #111827;
+}
+
+html[data-bs-theme="dark"] #console-sidebar {
+    background: #0f172a;
+}
+
+html[data-bs-theme="dark"] #console-sidebar .border-gray-700 {
+    border-color: #334155;
+}
+
+html[data-bs-theme="dark"] #console-sidebar a:hover {
+    background: #1e293b;
+}
+
+html[data-bs-theme="dark"] #console-sidebar a.bg-gray-700,
+html[data-bs-theme="dark"] #console-sidebar .sidebar-link.bg-gray-700 {
+    background: #334155;
+}
+
+/* Tailwind .bg-white on admin pages */
+html[data-bs-theme="dark"] .bg-white {
+    background-color: #1f2937 !important;
+    color: var(--bs-body-color);
+}
+
+.mall-console-card {
+    border: 1px solid var(--bs-border-color);
+    border-radius: 0.5rem;
+    background: var(--bs-body-bg);
+}
+
+html[data-bs-theme="dark"] .mall-console-card {
+    background: #1f2937;
+    border-color: #374151;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.mall-console-card-header {
+    background: var(--bs-tertiary-bg);
+    border-bottom: 1px solid var(--bs-border-color);
+}
+
+html[data-bs-theme="dark"] .mall-console-card-header {
+    background: #111827;
+    color: #f3f4f6;
+}
+
+.mall-console-card-footer {
+    background: var(--bs-tertiary-bg);
+    border-top: 1px solid var(--bs-border-color);
+}
+
+html[data-bs-theme="dark"] .mall-console-card-footer {
+    background: #111827;
+}
+
+.mall-data-table thead th {
+    background: var(--bs-tertiary-bg);
+    color: var(--bs-emphasis-color);
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+}
+
+html[data-bs-theme="dark"] .mall-data-table thead th {
+    background: #374151;
+    color: #f3f4f6;
+}
+
+.mall-inline-code {
+    font-size: 0.8em;
+    padding: 0.1rem 0.35rem;
+    border-radius: 0.25rem;
+    background: var(--bs-tertiary-bg);
+}
+
+html[data-bs-theme="dark"] .mall-inline-code {
+    background: #374151;
+    color: #e5e7eb;
+}
+
+.mall-badge-soft {
+    background: #e0e7ff;
+    color: #3730a3;
+    font-weight: 500;
+}
+
+html[data-bs-theme="dark"] .mall-badge-soft {
+    background: #312e81;
+    color: #c7d2fe;
+}
+
+html[data-bs-theme="dark"] .text-gray-800 {
+    color: #f3f4f6 !important;
+}
+
+html[data-bs-theme="dark"] .text-gray-700 {
+    color: #e5e7eb !important;
+}
+
+html[data-bs-theme="dark"] .text-gray-600 {
+    color: #d1d5db !important;
+}
+
+html[data-bs-theme="dark"] .text-gray-500 {
+    color: #9ca3af !important;
+}
+
+html[data-bs-theme="dark"] .bg-gray-100 {
+    background-color: #111827 !important;
+}
+
+html[data-bs-theme="dark"] .border-gray-200 {
+    border-color: #4b5563 !important;
+}
+
+.mall-list-toolbar h2,
+.mall-subnav {
+    color: var(--bs-emphasis-color, inherit);
+}
+
+.mall-icon-btn {
+    line-height: 0;
+    border: none;
+    background: transparent;
+    color: var(--bs-body-color);
+    cursor: pointer;
+}
+
+.mall-icon-btn:hover {
+    background: var(--bs-tertiary-bg);
+    color: var(--bs-emphasis-color);
+}
+
+.mall-icon-btn.text-danger:hover {
+    background: rgba(185, 28, 28, 0.25);
+    color: #fecaca;
+}
+
+.mall-icon-svg {
+    display: block;
+}

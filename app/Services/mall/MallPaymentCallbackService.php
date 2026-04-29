@@ -7,21 +7,16 @@ namespace App\Services\mall;
 use App\Enums\BetOrderStatus;
 use App\Enums\CheckoutPhase;
 use App\Models\BetOrder;
-use App\Services\mall\Internal\InternalInventoryParticipantService;
-use App\Services\mall\Internal\InternalOrderParticipantService;
-use App\Services\Transaction\TccCoordinatorClient;
 use RuntimeException;
 
 /**
- * Payment gateway success path: commit inventory hold, TCC confirm, mark bet accepted.
+ * Payment gateway success path: confirm points hold (if any), mark bet accepted.
  */
 final readonly class MallPaymentCallbackService
 {
     public function __construct(
         private OrderCommandService $orders,
-        private InternalOrderParticipantService $orderParticipant,
-        private InternalInventoryParticipantService $inventoryParticipant,
-        private TccCoordinatorClient $tccClient,
+        private MallPointsTccService $pointsTcc,
     ) {}
 
     /**
@@ -44,29 +39,12 @@ final readonly class MallPaymentCallbackService
         }
 
         if ($order->checkout_phase !== CheckoutPhase::AwaitPayment) {
-            throw new RuntimeException(
-                'TCC confirm and payment finalization are only allowed in AwaitPayment phase (after successful prepay).'
-            );
+            throw new RuntimeException('Payment callback only applies to orders awaiting payment.');
         }
 
-        $tid = trim($order->tid);
-        $globalTxInPayload = isset($payload['global_tx_id']) ? trim((string) $payload['global_tx_id']) : '';
-        if ($globalTxInPayload !== '' && $tid !== '' && $globalTxInPayload !== $tid) {
-            throw new RuntimeException('global_tx_id does not match order tid.');
-        }
+        $this->pointsTcc->confirm(BetCheckoutService::pointsHoldKey($orderId));
 
-        $invToken = trim($order->ext_id);
-        if ($invToken !== '') {
-            $this->inventoryParticipant->confirmPhase($invToken);
-        }
-
-        $coordIdem = $order->tcc_idem_key;
-        if ($coordIdem === null || $coordIdem < 1) {
-            throw new RuntimeException('Order is missing tcc_idem_key; cannot confirm TCC transaction.');
-        }
-        $this->tccClient->confirm((string) $coordIdem);
-
-        $order = $this->orderParticipant->confirmPaid($orderId);
+        $order = $this->orders->transitionStatus($order, BetOrderStatus::Accepted, false);
         $order->checkout_phase = CheckoutPhase::Completed;
         $order->save();
 

@@ -10,12 +10,12 @@ use App\Models\SportSelection;
 use RuntimeException;
 
 /**
- * Validates sport selections are open for betting (function-call layer for "inventory" saga step).
+ * Validates sport selections are open for betting (used at draft create and checkout).
  */
 final readonly class SportSelectionBookService
 {
     /**
-     * Saga lines reuse shape {@code product_id} = selection_id, {@code quantity} = stake_points.
+     * Lines reuse shape {@code product_id} = selection_id, {@code quantity} = stake_points.
      *
      * @param  list<array{product_id: int, quantity: int}>  $lines
      */

@@ -10,7 +10,7 @@ use ValueError;
 enum BetOrderStatus: int implements HasDictionaryLabel
 {
     case Pending = 0;
-    /** Stake confirmed (TCC confirm); bet is live. */
+    /** Stake confirmed after checkout / payment; bet is live. */
     case Accepted = 1;
     case Cancelled = 2;
     case Won = 3;

@@ -8,10 +8,8 @@ use App\Contracts\InventoryOutboundContract;
 use App\Enums\BetOrderStatus;
 use App\Enums\CheckoutPhase;
 use App\Enums\PointsHoldState;
-use App\Enums\TccCancelReason;
 use App\Models\BetOrder;
 use App\Models\PointsFlow;
-use App\Services\Transaction\TccCoordinatorClient;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -24,7 +22,6 @@ final readonly class MallOverdueOrderSweepService
         private OrderCommandService $orders,
         private InventoryOutboundContract $inventory,
         private MallPointsTccService $pointsTcc,
-        private TccCoordinatorClient $tccClient,
     ) {}
 
     /**
@@ -43,17 +40,13 @@ final readonly class MallOverdueOrderSweepService
 
         $query = BetOrder::query()
             ->where('status', BetOrderStatus::Pending)
-            ->where(function ($q) use ($now, $timeoutMs) {
-                $q->where(function ($q2) use ($now, $timeoutMs) {
-                    $q2->whereIn('checkout_phase', [
-                        CheckoutPhase::None->value,
-                        CheckoutPhase::OrderCreated->value,
-                    ])->whereRaw('ct + ? < ?', [$timeoutMs, $now]);
-                })->orWhere(function ($q2) use ($now, $timeoutMs) {
-                    $q2->whereIn('checkout_phase', [
-                        CheckoutPhase::PointsTryPending->value,
-                        CheckoutPhase::AwaitPayment->value,
-                    ])->whereRaw('ut + ? < ?', [$timeoutMs, $now]);
+            ->where(function ($q) use ($now, $timeoutMs): void {
+                $q->where(function ($q2) use ($now, $timeoutMs): void {
+                    $q2->where('checkout_phase', CheckoutPhase::None->value)
+                        ->whereRaw('ct + ? < ?', [$timeoutMs, $now]);
+                })->orWhere(function ($q2) use ($now, $timeoutMs): void {
+                    $q2->where('checkout_phase', CheckoutPhase::AwaitPayment->value)
+                        ->whereRaw('ut + ? < ?', [$timeoutMs, $now]);
                 });
             })
             ->orderBy('id');
@@ -83,16 +76,25 @@ final readonly class MallOverdueOrderSweepService
             return true;
         }
 
-        $coordIdem = $order->tcc_idem_key;
-        if ($coordIdem !== null && $coordIdem > 0) {
+        $extId = $order->ext_inventory ? trim($order->ext_id) : '';
+
+        $holds = PointsFlow::query()
+            ->where('oid', $order->id)
+            ->where('state', PointsHoldState::TrySucceeded)
+            ->whereNotNull('tcc_idem_key')
+            ->get();
+
+        foreach ($holds as $hold) {
+            $k = (string) $hold->tcc_idem_key;
+            if ($k === '') {
+                continue;
+            }
             try {
-                $this->tccClient->cancel((string) $coordIdem, TccCancelReason::OrderClosed);
+                $this->pointsTcc->cancel($k);
             } catch (Throwable $e) {
-                Log::warning('[bet-sweep] TCC cancel failed', ['order_id' => $order->id, 'message' => $e->getMessage()]);
+                Log::warning('[bet-sweep] points cancel failed', ['order_id' => $order->id, 'message' => $e->getMessage()]);
             }
         }
-
-        $extId = $order->ext_inventory ? trim($order->ext_id) : '';
 
         try {
             $this->orders->transitionStatus($order, BetOrderStatus::Cancelled, false);
@@ -107,24 +109,6 @@ final readonly class MallOverdueOrderSweepService
                 $this->inventory->release($extId);
             } catch (Throwable $e) {
                 Log::warning('[bet-sweep] inventory release failed', ['order_id' => $order->id, 'message' => $e->getMessage()]);
-            }
-        }
-
-        $holds = PointsFlow::query()
-            ->where('oid', $order->id)
-            ->where('state', PointsHoldState::TrySucceeded)
-            ->whereNotNull('tcc_idem_key')
-            ->get();
-
-        foreach ($holds as $hold) {
-            $key = (string) $hold->tcc_idem_key;
-            if ($key === '') {
-                continue;
-            }
-            try {
-                $this->pointsTcc->cancel($key);
-            } catch (Throwable $e) {
-                Log::warning('[bet-sweep] points cancel failed', ['order_id' => $order->id, 'message' => $e->getMessage()]);
             }
         }
 

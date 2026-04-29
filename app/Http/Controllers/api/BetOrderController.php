@@ -215,7 +215,6 @@ class BetOrderController extends Controller
             'ext_inventory' => $order->ext_inventory,
             'ext_id' => $order->ext_id,
             'checkout_phase' => $order->checkout_phase?->value ?? CheckoutPhase::None->value,
-            'tid' => $order->tid,
         ];
     }
 

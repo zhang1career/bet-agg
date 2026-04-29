@@ -20,9 +20,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int $cash_payable_minor Third-party cash after points; 0 for points-only stakes
  * @property int $ct
  * @property int $ut
- * @property int|null $saga_idem_key
- * @property int|null $tcc_idem_key
- * @property string $tid
  * @property CheckoutPhase $checkout_phase
  * @property bool $ext_inventory
  * @property string $ext_id
@@ -44,9 +41,6 @@ class BetOrder extends Model
         'cash_payable_minor',
         'ct',
         'ut',
-        'saga_idem_key',
-        'tcc_idem_key',
-        'tid',
         'checkout_phase',
         'ext_inventory',
         'ext_id',
@@ -60,9 +54,6 @@ class BetOrder extends Model
         'cash_payable_minor' => 'integer',
         'ct' => 'integer',
         'ut' => 'integer',
-        'saga_idem_key' => 'integer',
-        'tcc_idem_key' => 'integer',
-        'tid' => 'string',
         'checkout_phase' => CheckoutPhase::class,
         'ext_inventory' => 'boolean',
         'ext_id' => 'string',

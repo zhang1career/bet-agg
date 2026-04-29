@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
 /**
- * Bet orders: draft slip then checkout-driven saga binds selection "reserve" and TCC points.
+ * Bet orders: draft slip then local checkout (points hold + payment stub).
  */
 final readonly class OrderCommandService
 {
@@ -96,41 +96,6 @@ final readonly class OrderCommandService
                 'potential_return_points' => $potentialReturn,
             ]);
             $item->save();
-
-            return $order->load('lines');
-        });
-    }
-
-    /**
-     * Saga order step: attach remote inventory token to an existing draft bet.
-     */
-    public function bindExternalInventoryToDraftOrder(
-        BetOrder $order,
-        string $externalReserveId,
-        int $sagaIdemKey,
-    ): BetOrder {
-        $token = trim($externalReserveId);
-        if ($token === '') {
-            throw new RuntimeException('inventory_token is required.');
-        }
-        if ($sagaIdemKey < 1) {
-            throw new RuntimeException('Invalid saga idem_key.');
-        }
-
-        return DB::transaction(function () use ($order, $token, $sagaIdemKey): BetOrder {
-            $order->refresh();
-            if ($order->status !== BetOrderStatus::Pending) {
-                throw new RuntimeException('Order must be pending.');
-            }
-            if ($order->checkout_phase !== CheckoutPhase::None) {
-                throw new RuntimeException('Order is not a draft awaiting inventory bind.');
-            }
-
-            $order->ext_inventory = true;
-            $order->ext_id = $token;
-            $order->saga_idem_key = $sagaIdemKey;
-            $order->checkout_phase = CheckoutPhase::OrderCreated;
-            $order->save();
 
             return $order->load('lines');
         });

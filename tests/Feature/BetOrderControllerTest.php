@@ -56,7 +56,6 @@ class BetOrderControllerTest extends TestCase
 
         $order = BetOrder::query()->where('uid', 42)->first();
         $this->assertNotNull($order);
-        $this->assertNull($order->saga_idem_key);
         $this->assertSame($sid, (int) $order->lines->first()->selection_id);
     }
 }

@@ -9,7 +9,7 @@ use App\Enums\CheckoutPhase;
 use App\Exceptions\FoundationAuthRequiredException;
 use App\Http\Controllers\Controller;
 use App\Models\BetOrder;
-use App\Services\mall\CheckoutOrchestrator;
+use App\Services\mall\BetCheckoutService;
 use App\Services\mall\FoundationUser;
 use App\Services\mall\OrderCommandService;
 use App\Services\user\UserFoundationGateway;
@@ -24,7 +24,7 @@ class BetCheckoutController extends Controller
     public function __construct(
         private readonly UserFoundationGateway $foundationGateway,
         private readonly OrderCommandService $orders,
-        private readonly CheckoutOrchestrator $checkout,
+        private readonly BetCheckoutService $checkout,
     ) {}
 
     public function store(Request $request): JsonResponse
@@ -53,13 +53,8 @@ class BetCheckoutController extends Controller
             return response()->json(ApiResponse::error(40401, 'Order not found.'), 404);
         }
 
-        $xRequestId = trim((string) $request->header('X-Request-Id', ''));
-        if ($xRequestId === '') {
-            $xRequestId = '0';
-        }
-
         try {
-            $result = $this->checkout->checkoutExistingOrder($uid, $order, $pointsMinor, $xRequestId);
+            $result = $this->checkout->checkoutExistingOrder($uid, $order, $pointsMinor);
         } catch (RuntimeException $e) {
             return response()->json(ApiResponse::error(40001, $e->getMessage()), 422);
         }
@@ -70,8 +65,6 @@ class BetCheckoutController extends Controller
         return response()->json(ApiResponse::ok([
             'order' => $this->serializeOrder($order),
             'prepay' => $result['prepay'],
-            'points_tcc_idem_key' => $result['points_tcc_idem_key'],
-            'tid' => $result['tid'],
         ]), 201);
     }
 
@@ -132,7 +125,6 @@ class BetCheckoutController extends Controller
             'lines' => $lines,
             'ext_inventory' => $order->ext_inventory,
             'checkout_phase' => $order->checkout_phase?->value ?? CheckoutPhase::None->value,
-            'tid' => $order->tid,
         ];
     }
 }

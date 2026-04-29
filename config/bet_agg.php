@@ -12,8 +12,8 @@ return [
     'foundation' => [
         'base_url' => env('API_GATEWAY_BASE_URL', ''),
         'service_discovery' => [
-            'redis_connection' => env('API_GATEWAY_SD_DB_CONN', 'default'),
-            'redis_key_prefix' => env('API_GATEWAY_SD_KEY_PREFIX', ''),
+            'redis_connection' => env('SD_CACHE_CONN', 'default'),
+            'redis_key_prefix' => env('SD_CACHE_KEY_PREFIX', ''),
         ],
         'me_endpoint' => '/api/user/me',
         'timeout_seconds' => 3,
@@ -28,14 +28,14 @@ return [
     ],
 
     'execution' => [
-        'mode' => env('BET_AGG_EXECUTION_MODE', 'serial'),
+        'mode' => env('SM_EXECUTION_MODE', 'serial'),
     ],
 
     'degrade' => [
-        'strategy' => env('BET_AGG_DEGRADE_STRATEGY', 'mask_null'),
+        'strategy' => env('SM_DEGRADE_STRATEGY', 'mask_null'),
         'mask_error_message' => env('BET_AGG_DEGRADE_MASK_ERROR_MESSAGE', 'Service temporarily unavailable.'),
-        'partial_failure_code' => (int) env('BET_AGG_PARTIAL_FAILURE_CODE', 20601),
-        'partial_failure_message' => env('BET_AGG_PARTIAL_FAILURE_MESSAGE', 'Partially failed, degraded by aggregator.'),
+        'partial_failure_code' => (int) env('SM_PARTIAL_FAILURE_CODE', 20601),
+        'partial_failure_message' => env('SM_PARTIAL_FAILURE_MESSAGE', 'Partially failed, degraded by aggregator.'),
     ],
 
     'payment' => [
@@ -48,25 +48,5 @@ return [
 
     'admin' => [
         'api_token' => env('BET_ADMIN_API_TOKEN', ''),
-    ],
-
-    'saga' => [
-        'timeout_seconds' => (int) env('BET_SAGA_TIMEOUT_SECONDS', 10),
-        'access_key' => env('BET_SAGA_ACCESS_KEY', ''),
-        'flow_id' => (int) env('BET_SAGA_FLOW_ID', 0),
-        'checkout_steps' => [
-            'inventory' => env('BET_SAGA_CHECKOUT_STEP_INVENTORY', 'inventory'),
-            'order' => env('BET_SAGA_CHECKOUT_STEP_ORDER', 'order'),
-            'pay' => env('BET_SAGA_CHECKOUT_STEP_PAY', 'pay'),
-        ],
-    ],
-
-    'tcc' => [
-        'timeout_seconds' => (int) env('BET_TCC_TIMEOUT_SECONDS', 15),
-        'flow_id' => (int) env('BET_TCC_FLOW_ID', 0),
-        'checkout_branches' => [
-            'try_points' => env('BET_TCC_BRANCH_TRY_POINTS', 'try_points'),
-            'prepay' => env('BET_TCC_BRANCH_PREPAY', 'prepay'),
-        ],
     ],
 ];

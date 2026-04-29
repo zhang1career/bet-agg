@@ -1,0 +1,1468 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "bet-agg HTTP API",
+    "description": "Laravel bet aggregation service: public `/api/*` JSON APIs and health check. Most JSON responses use the `ApiResponse` envelope (`data`, `errorCode`, `message`, `_req_id`). XXL-Job executor endpoints use a different envelope (`code`, `msg`, `data`).",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "Same-origin base path (set your deployment host in the client)"
+    }
+  ],
+  "tags": [
+    {
+      "name": "User",
+      "description": "User aggregation (Foundation JWT)"
+    },
+    {
+      "name": "Bet",
+      "description": "Betting catalog, orders, points, checkout"
+    },
+    {
+      "name": "Bet Admin",
+      "description": "Admin API token–protected mall points"
+    },
+    {
+      "name": "Payment",
+      "description": "Payment gateway callbacks"
+    },
+    {
+      "name": "Jobs",
+      "description": "XXL-Job executor HTTP surface"
+    },
+    {
+      "name": "Health",
+      "description": "Liveness"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "UserAccessToken": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-User-Access-Token",
+        "description": "Raw JWT from Foundation login (no `Bearer` prefix)."
+      },
+      "AdminBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Must match `bet_agg.admin.api_token` (plain token after `Bearer `)."
+      },
+      "XxlJobAccessToken": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "XXL-JOB-ACCESS-TOKEN",
+        "description": "Must match `xxl.token` configuration."
+      },
+      "PaymentCallbackToken": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Payment-Callback-Token",
+        "description": "Required when `bet_agg.payment.callback_token` is non-empty; must match that secret."
+      }
+    },
+    "schemas": {
+      "ApiEnvelope": {
+        "type": "object",
+        "required": [
+          "data",
+          "errorCode",
+          "message",
+          "_req_id"
+        ],
+        "properties": {
+          "data": {},
+          "errorCode": {
+            "type": "integer",
+            "description": "0 = success"
+          },
+          "message": {
+            "type": "string"
+          },
+          "_req_id": {
+            "type": "string"
+          }
+        }
+      },
+      "XxlEnvelope": {
+        "type": "object",
+        "required": [
+          "data",
+          "code",
+          "msg"
+        ],
+        "properties": {
+          "data": {
+            "nullable": true
+          },
+          "code": {
+            "type": "integer",
+            "description": "200 = success for XXL-Job"
+          },
+          "msg": {
+            "type": "string"
+          }
+        }
+      },
+      "BetOrderLine": {
+        "type": "object",
+        "properties": {
+          "selection_id": {
+            "type": "integer"
+          },
+          "stake_points": {
+            "type": "integer"
+          },
+          "decimal_odds_millis": {
+            "type": "integer"
+          },
+          "potential_return_points": {
+            "type": "integer"
+          },
+          "odds_snapshot": {},
+          "line_result": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "BetOrderFull": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "uid": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "integer",
+            "description": "BetOrderStatus enum int"
+          },
+          "total_price": {
+            "type": "integer"
+          },
+          "points_deduct_minor": {
+            "type": "integer"
+          },
+          "cash_payable_minor": {
+            "type": "integer"
+          },
+          "ct": {
+            "type": "integer"
+          },
+          "ut": {
+            "type": "integer"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BetOrderLine"
+            }
+          },
+          "ext_inventory": {},
+          "ext_id": {},
+          "checkout_phase": {
+            "type": "string"
+          }
+        }
+      },
+      "BetOrderSummary": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "uid": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "integer"
+          },
+          "total_price": {
+            "type": "integer"
+          },
+          "ct": {
+            "type": "integer"
+          },
+          "ut": {
+            "type": "integer"
+          }
+        }
+      },
+      "ListPagination": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer"
+          },
+          "per_page": {
+            "type": "integer"
+          },
+          "current_page": {
+            "type": "integer"
+          },
+          "last_page": {
+            "type": "integer"
+          }
+        }
+      },
+      "SportSelection": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "label": {
+            "type": "string"
+          },
+          "current_odds_millis": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "integer"
+          },
+          "market": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "market_type": {
+                "type": "string"
+              },
+              "status": {
+                "type": "integer"
+              }
+            }
+          },
+          "event": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "name": {
+                "type": "string"
+              },
+              "starts_at": {
+                "type": "integer"
+              },
+              "status": {
+                "type": "integer"
+              }
+            }
+          }
+        }
+      },
+      "MallPointsAccount": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "uid": {
+            "type": "integer"
+          },
+          "balance_minor": {
+            "type": "integer"
+          },
+          "ct": {
+            "type": "string"
+          },
+          "ut": {
+            "type": "string"
+          }
+        }
+      },
+      "PointsFlow": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "uid": {
+            "type": "integer"
+          },
+          "oid": {
+            "type": "integer"
+          },
+          "amount_minor": {
+            "type": "integer"
+          },
+          "state": {
+            "type": "string"
+          },
+          "tcc_idem_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "ct": {
+            "type": "string"
+          },
+          "ut": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/up": {
+      "get": {
+        "tags": [
+          "Health"
+        ],
+        "summary": "Health check",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/user/me": {
+      "get": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Aggregated current user (Foundation + biz providers)",
+        "security": [
+          {
+            "UserAccessToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Trace-Id",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success or partial degrade (`errorCode` may be degrade code when providers fail)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "user": {
+                              "type": "object",
+                              "additionalProperties": true
+                            },
+                            "biz": {
+                              "type": "object",
+                              "additionalProperties": true
+                            },
+                            "meta": {
+                              "type": "object",
+                              "additionalProperties": true
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid `X-User-Access-Token`",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bet/dict": {
+      "get": {
+        "tags": [
+          "Bet"
+        ],
+        "summary": "Resolve dictionary entries by codes",
+        "parameters": [
+          {
+            "name": "codes",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Comma-separated dictionary codes"
+          },
+          {
+            "name": "X-Request-Id",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dictionary payload or validation error in envelope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bet/selections": {
+      "get": {
+        "tags": [
+          "Bet"
+        ],
+        "summary": "Paginated open sport selections",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 15
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Items and pagination",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "items": {
+                              "type": "array",
+                              "items": {
+                                "$ref": "#/components/schemas/SportSelection"
+                              }
+                            },
+                            "pagination": {
+                              "$ref": "#/components/schemas/ListPagination"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bet/selections/{id}": {
+      "get": {
+        "tags": [
+          "Bet"
+        ],
+        "summary": "Single selection detail",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Selection",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/SportSelection"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bet/orders": {
+      "get": {
+        "tags": [
+          "Bet"
+        ],
+        "summary": "List current user's orders",
+        "security": [
+          {
+            "UserAccessToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "per_page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 15
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paged summaries",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "items": {
+                              "type": "array",
+                              "items": {
+                                "$ref": "#/components/schemas/BetOrderSummary"
+                              }
+                            },
+                            "pagination": {
+                              "$ref": "#/components/schemas/ListPagination"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Bet"
+        ],
+        "summary": "Create draft pending order (exactly one line)",
+        "security": [
+          {
+            "UserAccessToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "lines"
+                ],
+                "properties": {
+                  "lines": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 1,
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "selection_id",
+                        "stake_points"
+                      ],
+                      "properties": {
+                        "selection_id": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "stake_points": {
+                          "type": "integer",
+                          "minimum": 1
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/BetOrderFull"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation or business rule failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bet/orders/{id}": {
+      "get": {
+        "tags": [
+          "Bet"
+        ],
+        "summary": "Order detail",
+        "security": [
+          {
+            "UserAccessToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Order",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/BetOrderFull"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Order not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Bet"
+        ],
+        "summary": "Transition order status",
+        "description": "`status` accepts int enum, or strings such as `pending`, `paid`, `accepted`, `cancel`/`cancelled`, `won`, `lost`, `void`, `init`.",
+        "security": [
+          {
+            "UserAccessToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "status"
+                ],
+                "properties": {
+                  "status": {
+                    "oneOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "integer"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated order",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/BetOrderFull"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Order not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid transition or payload",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bet/points": {
+      "get": {
+        "tags": [
+          "Bet"
+        ],
+        "summary": "Current user's available points (minor units)",
+        "security": [
+          {
+            "UserAccessToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Balance",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "balance_minor": {
+                              "type": "integer"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bet/checkout": {
+      "post": {
+        "tags": [
+          "Bet"
+        ],
+        "summary": "Run checkout for an existing order",
+        "security": [
+          {
+            "UserAccessToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Request-Id",
+            "in": "header",
+            "description": "Idempotency / trace; empty string is normalized to `\"0\"`.",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "order_id"
+                ],
+                "properties": {
+                  "order_id": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "points_minor": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Checkout started / result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "order": {
+                              "$ref": "#/components/schemas/BetOrderFull"
+                            },
+                            "prepay": {
+                              "type": "object",
+                              "additionalProperties": true
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Order not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation or orchestration error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bet/payment/callback": {
+      "post": {
+        "tags": [
+          "Payment"
+        ],
+        "summary": "Notify paid / success for an order",
+        "description": "When `bet_agg.payment.callback_token` is set, requests must send matching `X-Payment-Callback-Token`. If unset, the route accepts calls without that header.",
+        "parameters": [
+          {
+            "name": "X-Payment-Callback-Token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Required when payment callback token is configured in app config."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "order_id"
+                ],
+                "properties": {
+                  "order_id": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "status": {
+                    "type": "string",
+                    "description": "Normalized to success when one of: paid, success, payment.success (default paid)"
+                  }
+                },
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Acknowledged",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "order_id": {
+                              "type": "integer"
+                            },
+                            "status": {
+                              "type": "integer"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Invalid callback token when configured",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unsupported status or handler error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bet/admin/points/accounts": {
+      "post": {
+        "tags": [
+          "Bet Admin"
+        ],
+        "summary": "Open mall points account for uid",
+        "security": [
+          {
+            "AdminBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "uid"
+                ],
+                "properties": {
+                  "uid": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "balance_minor": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Account created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "account": {
+                              "$ref": "#/components/schemas/MallPointsAccount"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden (bad bearer)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation or business error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Admin API token not configured",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bet/admin/points/adjust": {
+      "post": {
+        "tags": [
+          "Bet Admin"
+        ],
+        "summary": "Adjust mall points balance",
+        "security": [
+          {
+            "AdminBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "uid",
+                  "delta_minor"
+                ],
+                "properties": {
+                  "uid": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "delta_minor": {
+                    "type": "integer",
+                    "not": {
+                      "enum": [
+                        0
+                      ]
+                    }
+                  },
+                  "oid": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Account and flow row",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "account": {
+                              "$ref": "#/components/schemas/MallPointsAccount"
+                            },
+                            "flow": {
+                              "$ref": "#/components/schemas/PointsFlow"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation or business error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Admin API token not configured",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/xxl-job/beat": {
+      "get": {
+        "tags": [
+          "Jobs"
+        ],
+        "summary": "XXL-Job heartbeat",
+        "security": [
+          {
+            "XxlJobAccessToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/XxlEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/xxl-job/run": {
+      "post": {
+        "tags": [
+          "Jobs"
+        ],
+        "summary": "Execute job (logDateTime required in body)",
+        "security": [
+          {
+            "XxlJobAccessToken": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "logDateTime": {
+                    "type": "integer",
+                    "description": "Must be > 0"
+                  },
+                  "jobHandler": {
+                    "type": "string"
+                  },
+                  "executorParams": {
+                    "type": "string"
+                  },
+                  "jobId": {
+                    "type": "integer"
+                  },
+                  "logId": {
+                    "type": "integer"
+                  }
+                },
+                "additionalProperties": true
+              },
+              "example": {
+                "logDateTime": 1735689600000
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Accepted or failure in body (`code` 500)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/XxlEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/xxl-job/kill": {
+      "post": {
+        "tags": [
+          "Jobs"
+        ],
+        "summary": "Kill job by id (file lock)",
+        "security": [
+          {
+            "XxlJobAccessToken": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "jobId": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/XxlEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

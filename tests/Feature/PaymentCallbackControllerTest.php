@@ -7,9 +7,10 @@ namespace Tests\Feature;
 use App\Enums\BetOrderStatus;
 use App\Enums\CheckoutPhase;
 use App\Models\BetOrder;
+use App\Models\MallPointsBalance;
+use App\Services\mall\BetCheckoutService;
 use App\Services\mall\OrderCommandService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Http;
 use Tests\Support\SportSeeder;
 use Tests\TestCase;
 
@@ -17,25 +18,19 @@ final class PaymentCallbackControllerTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_callback_marks_order_paid_after_tcc_confirm(): void
+    public function test_callback_marks_order_paid_after_confirming_points_hold(): void
     {
-        config()->set('api_gw.base_url', 'http://gw.test');
-
-        Http::fake([
-            'http://gw.test/api/tcc/tx/12345/confirm' => Http::response([
-                'errorCode' => 0,
-                'data' => [],
-                'message' => '',
-            ], 200),
-        ]);
-
         $sid = SportSeeder::openSelection(2000);
         $order = app(OrderCommandService::class)
-            ->createDraftPendingOrder(7, [['selection_id' => $sid, 'stake_points' => 1]]);
-        $order->checkout_phase = CheckoutPhase::AwaitPayment;
-        $order->cash_payable_minor = (int) $order->total_price;
-        $order->tcc_idem_key = 12345;
-        $order->save();
+            ->createDraftPendingOrder(7, [['selection_id' => $sid, 'stake_points' => 10]]);
+
+        MallPointsBalance::query()->create(['uid' => 7, 'balance_minor' => 100]);
+
+        app(\App\Services\mall\BetCheckoutService::class)->checkoutExistingOrder(7, $order, 3);
+
+        $fresh = BetOrder::query()->find($order->id);
+        $this->assertNotNull($fresh);
+        $this->assertSame(CheckoutPhase::AwaitPayment, $fresh->checkout_phase);
 
         $this->postJson('/api/bet/payment/callback', [
             'order_id' => $order->id,
@@ -43,37 +38,24 @@ final class PaymentCallbackControllerTest extends TestCase
         ])->assertOk()->assertJsonPath('errorCode', 0)
             ->assertJsonPath('data.status', BetOrderStatus::Accepted->value);
 
-        $fresh = BetOrder::query()->find($order->id);
-        $this->assertNotNull($fresh);
-        $this->assertSame(BetOrderStatus::Accepted, $fresh->status);
-        $this->assertSame(CheckoutPhase::Completed, $fresh->checkout_phase);
+        $again = BetOrder::query()->find($order->id);
+        $this->assertNotNull($again);
+        $this->assertSame(BetOrderStatus::Accepted, $again->status);
+        $this->assertSame(CheckoutPhase::Completed, $again->checkout_phase);
     }
 
     public function test_callback_is_idempotent_when_already_paid(): void
     {
-        config()->set('api_gw.base_url', 'http://gw.test');
-        Http::fake([
-            'http://gw.test/api/tcc/tx/999/confirm' => Http::response([
-                'errorCode' => 0,
-                'data' => [],
-                'message' => '',
-            ], 200),
-        ]);
-
         $sid = SportSeeder::openSelection(2000);
         $order = app(OrderCommandService::class)
-            ->createDraftPendingOrder(8, [['selection_id' => $sid, 'stake_points' => 1]]);
-        $order->checkout_phase = CheckoutPhase::AwaitPayment;
-        $order->cash_payable_minor = (int) $order->total_price;
-        $order->tcc_idem_key = 999;
-        $order->save();
+            ->createDraftPendingOrder(8, [['selection_id' => $sid, 'stake_points' => 5]]);
+        MallPointsBalance::query()->create(['uid' => 8, 'balance_minor' => 50]);
+        app(BetCheckoutService::class)->checkoutExistingOrder(8, $order, 2);
 
         $this->postJson('/api/bet/payment/callback', [
             'order_id' => $order->id,
             'status' => 'paid',
         ])->assertOk();
-
-        Http::fake();
 
         $this->postJson('/api/bet/payment/callback', [
             'order_id' => $order->id,

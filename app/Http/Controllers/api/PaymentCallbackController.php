@@ -31,8 +31,6 @@ final class PaymentCallbackController extends Controller
         $validator = Validator::make($request->all(), [
             'order_id' => 'required|integer|min:1',
             'status' => 'sometimes|string',
-            'global_tx_id' => 'sometimes|string',
-            'points_tcc_idem_key' => 'sometimes|string',
         ]);
         if ($validator->fails()) {
             return response()->json(ApiResponse::error(100, $validator->errors()->first()), 422);
