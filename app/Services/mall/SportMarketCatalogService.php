@@ -17,7 +17,100 @@ final readonly class SportMarketCatalogService
     /**
      * @return array{items: list<array<string, mixed>>, pagination: array<string, mixed>}
      */
-    public function listOpenSelections(int $page, int $perPage): array
+    public function listOpenEvents(int $page, int $perPage): array
+    {
+        $query = SportEvent::query()
+            ->where('status', SportEvent::STATUS_OPEN)
+            ->orderBy('starts_at')
+            ->orderBy('id');
+
+        /** @var LengthAwarePaginator<int, SportEvent> $p */
+        $p = $query->paginate($perPage, ['*'], 'page', $page);
+
+        $items = [];
+        foreach ($p->items() as $event) {
+            $items[] = $this->serializeEvent($event);
+        }
+
+        return [
+            'items' => $items,
+            'pagination' => [
+                'total' => $p->total(),
+                'per_page' => $p->perPage(),
+                'current_page' => $p->currentPage(),
+                'last_page' => $p->lastPage(),
+            ],
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function getEventDetail(int $id): array
+    {
+        $event = SportEvent::query()->whereKey($id)->first();
+        if ($event === null) {
+            throw new \RuntimeException('Event not found.');
+        }
+
+        return $this->serializeEvent($event);
+    }
+
+    /**
+     * @return array{items: list<array<string, mixed>>, pagination: array<string, mixed>}
+     */
+    public function listOpenMarkets(int $page, int $perPage, ?int $eventId): array
+    {
+        $query = SportMarket::query()
+            ->with(['event'])
+            ->where('status', SportMarket::STATUS_OPEN)
+            ->whereHas('event', static function ($q): void {
+                $q->where('status', SportEvent::STATUS_OPEN);
+            });
+        if ($eventId !== null) {
+            $query->where('event_id', $eventId);
+        }
+        $query->orderByDesc('id');
+
+        /** @var LengthAwarePaginator<int, SportMarket> $p */
+        $p = $query->paginate($perPage, ['*'], 'page', $page);
+
+        $items = [];
+        foreach ($p->items() as $market) {
+            $items[] = $this->serializeMarket($market);
+        }
+
+        return [
+            'items' => $items,
+            'pagination' => [
+                'total' => $p->total(),
+                'per_page' => $p->perPage(),
+                'current_page' => $p->currentPage(),
+                'last_page' => $p->lastPage(),
+            ],
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function getMarketDetail(int $id): array
+    {
+        $market = SportMarket::query()
+            ->with(['event'])
+            ->whereKey($id)
+            ->first();
+        if ($market === null) {
+            throw new \RuntimeException('Market not found.');
+        }
+
+        return $this->serializeMarket($market);
+    }
+
+    /**
+     * @return array{items: list<array<string, mixed>>, pagination: array<string, mixed>}
+     */
+    public function listOpenSelections(int $page, int $perPage, ?int $marketId): array
     {
         $query = SportSelection::query()
             ->with(['market.event'])
@@ -27,6 +120,9 @@ final readonly class SportMarketCatalogService
                     ->whereHas('event', static function ($q2): void {
                         $q2->where('status', SportEvent::STATUS_OPEN);
                     });
+            })
+            ->when($marketId !== null, static function ($q) use ($marketId): void {
+                $q->where('market_id', $marketId);
             })
             ->orderByDesc('id');
 
@@ -83,6 +179,41 @@ final readonly class SportMarketCatalogService
                 'market_type' => (int) $market->market_type->value,
                 'status' => (int) $market->status,
             ],
+            'event' => $event === null ? null : [
+                'id' => (int) $event->id,
+                'name' => $event->name,
+                'starts_at' => (int) $event->starts_at,
+                'status' => (int) $event->status,
+            ],
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function serializeEvent(SportEvent $event): array
+    {
+        return [
+            'id' => (int) $event->id,
+            'name' => $event->name,
+            'starts_at' => (int) $event->starts_at,
+            'status' => (int) $event->status,
+            'winning_selection_ids' => $event->winning_selection_ids ?? [],
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function serializeMarket(SportMarket $market): array
+    {
+        $event = $market->event;
+
+        return [
+            'id' => (int) $market->id,
+            'event_id' => (int) $market->event_id,
+            'market_type' => (int) $market->market_type->value,
+            'status' => (int) $market->status,
             'event' => $event === null ? null : [
                 'id' => (int) $event->id,
                 'name' => $event->name,

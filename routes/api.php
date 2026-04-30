@@ -3,6 +3,8 @@
 use App\Http\Controllers\api\BetAdminPointsController;
 use App\Http\Controllers\api\BetCheckoutController;
 use App\Http\Controllers\api\BetDictController;
+use App\Http\Controllers\api\BetEventController;
+use App\Http\Controllers\api\BetMarketController;
 use App\Http\Controllers\api\BetOrderController;
 use App\Http\Controllers\api\BetPointsController;
 use App\Http\Controllers\api\PaymentCallbackController;
@@ -20,6 +22,10 @@ Route::prefix('xxl-job')->middleware([XxljobAuthentication::class])->group(funct
 Route::prefix('')->middleware([])->group(function () {
     Route::prefix('bet')->group(function () {
         Route::get('dict', BetDictController::class);
+        Route::get('events', [BetEventController::class, 'index']);
+        Route::get('events/{event_id}', [BetEventController::class, 'show'])->whereNumber('event_id');
+        Route::get('markets', [BetMarketController::class, 'index']);
+        Route::get('markets/{market_id}', [BetMarketController::class, 'show'])->whereNumber('market_id');
         Route::get('selections', [SportSelectionController::class, 'index']);
         Route::get('selections/{id}', [SportSelectionController::class, 'show'])->whereNumber('id');
         Route::post('orders', [BetOrderController::class, 'store']);

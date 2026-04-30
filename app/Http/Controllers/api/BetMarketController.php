@@ -11,7 +11,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
-class SportSelectionController extends Controller
+class BetMarketController extends Controller
 {
     public function __construct(
         private readonly SportMarketCatalogService $catalog,
@@ -20,7 +20,7 @@ class SportSelectionController extends Controller
     public function index(Request $request): JsonResponse
     {
         $validator = Validator::make($request->query(), [
-            'market_id' => 'sometimes|integer|min:1',
+            'event_id' => 'sometimes|integer|min:1',
         ]);
         if ($validator->fails()) {
             return response()->json(ApiResponse::error(100, $validator->errors()->first()), 422);
@@ -29,24 +29,24 @@ class SportSelectionController extends Controller
         $page = max(1, (int) $request->query('page', 1));
         $perPage = min(50, max(1, (int) $request->query('per_page', 15)));
 
-        $marketIdRaw = $request->query('market_id');
-        $marketId = $marketIdRaw === null || $marketIdRaw === '' ? null : (int) $marketIdRaw;
+        $eventId = $request->query('event_id');
+        $eventIdFilter = $eventId === null || $eventId === '' ? null : (int) $eventId;
 
-        $pack = $this->catalog->listOpenSelections($page, $perPage, $marketId);
-        $this->logHandledApiRequest($request, ['handler' => 'bet.selections.index']);
+        $pack = $this->catalog->listOpenMarkets($page, $perPage, $eventIdFilter);
+        $this->logHandledApiRequest($request, ['handler' => 'bet.markets.index']);
 
         return response()->json(ApiResponse::ok($pack));
     }
 
-    public function show(Request $request, int $id): JsonResponse
+    public function show(Request $request, int $market_id): JsonResponse
     {
         try {
-            $row = $this->catalog->getSelectionDetail($id);
+            $row = $this->catalog->getMarketDetail($market_id);
         } catch (\RuntimeException $e) {
             return response()->json(ApiResponse::error(40401, $e->getMessage()), 404);
         }
 
-        $this->logHandledApiRequest($request, ['handler' => 'bet.selections.show', 'selection_id' => $id]);
+        $this->logHandledApiRequest($request, ['handler' => 'bet.markets.show', 'market_id' => $market_id]);
 
         return response()->json(ApiResponse::ok($row));
     }

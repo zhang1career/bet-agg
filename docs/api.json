@@ -206,6 +206,70 @@
           }
         }
       },
+      "SportEvent": {
+        "type": "object",
+        "description": "Public `biz_event` row. List endpoint returns open events only; detail resolves by id.",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "starts_at": {
+            "type": "integer",
+            "description": "Unix time in milliseconds"
+          },
+          "status": {
+            "type": "integer",
+            "description": "1 = open, 2 = closed, 3 = settled"
+          },
+          "winning_selection_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Set when status is settled; empty array otherwise"
+          }
+        }
+      },
+      "SportMarket": {
+        "type": "object",
+        "description": "Public `biz_market` row with nested event summary from `biz_event`. List endpoint returns open markets on open events only.",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "event_id": {
+            "type": "integer"
+          },
+          "market_type": {
+            "type": "integer",
+            "description": "SportMarketType backed int (e.g. 1 = 1X2)"
+          },
+          "status": {
+            "type": "integer"
+          },
+          "event": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "name": {
+                "type": "string"
+              },
+              "starts_at": {
+                "type": "integer"
+              },
+              "status": {
+                "type": "integer"
+              }
+            }
+          }
+        }
+      },
       "SportSelection": {
         "type": "object",
         "description": "Public catalog row; persisted in `biz_selection` with market/event from `biz_market` / `biz_event`.",
@@ -437,6 +501,259 @@
         }
       }
     },
+    "/api/bet/events": {
+      "get": {
+        "tags": [
+          "Bet"
+        ],
+        "summary": "Paginated open business events (biz_event)",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 15
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Items and pagination",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "items": {
+                              "type": "array",
+                              "items": {
+                                "$ref": "#/components/schemas/SportEvent"
+                              }
+                            },
+                            "pagination": {
+                              "$ref": "#/components/schemas/ListPagination"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bet/events/{event_id}": {
+      "get": {
+        "tags": [
+          "Bet"
+        ],
+        "summary": "Single event detail",
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Event",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/SportEvent"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bet/markets": {
+      "get": {
+        "tags": [
+          "Bet"
+        ],
+        "summary": "Paginated open markets (biz_market); optional filter by event",
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 15
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Items and pagination",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "items": {
+                              "type": "array",
+                              "items": {
+                                "$ref": "#/components/schemas/SportMarket"
+                              }
+                            },
+                            "pagination": {
+                              "$ref": "#/components/schemas/ListPagination"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bet/markets/{market_id}": {
+      "get": {
+        "tags": [
+          "Bet"
+        ],
+        "summary": "Single market detail",
+        "parameters": [
+          {
+            "name": "market_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Market",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/SportMarket"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/bet/selections": {
       "get": {
         "tags": [
@@ -444,6 +761,16 @@
         ],
         "summary": "Paginated open selections (biz_selection)",
         "parameters": [
+          {
+            "name": "market_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "When set, only selections for this market"
+          },
           {
             "name": "page",
             "in": "query",
@@ -494,6 +821,16 @@
                       }
                     }
                   ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
                 }
               }
             }
