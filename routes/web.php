@@ -1,22 +1,28 @@
 <?php
 
+use App\Http\Controllers\Admin\AdminEventController;
+use App\Http\Controllers\Admin\AdminMarketController;
 use App\Http\Controllers\Admin\AdminOrderController;
 use App\Http\Controllers\Admin\AdminPointsController;
 use App\Http\Controllers\Admin\AdminSettlementController;
-use App\Http\Controllers\Admin\AdminSportBookController;
 use App\Http\Controllers\Admin\AdminUploadController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', static function () {
-    return redirect()->route('admin.sport-book.index');
+    return redirect()->route('admin.events.index');
 });
 
 Route::prefix('admin')->name('admin.')->group(function () {
     Route::post('uploads', [AdminUploadController::class, 'store'])->name('uploads.store');
 
-    Route::get('sport-book', [AdminSportBookController::class, 'index'])->name('sport-book.index');
-    Route::get('sport-book/new', [AdminSportBookController::class, 'create'])->name('sport-book.create');
-    Route::post('sport-book', [AdminSportBookController::class, 'store'])->name('sport-book.store');
+    Route::resource('events', AdminEventController::class);
+    Route::post('markets/{market}/selections', [AdminMarketController::class, 'storeSelection'])
+        ->name('markets.selections.store');
+    Route::put('markets/{market}/selections/{selection}', [AdminMarketController::class, 'updateSelection'])
+        ->name('markets.selections.update');
+    Route::delete('markets/{market}/selections/{selection}', [AdminMarketController::class, 'destroySelection'])
+        ->name('markets.selections.destroy');
+    Route::resource('markets', AdminMarketController::class);
 
     Route::get('settlement', [AdminSettlementController::class, 'create'])->name('settlement.create');
     Route::post('settlement', [AdminSettlementController::class, 'store'])->name('settlement.store');
