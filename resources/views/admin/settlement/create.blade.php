@@ -13,12 +13,12 @@
         <form method="post" action="{{ route('admin.settlement.store') }}">
             @csrf
             <div class="mb-3">
-                <label class="form-label" for="event_id">Open event</label>
-                <select name="event_id" id="event_id" class="form-select" required>
-                    @forelse($events as $ev)
-                        <option value="{{ $ev->id }}">#{{ $ev->id }} — {{ $ev->name }}</option>
+                <label class="form-label" for="game_id">Open game</label>
+                <select name="game_id" id="game_id" class="form-select" required>
+                    @forelse($games as $g)
+                        <option value="{{ $g->id }}">Local #{{ $g->id }} · raw {{ $g->raw_id }}</option>
                     @empty
-                        <option value="" disabled>No open events</option>
+                        <option value="" disabled>No open games</option>
                     @endforelse
                 </select>
             </div>
@@ -27,7 +27,7 @@
                 <input type="text" name="winning_selection_ids" id="winning_selection_ids" class="form-control" required
                        placeholder="e.g. 1,2" value="{{ old('winning_selection_ids') }}">
             </div>
-            <button type="submit" class="btn btn-primary" @if($events->isEmpty()) disabled @endif>Settle</button>
+            <button type="submit" class="btn btn-primary" @if($games->isEmpty()) disabled @endif>Settle</button>
         </form>
     </div>
 @endsection

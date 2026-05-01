@@ -8,6 +8,7 @@ use App\Enums\PointsHoldState;
 use App\Models\MallPointsBalance;
 use App\Models\PointsFlow;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Paganini\Constants\ResponseConstant;
 use Tests\TestCase;
 
 class MallAdminPointsApiTest extends TestCase
@@ -41,7 +42,7 @@ class MallAdminPointsApiTest extends TestCase
                 'balance_minor' => 100,
             ])
             ->assertCreated()
-            ->assertJsonPath('errorCode', 0)
+            ->assertJsonPath('errorCode', ResponseConstant::RET_OK)
             ->assertJsonPath('data.account.uid', 42)
             ->assertJsonPath('data.account.balance_minor', 100);
 
@@ -58,7 +59,7 @@ class MallAdminPointsApiTest extends TestCase
         $this->withHeader('Authorization', 'Bearer test-admin-secret')
             ->postJson('/api/bet/admin/points', ['uid' => 7, 'balance_minor' => 0])
             ->assertStatus(422)
-            ->assertJsonPath('errorCode', 40001);
+            ->assertJsonPath('errorCode', ResponseConstant::RET_BUSINESS_ERROR);
     }
 
     public function test_adjust_updates_balance_and_inserts_flow(): void
@@ -89,7 +90,7 @@ class MallAdminPointsApiTest extends TestCase
         $this->withHeader('Authorization', 'Bearer test-admin-secret')
             ->postJson('/api/bet/admin/points/999999', ['delta_minor' => 10])
             ->assertStatus(422)
-            ->assertJsonPath('errorCode', 40001);
+            ->assertJsonPath('errorCode', ResponseConstant::RET_BUSINESS_ERROR);
     }
 
     public function test_adjust_insufficient_returns_422(): void

@@ -9,7 +9,6 @@ use App\Http\Controllers\Controller;
 use App\Services\mall\SportMarketCatalogService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
 
 class BetMarketController extends Controller
 {
@@ -19,20 +18,17 @@ class BetMarketController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $validator = Validator::make($request->query(), [
-            'event_id' => 'sometimes|integer|min:1',
+        $request->validate([
+            'game_id' => 'sometimes|integer|min:1',
         ]);
-        if ($validator->fails()) {
-            return response()->json(ApiResponse::error(100, $validator->errors()->first()), 422);
-        }
 
         $page = max(1, (int) $request->query('page', 1));
         $perPage = min(50, max(1, (int) $request->query('per_page', 15)));
 
-        $eventId = $request->query('event_id');
-        $eventIdFilter = $eventId === null || $eventId === '' ? null : (int) $eventId;
+        $gameIdRaw = $request->query('game_id');
+        $gameIdFilter = $gameIdRaw === null || $gameIdRaw === '' ? null : (int) $gameIdRaw;
 
-        $pack = $this->catalog->listOpenMarkets($page, $perPage, $eventIdFilter);
+        $pack = $this->catalog->listOpenMarkets($page, $perPage, $gameIdFilter);
         $this->logHandledApiRequest($request, ['handler' => 'bet.markets.index']);
 
         return response()->json(ApiResponse::ok($pack));
@@ -40,12 +36,7 @@ class BetMarketController extends Controller
 
     public function show(Request $request, int $market_id): JsonResponse
     {
-        try {
-            $row = $this->catalog->getMarketDetail($market_id);
-        } catch (\RuntimeException $e) {
-            return response()->json(ApiResponse::error(40401, $e->getMessage()), 404);
-        }
-
+        $row = $this->catalog->getMarketDetail($market_id);
         $this->logHandledApiRequest($request, ['handler' => 'bet.markets.show', 'market_id' => $market_id]);
 
         return response()->json(ApiResponse::ok($row));

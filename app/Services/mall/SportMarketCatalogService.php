@@ -4,32 +4,43 @@ declare(strict_types=1);
 
 namespace App\Services\mall;
 
-use App\Models\SportEvent;
+use App\Models\SportGame;
 use App\Models\SportMarket;
 use App\Models\SportSelection;
+use App\Services\mall\serv_fd\CmsGameClient;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Paganini\Aggregation\Exceptions\DownstreamServiceException;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
- * Read-side catalog: sport events, markets, and selections (replaces mall CMS catalog).
+ * Catalog: CMS game metadata + local {@see SportGame} betting state; markets and selections local.
  */
-final readonly class SportMarketCatalogService
+final class SportMarketCatalogService
 {
+    public function __construct(
+        private readonly CmsGameClient $cms,
+    ) {}
+
     /**
      * @return array{items: list<array<string, mixed>>, pagination: array<string, mixed>}
      */
-    public function listOpenEvents(int $page, int $perPage): array
+    public function listOpenGames(int $page, int $perPage): array
     {
-        $query = SportEvent::query()
-            ->where('status', SportEvent::STATUS_OPEN)
-            ->orderBy('starts_at')
+        $query = SportGame::query()
+            ->where('status', SportGame::STATUS_OPEN)
             ->orderBy('id');
 
-        /** @var LengthAwarePaginator<int, SportEvent> $p */
+        /** @var LengthAwarePaginator<int, SportGame> $p */
         $p = $query->paginate($perPage, ['*'], 'page', $page);
 
         $items = [];
-        foreach ($p->items() as $event) {
-            $items[] = $this->serializeEvent($event);
+        foreach ($p->items() as $game) {
+            try {
+                $cms = $this->cms->find((int) $game->raw_id);
+            } catch (DownstreamServiceException) {
+                continue;
+            }
+            $items[] = $this->serializeGame($cms, $game);
         }
 
         return [
@@ -44,31 +55,33 @@ final readonly class SportMarketCatalogService
     }
 
     /**
+     * @param  int  $rawId  {@see SportGame::$raw_id} / CMS path segment
      * @return array<string, mixed>
      */
-    public function getEventDetail(int $id): array
+    public function getGameDetail(int $rawId): array
     {
-        $event = SportEvent::query()->whereKey($id)->first();
-        if ($event === null) {
-            throw new \RuntimeException('Event not found.');
-        }
+        $cms = $this->cms->find($rawId);
+        $local = SportGame::query()->where('raw_id', $rawId)->first();
 
-        return $this->serializeEvent($event);
+        return $this->serializeGame($cms, $local);
     }
 
     /**
+     * @param  int|null  $rawId  Filter by external/CMS game id (not local {@see SportGame::$id})
      * @return array{items: list<array<string, mixed>>, pagination: array<string, mixed>}
      */
-    public function listOpenMarkets(int $page, int $perPage, ?int $eventId): array
+    public function listOpenMarkets(int $page, int $perPage, ?int $rawId): array
     {
         $query = SportMarket::query()
-            ->with(['event'])
+            ->with(['game'])
             ->where('status', SportMarket::STATUS_OPEN)
-            ->whereHas('event', static function ($q): void {
-                $q->where('status', SportEvent::STATUS_OPEN);
+            ->whereHas('game', static function ($q): void {
+                $q->where('status', SportGame::STATUS_OPEN);
             });
-        if ($eventId !== null) {
-            $query->where('event_id', $eventId);
+        if ($rawId !== null) {
+            $query->whereHas('game', static function ($q) use ($rawId): void {
+                $q->where('raw_id', $rawId);
+            });
         }
         $query->orderByDesc('id');
 
@@ -97,11 +110,11 @@ final readonly class SportMarketCatalogService
     public function getMarketDetail(int $id): array
     {
         $market = SportMarket::query()
-            ->with(['event'])
+            ->with(['game'])
             ->whereKey($id)
             ->first();
         if ($market === null) {
-            throw new \RuntimeException('Market not found.');
+            throw new NotFoundHttpException('Market not found.');
         }
 
         return $this->serializeMarket($market);
@@ -113,12 +126,12 @@ final readonly class SportMarketCatalogService
     public function listOpenSelections(int $page, int $perPage, ?int $marketId): array
     {
         $query = SportSelection::query()
-            ->with(['market.event'])
+            ->with(['market.game'])
             ->where('status', SportSelection::STATUS_OPEN)
             ->whereHas('market', static function ($q): void {
                 $q->where('status', SportMarket::STATUS_OPEN)
-                    ->whereHas('event', static function ($q2): void {
-                        $q2->where('status', SportEvent::STATUS_OPEN);
+                    ->whereHas('game', static function ($q2): void {
+                        $q2->where('status', SportGame::STATUS_OPEN);
                     });
             })
             ->when($marketId !== null, static function ($q) use ($marketId): void {
@@ -151,11 +164,11 @@ final readonly class SportMarketCatalogService
     public function getSelectionDetail(int $id): array
     {
         $sel = SportSelection::query()
-            ->with(['market.event'])
+            ->with(['market.game'])
             ->whereKey($id)
             ->first();
         if ($sel === null) {
-            throw new \RuntimeException('Selection not found.');
+            throw new NotFoundHttpException('Selection not found.');
         }
 
         return $this->serializeSelection($sel);
@@ -164,10 +177,45 @@ final readonly class SportMarketCatalogService
     /**
      * @return array<string, mixed>
      */
+    private function serializeGame(array $cms, ?SportGame $local): array
+    {
+        $id = (int) ($cms['id'] ?? 0);
+        $status = $local !== null ? (int) $local->status : SportGame::STATUS_CLOSED;
+
+        return [
+            'id' => $id,
+            'name' => (string) ($cms['name'] ?? $cms['title'] ?? ''),
+            'image_path' => $this->cmsOptionalString($cms, ['thumbnail', 'image_path', 'cover', 'image']),
+            'starts_at' => (int) ($cms['starts_at'] ?? 0),
+            'status' => $status,
+            'winning_selection_ids' => $local !== null ? ($local->winning_selection_ids ?? []) : [],
+        ];
+    }
+
+    /**
+     * @param  array<int, string>  $keys
+     */
+    private function cmsOptionalString(array $cms, array $keys): ?string
+    {
+        foreach ($keys as $key) {
+            if (! array_key_exists($key, $cms) || $cms[$key] === null) {
+                continue;
+            }
+            $v = $cms[$key];
+
+            return is_string($v) ? $v : null;
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
     private function serializeSelection(SportSelection $sel): array
     {
         $market = $sel->market;
-        $event = $market?->event;
+        $game = $market?->game;
 
         return [
             'id' => (int) $sel->id,
@@ -179,26 +227,7 @@ final readonly class SportMarketCatalogService
                 'market_type' => (int) $market->market_type->value,
                 'status' => (int) $market->status,
             ],
-            'event' => $event === null ? null : [
-                'id' => (int) $event->id,
-                'name' => $event->name,
-                'starts_at' => (int) $event->starts_at,
-                'status' => (int) $event->status,
-            ],
-        ];
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function serializeEvent(SportEvent $event): array
-    {
-        return [
-            'id' => (int) $event->id,
-            'name' => $event->name,
-            'starts_at' => (int) $event->starts_at,
-            'status' => (int) $event->status,
-            'winning_selection_ids' => $event->winning_selection_ids ?? [],
+            'game' => $game === null ? null : $this->serializeGameForNested($game),
         ];
     }
 
@@ -207,19 +236,32 @@ final readonly class SportMarketCatalogService
      */
     private function serializeMarket(SportMarket $market): array
     {
-        $event = $market->event;
+        $game = $market->game;
 
         return [
             'id' => (int) $market->id,
-            'event_id' => (int) $market->event_id,
+            'game_id' => (int) ($game?->raw_id ?? 0),
             'market_type' => (int) $market->market_type->value,
             'status' => (int) $market->status,
-            'event' => $event === null ? null : [
-                'id' => (int) $event->id,
-                'name' => $event->name,
-                'starts_at' => (int) $event->starts_at,
-                'status' => (int) $event->status,
-            ],
+            'game' => $game === null ? null : $this->serializeGameForNested($game),
         ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function serializeGameForNested(SportGame $local): array
+    {
+        $cmsKey = (int) $local->raw_id;
+        try {
+            $cms = $this->cms->find($cmsKey);
+        } catch (DownstreamServiceException|NotFoundHttpException) {
+            $cms = ['id' => $cmsKey];
+        }
+
+        $merged = $this->serializeGame($cms, $local);
+        unset($merged['winning_selection_ids']);
+
+        return $merged;
     }
 }

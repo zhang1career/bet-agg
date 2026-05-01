@@ -10,6 +10,7 @@ use App\Models\BetOrder;
 use App\Models\MallPointsBalance;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Paganini\Constants\ResponseConstant;
 use Tests\Support\SportSeeder;
 use Tests\TestCase;
 
@@ -27,20 +28,20 @@ class MallCheckoutControllerTest extends TestCase
 
     private function fakeUserMe(int $userId): void
     {
-        Http::fake([
+        Http::fake(array_merge([
             'http://foundation.local/api/user/me' => Http::response([
-                'errorCode' => 0,
+                'errorCode' => ResponseConstant::RET_OK,
                 'data' => ['id' => $userId, 'username' => 'buyer'],
                 'message' => '',
             ], 200),
-        ]);
+        ], self::cmsGatewayGameFakes()));
     }
 
     public function test_checkout_requires_auth(): void
     {
         $this->postJson('/api/bet/checkout', ['order_id' => 1])
             ->assertStatus(401)
-            ->assertJsonPath('errorCode', 40101);
+            ->assertJsonPath('errorCode', ResponseConstant::RET_UNAUTHORIZED);
     }
 
     public function test_checkout_points_only_accepts_immediately(): void
@@ -63,7 +64,7 @@ class MallCheckoutControllerTest extends TestCase
         ]);
 
         $response->assertCreated()
-            ->assertJsonPath('errorCode', 0)
+            ->assertJsonPath('errorCode', ResponseConstant::RET_OK)
             ->assertJsonPath('data.order.status', BetOrderStatus::Accepted->value)
             ->assertJsonPath('data.prepay.invoke_payment', 'none');
 
@@ -115,7 +116,7 @@ class MallCheckoutControllerTest extends TestCase
             'order_id' => $orderId,
         ])
             ->assertStatus(422)
-            ->assertJsonPath('errorCode', 40001);
+            ->assertJsonPath('errorCode', ResponseConstant::RET_BUSINESS_ERROR);
     }
 
     public function test_checkout_returns_422_when_order_id_invalid(): void
@@ -126,7 +127,7 @@ class MallCheckoutControllerTest extends TestCase
             'order_id' => 0,
         ])
             ->assertStatus(422)
-            ->assertJsonPath('errorCode', 100);
+            ->assertJsonPath('errorCode', ResponseConstant::RET_INVALID_PARAM);
     }
 
     public function test_checkout_returns_404_when_order_not_found(): void
@@ -137,6 +138,6 @@ class MallCheckoutControllerTest extends TestCase
             'order_id' => 99999,
         ])
             ->assertStatus(404)
-            ->assertJsonPath('errorCode', 40401);
+            ->assertJsonPath('errorCode', ResponseConstant::RET_RESOURCE_NOT_FOUND);
     }
 }

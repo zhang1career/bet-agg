@@ -4,7 +4,7 @@
     $kind = $kind ?? 'event';
     $value = (int) ($value ?? 0);
     $label = match ($kind) {
-        'event' => match ($value) {
+        'game', 'event' => match ($value) {
             1 => 'Open',
             2 => 'Closed',
             3 => 'Settled',

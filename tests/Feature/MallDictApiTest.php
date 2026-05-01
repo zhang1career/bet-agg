@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use Paganini\Constants\ResponseConstant;
 use Tests\TestCase;
 
 class MallDictApiTest extends TestCase
@@ -12,18 +13,18 @@ class MallDictApiTest extends TestCase
     {
         $this->getJson('/api/bet/dict')
             ->assertOk()
-            ->assertJsonPath('errorCode', 101);
+            ->assertJsonPath('errorCode', ResponseConstant::RET_MISSING_PARAM);
 
         $this->getJson('/api/bet/dict?codes=')
             ->assertOk()
-            ->assertJsonPath('errorCode', 101);
+            ->assertJsonPath('errorCode', ResponseConstant::RET_MISSING_PARAM);
     }
 
     public function test_dict_returns_points_hold_state(): void
     {
         $this->getJson('/api/bet/dict?codes=points_hold_state')
             ->assertOk()
-            ->assertJsonPath('errorCode', 0)
+            ->assertJsonPath('errorCode', ResponseConstant::RET_OK)
             ->assertJsonPath('data.points_hold_state.0.v', '10')
             ->assertJsonPath('data.points_hold_state.0.k', 'try pending');
     }
@@ -32,7 +33,7 @@ class MallDictApiTest extends TestCase
     {
         $this->getJson('/api/bet/dict?codes=unknown_code,points_hold_state')
             ->assertOk()
-            ->assertJsonPath('errorCode', 0)
+            ->assertJsonPath('errorCode', ResponseConstant::RET_OK)
             ->assertJsonMissingPath('data.unknown_code')
             ->assertJsonPath('data.points_hold_state.0.v', '10');
     }

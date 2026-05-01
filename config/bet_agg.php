@@ -1,5 +1,9 @@
 <?php
 
+declare(strict_types=1);
+
+use Paganini\Constants\ResponseConstant;
+
 return [
     'api' => [
         'log_http_errors' => (bool) env('BET_AGG_API_LOG_HTTP_ERRORS', true),
@@ -15,7 +19,7 @@ return [
         ],
         'me_endpoint' => '/api/user/me',
         'timeout_seconds' => 3,
-        'unauthorized_code' => 40101,
+        'unauthorized_code' => ResponseConstant::RET_UNAUTHORIZED,
     ],
 
     'payment' => [

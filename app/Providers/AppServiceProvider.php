@@ -19,6 +19,7 @@ use App\Services\mall\MallOverdueOrderSweepService;
 use App\Services\mall\MallPaymentCallbackService;
 use App\Services\mall\MallPointsTccService;
 use App\Services\mall\OrderCommandService;
+use App\Services\mall\serv_fd\CmsGameClient;
 use App\Services\mall\SportMarketCatalogService;
 use App\Services\mall\SportSelectionBookService;
 use App\Services\outbound\StubInventoryOutboundClient;
@@ -72,6 +73,8 @@ class AppServiceProvider extends ServiceProvider
                 $app->make(MemoizedServiceDiscoveryUrl::class)
             );
         });
+
+        $this->app->singleton(CmsGameClient::class, static fn () => CmsGameClient::fromConfig());
 
         $this->app->singleton(SportSelectionBookService::class);
         $this->app->singleton(SportMarketCatalogService::class);

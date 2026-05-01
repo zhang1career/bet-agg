@@ -7,6 +7,7 @@ namespace Tests\Feature;
 use App\Models\BetOrder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Paganini\Constants\ResponseConstant;
 use Tests\Support\SportSeeder;
 use Tests\TestCase;
 
@@ -29,18 +30,18 @@ class BetOrderControllerTest extends TestCase
         ]);
 
         $response->assertStatus(401)
-            ->assertJsonPath('errorCode', 40101);
+            ->assertJsonPath('errorCode', ResponseConstant::RET_UNAUTHORIZED);
     }
 
     public function test_create_order_persists_draft_bet_line(): void
     {
-        Http::fake([
+        Http::fake(array_merge([
             'http://foundation.local/api/user/me' => Http::response([
-                'errorCode' => 0,
+                'errorCode' => ResponseConstant::RET_OK,
                 'data' => ['id' => 42, 'username' => 'buyer'],
                 'message' => '',
             ], 200),
-        ]);
+        ], self::cmsGatewayGameFakes()));
 
         $sid = SportSeeder::openSelection(2000);
 
@@ -49,7 +50,7 @@ class BetOrderControllerTest extends TestCase
         ]);
 
         $response->assertCreated()
-            ->assertJsonPath('errorCode', 0)
+            ->assertJsonPath('errorCode', ResponseConstant::RET_OK)
             ->assertJsonPath('data.status', 0)
             ->assertJsonPath('data.total_price', 100)
             ->assertJsonPath('data.ext_inventory', false);

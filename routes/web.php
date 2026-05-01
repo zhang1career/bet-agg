@@ -1,6 +1,6 @@
 <?php
 
-use App\Http\Controllers\Admin\AdminEventController;
+use App\Http\Controllers\Admin\AdminGameController;
 use App\Http\Controllers\Admin\AdminMarketController;
 use App\Http\Controllers\Admin\AdminOrderController;
 use App\Http\Controllers\Admin\AdminPointsController;
@@ -9,13 +9,13 @@ use App\Http\Controllers\Admin\AdminUploadController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', static function () {
-    return redirect()->route('admin.events.index');
+    return redirect()->route('admin.games.index');
 });
 
 Route::prefix('admin')->name('admin.')->group(function () {
     Route::post('uploads', [AdminUploadController::class, 'store'])->name('uploads.store');
 
-    Route::resource('events', AdminEventController::class);
+    Route::resource('games', AdminGameController::class);
     Route::post('markets/{market}/selections', [AdminMarketController::class, 'storeSelection'])
         ->name('markets.selections.store');
     Route::put('markets/{market}/selections/{selection}', [AdminMarketController::class, 'updateSelection'])

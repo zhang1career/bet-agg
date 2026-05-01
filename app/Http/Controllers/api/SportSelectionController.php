@@ -9,7 +9,6 @@ use App\Http\Controllers\Controller;
 use App\Services\mall\SportMarketCatalogService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
 
 class SportSelectionController extends Controller
 {
@@ -19,12 +18,9 @@ class SportSelectionController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $validator = Validator::make($request->query(), [
+        $request->validate([
             'market_id' => 'sometimes|integer|min:1',
         ]);
-        if ($validator->fails()) {
-            return response()->json(ApiResponse::error(100, $validator->errors()->first()), 422);
-        }
 
         $page = max(1, (int) $request->query('page', 1));
         $perPage = min(50, max(1, (int) $request->query('per_page', 15)));
@@ -40,12 +36,7 @@ class SportSelectionController extends Controller
 
     public function show(Request $request, int $id): JsonResponse
     {
-        try {
-            $row = $this->catalog->getSelectionDetail($id);
-        } catch (\RuntimeException $e) {
-            return response()->json(ApiResponse::error(40401, $e->getMessage()), 404);
-        }
-
+        $row = $this->catalog->getSelectionDetail($id);
         $this->logHandledApiRequest($request, ['handler' => 'bet.selections.show', 'selection_id' => $id]);
 
         return response()->json(ApiResponse::ok($row));

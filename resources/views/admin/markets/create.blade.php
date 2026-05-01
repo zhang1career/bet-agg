@@ -7,15 +7,15 @@
         @csrf
         <div class="mall-list-toolbar d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
             <h2 class="h5 mb-0">Create market</h2>
-            <a href="{{ $prefillEventId ? route('admin.events.show', $prefillEventId) : route('admin.markets.index') }}" class="btn btn-outline-secondary btn-sm">Cancel</a>
+            <a href="{{ $prefillGameId ? route('admin.games.show', $prefillGameId) : route('admin.markets.index') }}" class="btn btn-outline-secondary btn-sm">Cancel</a>
         </div>
 
         <div class="row">
             <div class="col-md-6 mb-3">
-                <label class="form-label" for="event_id">Event</label>
-                <select name="event_id" id="event_id" class="form-select" required>
-                    @foreach($events as $e)
-                        <option value="{{ $e->id }}" @selected((int) old('event_id', $prefillEventId) === $e->id)>#{{ $e->id }} — {{ $e->name }}</option>
+                <label class="form-label" for="game_id">Game</label>
+                <select name="game_id" id="game_id" class="form-select" required>
+                    @foreach($games as $g)
+                        <option value="{{ $g->id }}" @selected((int) old('game_id', $prefillGameId) === $g->id)>Local #{{ $g->id }} · raw {{ $g->raw_id }}</option>
                     @endforeach
                 </select>
             </div>

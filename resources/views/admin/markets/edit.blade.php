@@ -15,11 +15,11 @@
         @method('PUT')
         <div class="row">
             <div class="col-md-6 mb-3">
-                <label class="form-label" for="event_id">Event</label>
-                <select name="event_id" id="event_id" class="form-select" required>
-                    @foreach($events as $e)
-                        <option value="{{ $e->id }}" @selected((int) old('event_id', $market->event_id) === $e->id)>
-                            #{{ $e->id }} — {{ $e->name }}
+                <label class="form-label" for="game_id">Game</label>
+                <select name="game_id" id="game_id" class="form-select" required>
+                    @foreach($games as $g)
+                        <option value="{{ $g->id }}" @selected((int) old('game_id', $market->game_id) === $g->id)>
+                            Local #{{ $g->id }} · raw {{ $g->raw_id }}
                         </option>
                     @endforeach
                 </select>

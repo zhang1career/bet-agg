@@ -11,6 +11,7 @@ use App\Models\MallPointsBalance;
 use App\Services\mall\BetCheckoutService;
 use App\Services\mall\OrderCommandService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Paganini\Constants\ResponseConstant;
 use Tests\Support\SportSeeder;
 use Tests\TestCase;
 
@@ -35,7 +36,7 @@ final class PaymentCallbackControllerTest extends TestCase
         $this->postJson('/api/bet/payment/callback', [
             'order_id' => $order->id,
             'status' => 'paid',
-        ])->assertOk()->assertJsonPath('errorCode', 0)
+        ])->assertOk()->assertJsonPath('errorCode', ResponseConstant::RET_OK)
             ->assertJsonPath('data.status', BetOrderStatus::Accepted->value);
 
         $again = BetOrder::query()->find($order->id);
@@ -60,7 +61,7 @@ final class PaymentCallbackControllerTest extends TestCase
         $this->postJson('/api/bet/payment/callback', [
             'order_id' => $order->id,
             'status' => 'paid',
-        ])->assertOk()->assertJsonPath('errorCode', 0);
+        ])->assertOk()->assertJsonPath('errorCode', ResponseConstant::RET_OK);
     }
 
     public function test_callback_rejects_when_callback_token_mismatch(): void
@@ -72,6 +73,6 @@ final class PaymentCallbackControllerTest extends TestCase
             'status' => 'paid',
         ], ['X-Payment-Callback-Token' => 'wrong'])
             ->assertStatus(403)
-            ->assertJsonPath('errorCode', 40301);
+            ->assertJsonPath('errorCode', ResponseConstant::RET_FORBIDDEN);
     }
 }

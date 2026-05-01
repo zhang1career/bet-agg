@@ -22,14 +22,12 @@ class BetPointsController extends Controller
 
     /**
      * Current user's available points balance (integer game points).
+     *
+     * @throws FoundationAuthRequiredException
      */
     public function show(Request $request): JsonResponse
     {
-        try {
-            $user = $this->requireAuthenticatedUser($request);
-        } catch (FoundationAuthRequiredException $e) {
-            return $this->unauthorizedResponse($e);
-        }
+        $user = $this->requireAuthenticatedUser($request);
 
         $minor = $this->points->availableBalanceMinor(FoundationUser::id($user));
 
@@ -55,16 +53,5 @@ class BetPointsController extends Controller
         }
 
         return $this->foundationGateway->fetchCurrentUser($request);
-    }
-
-    private function unauthorizedResponse(FoundationAuthRequiredException $e): JsonResponse
-    {
-        return response()->json(
-            ApiResponse::error(
-                (int) config('bet_agg.foundation.unauthorized_code', 40101),
-                $e->getMessage()
-            ),
-            401
-        );
     }
 }

@@ -6,7 +6,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Enums\SportMarketType;
 use App\Http\Controllers\Controller;
-use App\Models\SportEvent;
+use App\Models\SportGame;
 use App\Models\SportMarket;
 use App\Models\SportSelection;
 use Illuminate\Http\RedirectResponse;
@@ -21,38 +21,38 @@ class AdminMarketController extends Controller
     {
         $perPage = min(50, max(1, (int) $request->query('per_page', 20)));
         $q = SportMarket::query()
-            ->with('event')
+            ->with('game')
             ->withCount('selections')
             ->orderByDesc('id');
 
-        if ($request->filled('event_id')) {
-            $q->where('event_id', (int) $request->query('event_id'));
+        if ($request->filled('game_id')) {
+            $q->where('game_id', (int) $request->query('game_id'));
         }
 
         $markets = $q->paginate($perPage)->withQueryString();
-        $filterEventId = $request->filled('event_id') ? (int) $request->query('event_id') : null;
+        $filterGameId = $request->filled('game_id') ? (int) $request->query('game_id') : null;
 
         return view('admin.markets.index', [
             'markets' => $markets,
-            'filterEventId' => $filterEventId,
+            'filterGameId' => $filterGameId,
         ]);
     }
 
     public function create(Request $request): View
     {
-        $events = SportEvent::query()->orderByDesc('id')->limit(500)->get();
-        $prefillEventId = max(0, (int) $request->query('event_id', 0));
+        $games = SportGame::query()->orderByDesc('id')->limit(500)->get();
+        $prefillGameId = max(0, (int) $request->query('game_id', 0));
 
         return view('admin.markets.create', [
-            'events' => $events,
-            'prefillEventId' => $prefillEventId,
+            'games' => $games,
+            'prefillGameId' => $prefillGameId,
         ]);
     }
 
     public function store(Request $request): RedirectResponse
     {
         $v = $request->validate([
-            'event_id' => 'required|integer|exists:biz_event,id',
+            'game_id' => 'required|integer|exists:biz_game,id',
             'market_type' => ['required', 'integer', Rule::enum(SportMarketType::class)->except(SportMarketType::Unknown)],
             'status' => 'required|integer|in:1,2,3',
             'selections' => 'required|array|min:1',
@@ -64,7 +64,7 @@ class AdminMarketController extends Controller
         /** @var SportMarket $market */
         $market = DB::transaction(static function () use ($v): SportMarket {
             $market = new SportMarket([
-                'event_id' => (int) $v['event_id'],
+                'game_id' => (int) $v['game_id'],
                 'market_type' => SportMarketType::from((int) $v['market_type']),
                 'status' => (int) $v['status'],
             ]);
@@ -89,7 +89,7 @@ class AdminMarketController extends Controller
     public function show(SportMarket $market): View
     {
         $market->load([
-            'event',
+            'game',
             'selections' => static fn ($q) => $q->orderBy('id'),
         ]);
 
@@ -99,27 +99,27 @@ class AdminMarketController extends Controller
     public function edit(SportMarket $market): View
     {
         $market->load([
-            'event',
+            'game',
             'selections' => static fn ($q) => $q->orderBy('id'),
         ]);
-        $events = SportEvent::query()->orderByDesc('id')->limit(500)->get();
+        $games = SportGame::query()->orderByDesc('id')->limit(500)->get();
 
         return view('admin.markets.edit', [
             'market' => $market,
-            'events' => $events,
+            'games' => $games,
         ]);
     }
 
     public function update(Request $request, SportMarket $market): RedirectResponse
     {
         $v = $request->validate([
-            'event_id' => 'required|integer|exists:biz_event,id',
+            'game_id' => 'required|integer|exists:biz_game,id',
             'market_type' => ['required', 'integer', Rule::enum(SportMarketType::class)->except(SportMarketType::Unknown)],
             'status' => 'required|integer|in:1,2,3',
         ]);
 
         $market->fill([
-            'event_id' => (int) $v['event_id'],
+            'game_id' => (int) $v['game_id'],
             'market_type' => SportMarketType::from((int) $v['market_type']),
             'status' => (int) $v['status'],
         ]);

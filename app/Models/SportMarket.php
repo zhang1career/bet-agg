@@ -12,9 +12,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * @property int $id
- * @property int $event_id
+ * @property int $game_id Local {@see SportGame::$id}
  * @property SportMarketType $market_type
- * @property int $status 1 open, 2 suspended, 3 settled
+ * @property int $status
  * @property int $ct
  * @property int $ut
  */
@@ -32,10 +32,10 @@ class SportMarket extends Model
 
     protected $table = 'biz_market';
 
-    protected $fillable = ['event_id', 'market_type', 'status', 'ct', 'ut'];
+    protected $fillable = ['game_id', 'market_type', 'status', 'ct', 'ut'];
 
     protected $casts = [
-        'event_id' => 'integer',
+        'game_id' => 'integer',
         'market_type' => SportMarketType::class,
         'status' => 'integer',
         'ct' => 'integer',
@@ -43,11 +43,11 @@ class SportMarket extends Model
     ];
 
     /**
-     * @return BelongsTo<SportEvent, $this>
+     * @return BelongsTo<SportGame, $this>
      */
-    public function event(): BelongsTo
+    public function game(): BelongsTo
     {
-        return $this->belongsTo(SportEvent::class, 'event_id');
+        return $this->belongsTo(SportGame::class, 'game_id');
     }
 
     /**

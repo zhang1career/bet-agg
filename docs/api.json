@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "bet-agg HTTP API",
-    "description": "Laravel bet aggregation service: public `/api/*` JSON APIs and health check. User profile is **not** served here—call the Foundation (or API gateway) user API; bet-agg only **outbounds** to that service to resolve `X-User-Access-Token`. Most JSON responses use the `ApiResponse` envelope (`data`, `errorCode`, `message`, `_req_id`). XXL-Job executor endpoints use a different envelope (`code`, `msg`, `data`). Catalog data is stored in `biz_event`, `biz_market`, and `biz_selection`; order lines reference a selection via `kid`.\n\n**Examples:** Reusable request/response samples are under `components.examples` and referenced from operations. **Contract tests:** `Tests\\Feature\\OpenApiRoutesContractTest` asserts every path/method in this file is registered in the app.",
+    "description": "Laravel bet aggregation service: public `/api/*` JSON APIs and health check. User profile is **not** served here—call the Foundation (or API gateway) user API; bet-agg only **outbounds** to that service to resolve `X-User-Access-Token`. Most JSON responses use the `ApiResponse` envelope (`data`, `errorCode`, `message`, `_req_id`). XXL-Job executor endpoints use a different envelope (`code`, `msg`, `data`). Local catalog state is in `biz_game` (betting status only; titles/images from CMS `/api/cms/game/`), `biz_market`, and `biz_selection`; order lines reference a selection via `kid`.\n\n**Examples:** Reusable request/response samples are under `components.examples` and referenced from operations. **Contract tests:** `Tests\\Feature\\OpenApiRoutesContractTest` asserts every path/method in this file is registered in the app.",
     "version": "1.2.0"
   },
   "servers": [
@@ -206,15 +206,20 @@
           }
         }
       },
-      "SportEvent": {
+      "SportGame": {
         "type": "object",
-        "description": "Public `biz_event` row. List endpoint returns open events only; detail resolves by id.",
+        "description": "CMS game fields merged with local `biz_game` betting state. `id` in responses is the external/CMS game id; persistence uses local `biz_game.id` + unique `raw_id`.",
         "properties": {
           "id": {
             "type": "integer"
           },
           "name": {
             "type": "string"
+          },
+          "image_path": {
+            "type": "string",
+            "nullable": true,
+            "description": "Cover image from CMS when set"
           },
           "starts_at": {
             "type": "integer",
@@ -235,13 +240,14 @@
       },
       "SportMarket": {
         "type": "object",
-        "description": "Public `biz_market` row with nested event summary from `biz_event`. List endpoint returns open markets on open events only.",
+        "description": "Public `biz_market` row with nested game summary (CMS + local state). List endpoint returns open markets on open games only.",
         "properties": {
           "id": {
             "type": "integer"
           },
-          "event_id": {
-            "type": "integer"
+          "game_id": {
+            "type": "integer",
+            "description": "CMS game id (same as catalog game `id`), not local `biz_game.id`"
           },
           "market_type": {
             "type": "integer",
@@ -250,7 +256,7 @@
           "status": {
             "type": "integer"
           },
-          "event": {
+          "game": {
             "type": "object",
             "nullable": true,
             "properties": {
@@ -259,6 +265,11 @@
               },
               "name": {
                 "type": "string"
+              },
+              "image_path": {
+                "type": "string",
+                "nullable": true,
+                "description": "Cover image path or URL from CMS when set"
               },
               "starts_at": {
                 "type": "integer"
@@ -272,7 +283,7 @@
       },
       "SportSelection": {
         "type": "object",
-        "description": "Public catalog row; persisted in `biz_selection` with market/event from `biz_market` / `biz_event`.",
+        "description": "Public catalog row; persisted in `biz_selection` with market/game from `biz_market` / `biz_game`.",
         "properties": {
           "id": {
             "type": "integer"
@@ -302,7 +313,7 @@
               }
             }
           },
-          "event": {
+          "game": {
             "type": "object",
             "nullable": true,
             "properties": {
@@ -311,6 +322,11 @@
               },
               "name": {
                 "type": "string"
+              },
+              "image_path": {
+                "type": "string",
+                "nullable": true,
+                "description": "Cover image path or URL from CMS when set"
               },
               "starts_at": {
                 "type": "integer"
@@ -501,12 +517,12 @@
         }
       }
     },
-    "/api/bet/events": {
+    "/api/bet/games": {
       "get": {
         "tags": [
           "Bet"
         ],
-        "summary": "Paginated open business events (biz_event)",
+        "summary": "Paginated open games (local biz_game + CMS)",
         "parameters": [
           {
             "name": "page",
@@ -547,7 +563,7 @@
                             "items": {
                               "type": "array",
                               "items": {
-                                "$ref": "#/components/schemas/SportEvent"
+                                "$ref": "#/components/schemas/SportGame"
                               }
                             },
                             "pagination": {
@@ -565,15 +581,15 @@
         }
       }
     },
-    "/api/bet/events/{event_id}": {
+    "/api/bet/games/{game_id}": {
       "get": {
         "tags": [
           "Bet"
         ],
-        "summary": "Single event detail",
+        "summary": "Single game detail (CMS + local state)",
         "parameters": [
           {
-            "name": "event_id",
+            "name": "game_id",
             "in": "path",
             "required": true,
             "schema": {
@@ -584,7 +600,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Event",
+            "description": "Game",
             "content": {
               "application/json": {
                 "schema": {
@@ -596,7 +612,7 @@
                       "type": "object",
                       "properties": {
                         "data": {
-                          "$ref": "#/components/schemas/SportEvent"
+                          "$ref": "#/components/schemas/SportGame"
                         }
                       }
                     }
@@ -623,10 +639,10 @@
         "tags": [
           "Bet"
         ],
-        "summary": "Paginated open markets (biz_market); optional filter by event",
+        "summary": "Paginated open markets (biz_market); optional filter by game",
         "parameters": [
           {
-            "name": "event_id",
+            "name": "game_id",
             "in": "query",
             "required": false,
             "schema": {

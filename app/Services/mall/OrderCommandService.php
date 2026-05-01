@@ -10,10 +10,13 @@ use App\Enums\CheckoutPhase;
 use App\Models\BetOrder;
 use App\Models\BetOrderLine;
 use App\Models\SportSelection;
+use App\Services\mall\serv_fd\CmsGameClient;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
+use Paganini\Aggregation\Exceptions\DownstreamServiceException;
 use RuntimeException;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
  * Bet orders: draft slip then local checkout (points hold + payment stub).
@@ -22,6 +25,7 @@ final readonly class OrderCommandService
 {
     public function __construct(
         private SportSelectionBookService $book,
+        private CmsGameClient $cms,
     ) {}
 
     /**
@@ -51,14 +55,25 @@ final readonly class OrderCommandService
             ]);
 
             $selection = SportSelection::query()
-                ->with(['market.event'])
+                ->with(['market.game'])
                 ->whereKey($kid)
                 ->first();
             if ($selection === null) {
                 throw new RuntimeException('Selection not found.');
             }
             $market = $selection->market;
-            $event = $market?->event;
+            $game = $market?->game;
+
+            $rawId = $game !== null ? (int) $game->raw_id : 0;
+            $gameName = '';
+            if ($rawId > 0) {
+                try {
+                    $cmsRow = $this->cms->find($rawId);
+                    $gameName = (string) ($cmsRow['name'] ?? $cmsRow['title'] ?? '');
+                } catch (DownstreamServiceException|NotFoundHttpException) {
+                    $gameName = '';
+                }
+            }
 
             $millis = (int) $selection->current_odds_millis;
             $potentialReturn = intdiv($stake * $millis, 1000);
@@ -69,8 +84,8 @@ final readonly class OrderCommandService
             $snapshot = [
                 'kid' => $kid,
                 'market_id' => $market ? (int) $market->id : 0,
-                'event_id' => $event ? (int) $event->id : 0,
-                'event_name' => $event ? $event->name : '',
+                'game_id' => $rawId,
+                'game_name' => $gameName,
                 'market_type' => $market ? $market->market_type->value : 0,
                 'label' => $selection->label,
                 'decimal_odds_millis' => $millis,

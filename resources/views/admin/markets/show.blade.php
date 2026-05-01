@@ -7,8 +7,8 @@
         <h2 class="h5 mb-0">Market #{{ $market->id }}</h2>
         <div class="d-flex gap-2 flex-wrap">
             <a href="{{ route('admin.markets.edit', $market) }}" class="btn btn-primary btn-sm">Edit market</a>
-            <a href="{{ route('admin.events.show', $market->event_id) }}" class="btn btn-outline-secondary btn-sm">Event</a>
-            <a href="{{ route('admin.markets.index', ['event_id' => $market->event_id]) }}" class="btn btn-outline-secondary btn-sm">Markets for event</a>
+            <a href="{{ route('admin.games.show', $market->game_id) }}" class="btn btn-outline-secondary btn-sm">Game</a>
+            <a href="{{ route('admin.markets.index', ['game_id' => $market->game_id]) }}" class="btn btn-outline-secondary btn-sm">Markets for game</a>
             <button type="button" class="btn btn-outline-danger btn-sm" title="Delete"
                     data-mall-delete-url="{{ route('admin.markets.destroy', $market) }}"
                     data-mall-delete-message="Delete market #{{ $market->id }} and all selections?">
@@ -22,10 +22,9 @@
             <dl class="row mb-0">
                 <dt class="col-sm-3">ID</dt>
                 <dd class="col-sm-9 font-monospace">{{ $market->id }}</dd>
-                <dt class="col-sm-3">Event</dt>
+                <dt class="col-sm-3">Game</dt>
                 <dd class="col-sm-9">
-                    <a href="{{ route('admin.events.show', $market->event_id) }}">{{ $market->event->name ?? '—' }}</a>
-                    <span class="text-muted font-monospace">#{{ $market->event_id }}</span>
+                    <a href="{{ route('admin.games.show', $market->game_id) }}">Game #{{ $market->game_id }}</a>
                 </dd>
                 <dt class="col-sm-3">Type</dt>
                 <dd class="col-sm-9">{{ $market->market_type->label() }} ({{ $market->market_type->value }})</dd>

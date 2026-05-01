@@ -19,7 +19,7 @@ final class AdminUploadController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'file' => ['required', 'file', 'max:102400'],
+            'file' => ['required', 'file', 'image', 'max:102400'],
         ]);
 
         try {

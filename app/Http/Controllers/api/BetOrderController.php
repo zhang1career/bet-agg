@@ -13,11 +13,8 @@ use App\Models\BetOrder;
 use App\Services\mall\FoundationUser;
 use App\Services\mall\OrderCommandService;
 use App\Services\user\UserFoundationGateway;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
-use RuntimeException;
 use ValueError;
 
 class BetOrderController extends Controller
@@ -29,20 +26,13 @@ class BetOrderController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        try {
-            $user = $this->requireAuthenticatedUser($request);
-        } catch (FoundationAuthRequiredException $e) {
-            return $this->unauthorizedResponse($e);
-        }
+        $user = $this->requireAuthenticatedUser($request);
 
-        $validator = Validator::make($request->all(), [
+        $request->validate([
             'lines' => 'required|array|min:1|max:1',
             'lines.0.kid' => 'required|integer|min:1',
             'lines.0.stake_points' => 'required|integer|min:1',
         ]);
-        if ($validator->fails()) {
-            return response()->json(ApiResponse::error(100, $validator->errors()->first()), 422);
-        }
 
         /** @var list<array{kid: int, stake_points: int}> $lines */
         $lines = [];
@@ -56,11 +46,7 @@ class BetOrderController extends Controller
             ];
         }
 
-        try {
-            $order = $this->orders->createDraftPendingOrder(FoundationUser::id($user), $lines);
-        } catch (RuntimeException $e) {
-            return response()->json(ApiResponse::error(40001, $e->getMessage()), 422);
-        }
+        $order = $this->orders->createDraftPendingOrder(FoundationUser::id($user), $lines);
 
         $this->logHandledApiRequest($request, ['handler' => 'bet.orders.store', 'order_id' => $order->id]);
 
@@ -69,38 +55,20 @@ class BetOrderController extends Controller
 
     public function update(Request $request, int $id): JsonResponse
     {
-        try {
-            $user = $this->requireAuthenticatedUser($request);
-        } catch (FoundationAuthRequiredException $e) {
-            return $this->unauthorizedResponse($e);
-        }
+        $user = $this->requireAuthenticatedUser($request);
 
-        $validator = Validator::make($request->all(), [
+        $request->validate([
             'status' => 'required',
         ]);
-        if ($validator->fails()) {
-            return response()->json(ApiResponse::error(100, $validator->errors()->first()), 422);
-        }
 
         $raw = $request->input('status');
         if (! is_string($raw) && ! is_int($raw)) {
-            return response()->json(ApiResponse::error(100, 'Invalid status.'), 422);
+            throw new ValueError('Invalid status.');
         }
 
-        try {
-            $next = BetOrderStatus::fromClient($raw);
-        } catch (ValueError) {
-            return response()->json(ApiResponse::error(100, 'Invalid status.'), 422);
-        }
-
-        try {
-            $order = $this->orders->findForUser($id, FoundationUser::id($user));
-            $order = $this->orders->transitionStatus($order, $next);
-        } catch (ModelNotFoundException) {
-            return response()->json(ApiResponse::error(40401, 'Order not found.'), 404);
-        } catch (RuntimeException $e) {
-            return response()->json(ApiResponse::error(40001, $e->getMessage()), 422);
-        }
+        $next = BetOrderStatus::fromClient($raw);
+        $order = $this->orders->findForUser($id, FoundationUser::id($user));
+        $order = $this->orders->transitionStatus($order, $next);
 
         $this->logHandledApiRequest($request, ['handler' => 'bet.orders.update', 'order_id' => $id]);
 
@@ -109,11 +77,7 @@ class BetOrderController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        try {
-            $user = $this->requireAuthenticatedUser($request);
-        } catch (FoundationAuthRequiredException $e) {
-            return $this->unauthorizedResponse($e);
-        }
+        $user = $this->requireAuthenticatedUser($request);
 
         $perPage = min(50, max(1, (int) $request->query('per_page', 15)));
 
@@ -138,17 +102,9 @@ class BetOrderController extends Controller
 
     public function show(Request $request, int $id): JsonResponse
     {
-        try {
-            $user = $this->requireAuthenticatedUser($request);
-        } catch (FoundationAuthRequiredException $e) {
-            return $this->unauthorizedResponse($e);
-        }
+        $user = $this->requireAuthenticatedUser($request);
 
-        try {
-            $order = $this->orders->findForUser($id, FoundationUser::id($user));
-        } catch (ModelNotFoundException) {
-            return response()->json(ApiResponse::error(40401, 'Order not found.'), 404);
-        }
+        $order = $this->orders->findForUser($id, FoundationUser::id($user));
 
         $this->logHandledApiRequest($request, ['handler' => 'bet.orders.show', 'order_id' => $id]);
 
@@ -170,17 +126,6 @@ class BetOrderController extends Controller
         }
 
         return $this->foundationGateway->fetchCurrentUser($request);
-    }
-
-    private function unauthorizedResponse(FoundationAuthRequiredException $e): JsonResponse
-    {
-        return response()->json(
-            ApiResponse::error(
-                (int) config('bet_agg.foundation.unauthorized_code', 40101),
-                $e->getMessage()
-            ),
-            401
-        );
     }
 
     /**

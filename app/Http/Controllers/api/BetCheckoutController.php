@@ -13,11 +13,8 @@ use App\Services\mall\BetCheckoutService;
 use App\Services\mall\FoundationUser;
 use App\Services\mall\OrderCommandService;
 use App\Services\user\UserFoundationGateway;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
-use RuntimeException;
 
 class BetCheckoutController extends Controller
 {
@@ -29,35 +26,19 @@ class BetCheckoutController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        try {
-            $user = $this->requireAuthenticatedUser($request);
-        } catch (FoundationAuthRequiredException $e) {
-            return $this->unauthorizedResponse($e);
-        }
+        $user = $this->requireAuthenticatedUser($request);
 
-        $validator = Validator::make($request->all(), [
+        $request->validate([
             'order_id' => 'required|integer|min:1',
             'points_minor' => 'sometimes|integer|min:0',
         ]);
-        if ($validator->fails()) {
-            return response()->json(ApiResponse::error(100, $validator->errors()->first()), 422);
-        }
 
         $orderId = (int) $request->input('order_id');
         $pointsMinor = (int) $request->input('points_minor', 0);
         $uid = FoundationUser::id($user);
 
-        try {
-            $order = $this->orders->findForUser($orderId, $uid);
-        } catch (ModelNotFoundException) {
-            return response()->json(ApiResponse::error(40401, 'Order not found.'), 404);
-        }
-
-        try {
-            $result = $this->checkout->checkoutExistingOrder($uid, $order, $pointsMinor);
-        } catch (RuntimeException $e) {
-            return response()->json(ApiResponse::error(40001, $e->getMessage()), 422);
-        }
+        $order = $this->orders->findForUser($orderId, $uid);
+        $result = $this->checkout->checkoutExistingOrder($uid, $order, $pointsMinor);
 
         $order = $result['order'];
         $this->logHandledApiRequest($request, ['handler' => 'bet.checkout.store', 'order_id' => $order->id]);
@@ -81,17 +62,6 @@ class BetCheckoutController extends Controller
         }
 
         return $this->foundationGateway->fetchCurrentUser($request);
-    }
-
-    private function unauthorizedResponse(FoundationAuthRequiredException $e): JsonResponse
-    {
-        return response()->json(
-            ApiResponse::error(
-                (int) config('bet_agg.foundation.unauthorized_code', 40101),
-                $e->getMessage()
-            ),
-            401
-        );
     }
 
     /**

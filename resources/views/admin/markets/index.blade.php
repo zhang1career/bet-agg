@@ -6,15 +6,15 @@
     <div class="mall-list-toolbar d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
         <h2 class="h5 mb-0">Markets</h2>
         <div class="d-flex gap-2 flex-wrap align-items-center">
-            @if($filterEventId)
-                <a href="{{ route('admin.markets.index') }}" class="btn btn-outline-secondary btn-sm">Clear event filter</a>
+            @if($filterGameId)
+                <a href="{{ route('admin.markets.index') }}" class="btn btn-outline-secondary btn-sm">Clear game filter</a>
             @endif
-            <a href="{{ route('admin.markets.create', $filterEventId ? ['event_id' => $filterEventId] : []) }}" class="btn btn-primary btn-sm">New market</a>
+            <a href="{{ route('admin.markets.create', $filterGameId ? ['game_id' => $filterGameId] : []) }}" class="btn btn-primary btn-sm">New market</a>
         </div>
     </div>
 
-    @if($filterEventId)
-        <p class="text-muted small mb-3">Filtered by event #{{ $filterEventId }} · <a href="{{ route('admin.events.show', $filterEventId) }}">Open event</a></p>
+    @if($filterGameId)
+        <p class="text-muted small mb-3">Filtered by game #{{ $filterGameId }} · <a href="{{ route('admin.games.show', $filterGameId) }}">Open game</a></p>
     @endif
 
     <div class="mall-console-card card shadow-sm">
@@ -24,7 +24,7 @@
                     <thead>
                     <tr>
                         <th>ID</th>
-                        <th>Event</th>
+                        <th>Game</th>
                         <th>Type</th>
                         <th>Status</th>
                         <th class="text-end">Selections</th>
@@ -38,8 +38,7 @@
                                 <a href="{{ route('admin.markets.show', $m) }}" class="font-monospace">{{ $m->id }}</a>
                             </td>
                             <td>
-                                <a href="{{ route('admin.events.show', $m->event_id) }}">{{ $m->event->name ?? '—' }}</a>
-                                <span class="text-muted font-monospace">#{{ $m->event_id }}</span>
+                                <a href="{{ route('admin.games.show', $m->game_id) }}">Game #{{ $m->game_id }}</a>
                             </td>
                             <td>{{ $m->market_type->label() }} ({{ $m->market_type->value }})</td>
                             <td>

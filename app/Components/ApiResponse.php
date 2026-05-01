@@ -2,6 +2,8 @@
 
 namespace App\Components;
 
+use Paganini\Constants\ResponseConstant;
+
 class ApiResponse
 {
     /**
@@ -11,7 +13,7 @@ class ApiResponse
     {
         return [
             'data' => $data ?? '',
-            'errorCode' => 0,
+            'errorCode' => ResponseConstant::RET_OK,
             'message' => $msg,
             '_req_id' => $reqId,
         ];
