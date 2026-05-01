@@ -219,7 +219,12 @@
           "image_path": {
             "type": "string",
             "nullable": true,
-            "description": "Cover image from CMS when set"
+            "description": "CMS `main_media` OSS key"
+          },
+          "banner_path": {
+            "type": "string",
+            "nullable": true,
+            "description": "CMS `banner` OSS key"
           },
           "starts_at": {
             "type": "integer",
@@ -269,7 +274,12 @@
               "image_path": {
                 "type": "string",
                 "nullable": true,
-                "description": "Cover image path or URL from CMS when set"
+                "description": "CMS `main_media` OSS key"
+              },
+              "banner_path": {
+                "type": "string",
+                "nullable": true,
+                "description": "CMS `banner` OSS key"
               },
               "starts_at": {
                 "type": "integer"
@@ -326,7 +336,12 @@
               "image_path": {
                 "type": "string",
                 "nullable": true,
-                "description": "Cover image path or URL from CMS when set"
+                "description": "CMS `main_media` OSS key"
+              },
+              "banner_path": {
+                "type": "string",
+                "nullable": true,
+                "description": "CMS `banner` OSS key"
               },
               "starts_at": {
                 "type": "integer"

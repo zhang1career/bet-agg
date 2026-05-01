@@ -46,12 +46,7 @@ class AdminGameController extends Controller
             'status' => 'required|integer|in:1,2,3',
         ]);
 
-        $cmsPayload = [
-            'name' => $v['name'],
-            'starts_at' => (int) ($v['starts_at'] ?? 0),
-            'image_path' => (string) ($v['main_image_path'] ?? ''),
-            'banner_path' => (string) ($v['banner_path'] ?? ''),
-        ];
+        $cmsPayload = $this->cmsPayloadFromValidatedGameForm($v);
 
         try {
             $created = $this->cmsGameClient->create($cmsPayload);
@@ -72,8 +67,6 @@ class AdminGameController extends Controller
 
         $game = new SportGame([
             'raw_id' => $rawId,
-            'banner_path' => self::nullableOssPath($v['banner_path'] ?? null),
-            'main_image_path' => self::nullableOssPath($v['main_image_path'] ?? null),
             'status' => (int) $v['status'],
         ]);
         $game->save();
@@ -135,12 +128,7 @@ class AdminGameController extends Controller
         $v = $request->validate($rules);
 
         if ($cmsReachable) {
-            $cmsPayload = [
-                'name' => (string) $v['name'],
-                'starts_at' => (int) ($v['starts_at'] ?? 0),
-                'image_path' => (string) ($v['main_image_path'] ?? ''),
-                'banner_path' => (string) ($v['banner_path'] ?? ''),
-            ];
+            $cmsPayload = $this->cmsPayloadFromValidatedGameForm($v);
 
             try {
                 $this->cmsGameClient->update((int) $game->raw_id, $cmsPayload);
@@ -150,8 +138,6 @@ class AdminGameController extends Controller
         }
 
         $game->fill([
-            'banner_path' => self::nullableOssPath($v['banner_path'] ?? null),
-            'main_image_path' => self::nullableOssPath($v['main_image_path'] ?? null),
             'status' => (int) $v['status'],
         ]);
         $game->save();
@@ -182,14 +168,18 @@ class AdminGameController extends Controller
         return redirect()->route('admin.games.index')->with('status', 'Game deleted.');
     }
 
-    private static function nullableOssPath(mixed $value): ?string
+    /**
+     * @param  array<string, mixed>  $v  Validated request including form keys {@code banner_path} / {@code main_image_path}.
+     * @return array<string, mixed> Payload for {@see CmsGameClient} using CMS column names {@code banner} / {@code main_media}.
+     */
+    private function cmsPayloadFromValidatedGameForm(array $v): array
     {
-        if (! is_string($value)) {
-            return null;
-        }
-        $t = trim($value);
-
-        return $t === '' ? null : $t;
+        return [
+            'name' => (string) $v['name'],
+            'starts_at' => (int) ($v['starts_at'] ?? 0),
+            'banner' => (string) ($v['banner_path'] ?? ''),
+            'main_media' => (string) ($v['main_image_path'] ?? ''),
+        ];
     }
 
     private function cmsGameExistsForRemoteEdit(int $rawId): bool

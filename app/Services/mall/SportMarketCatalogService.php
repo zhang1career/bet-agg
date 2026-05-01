@@ -184,29 +184,22 @@ final class SportMarketCatalogService
 
         return [
             'id' => $id,
-            'name' => (string) ($cms['name'] ?? $cms['title'] ?? ''),
-            'image_path' => $this->cmsOptionalString($cms, ['thumbnail', 'image_path', 'cover', 'image']),
+            'name' => (string) ($cms['name'] ?? ''),
+            'image_path' => $this->cmsString($cms, 'main_media'),
+            'banner_path' => $this->cmsString($cms, 'banner'),
             'starts_at' => (int) ($cms['starts_at'] ?? 0),
             'status' => $status,
             'winning_selection_ids' => $local !== null ? ($local->winning_selection_ids ?? []) : [],
         ];
     }
 
-    /**
-     * @param  array<int, string>  $keys
-     */
-    private function cmsOptionalString(array $cms, array $keys): ?string
+    private function cmsString(array $cms, string $key): ?string
     {
-        foreach ($keys as $key) {
-            if (! array_key_exists($key, $cms) || $cms[$key] === null) {
-                continue;
-            }
-            $v = $cms[$key];
-
-            return is_string($v) ? $v : null;
+        if (! array_key_exists($key, $cms) || $cms[$key] === null) {
+            return null;
         }
 
-        return null;
+        return is_string($cms[$key]) ? $cms[$key] : null;
     }
 
     /**

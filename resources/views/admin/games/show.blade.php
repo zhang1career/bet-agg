@@ -28,7 +28,7 @@
                 <dt class="col-sm-3">Name (CMS)</dt>
                 <dd class="col-sm-9">
                     @if(is_array($cms_game))
-                        {{ $cms_game['name'] ?? $cms_game['title'] ?? '—' }}
+                        {{ $cms_game['name'] ?? '—' }}
                     @else
                         <span class="text-muted">—</span>
                     @endif
@@ -47,24 +47,28 @@
                         <span class="text-muted">CMS unavailable for raw_id {{ $game->raw_id }}</span>
                     @endif
                 </dd>
-                <dt class="col-sm-3">Banner</dt>
+                @php
+                    $cmsBanner = is_array($cms_game) ? ($cms_game['banner'] ?? null) : null;
+                    $cmsMain = is_array($cms_game) ? ($cms_game['main_media'] ?? null) : null;
+                @endphp
+                <dt class="col-sm-3">Banner (CMS)</dt>
                 <dd class="col-sm-9">
-                    @if(filled($game->banner_path))
-                        <code class="small text-break d-block mb-2">{{ $game->banner_path }}</code>
+                    @if(filled($cmsBanner))
+                        <code class="small text-break d-block mb-2">{{ $cmsBanner }}</code>
                         @if($cdnBase !== '')
-                            <img src="{{ $cdnBase.'/'.ltrim($game->banner_path, '/') }}" alt="Banner"
+                            <img src="{{ $cdnBase.'/'.ltrim($cmsBanner, '/') }}" alt="Banner"
                                  class="img-fluid rounded border" style="max-height: 180px">
                         @endif
                     @else
                         <span class="text-muted">—</span>
                     @endif
                 </dd>
-                <dt class="col-sm-3">Main image</dt>
+                <dt class="col-sm-3">Main image (CMS)</dt>
                 <dd class="col-sm-9">
-                    @if(filled($game->main_image_path))
-                        <code class="small text-break d-block mb-2">{{ $game->main_image_path }}</code>
+                    @if(filled($cmsMain))
+                        <code class="small text-break d-block mb-2">{{ $cmsMain }}</code>
                         @if($cdnBase !== '')
-                            <img src="{{ $cdnBase.'/'.ltrim($game->main_image_path, '/') }}" alt="Main"
+                            <img src="{{ $cdnBase.'/'.ltrim($cmsMain, '/') }}" alt="Main"
                                  class="img-fluid rounded border" style="max-height: 180px">
                         @endif
                     @else

@@ -7,17 +7,9 @@
         @csrf
         @method('PUT')
         <h2 class="h5 mb-3">Edit game</h2>
-        @if(is_array($cms_game))
+        @if(! is_array($cms_game))
             <p class="text-muted small">
-                @if((int) $game->id === (int) $game->raw_id)
-                    Id <span class="font-monospace">{{ $game->id }}</span> is fixed. Save updates CMS content and local betting fields.
-                @else
-                    Local id <span class="font-monospace">{{ $game->id }}</span> and CMS id <span class="font-monospace">{{ $game->raw_id }}</span> cannot be changed. Save updates both.
-                @endif
-            </p>
-        @else
-            <p class="text-muted small">
-                <strong class="text-warning">CMS record could not be loaded</strong> (check gateway or create this id in CMS). You can still save local status and image paths.
+                <strong class="text-warning">CMS record could not be loaded</strong> (check gateway or create this id in CMS). You can still save local betting status; media syncs to CMS when the record is available.
             </p>
         @endif
         @if($errors->has('cms'))
@@ -25,10 +17,10 @@
         @endif
         @php
             $cms = is_array($cms_game) ? $cms_game : [];
-            $cmsName = old('name', (string) ($cms['name'] ?? $cms['title'] ?? ''));
+            $cmsName = old('name', (string) ($cms['name'] ?? ''));
             $cmsStarts = old('starts_at', (int) ($cms['starts_at'] ?? 0));
-            $defBanner = (string) ($game->banner_path ?? $cms['banner_path'] ?? '');
-            $defMain = (string) ($game->main_image_path ?? $cms['image_path'] ?? $cms['thumbnail'] ?? '');
+            $defBanner = (string) ($cms['banner'] ?? '');
+            $defMain = (string) ($cms['main_media'] ?? '');
         @endphp
         @if(is_array($cms_game))
             <div class="mb-3">

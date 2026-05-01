@@ -104,7 +104,7 @@ final readonly class CmsGameClient
     }
 
     /**
-     * @param  array<string, mixed>  $fields  Keys must match the CMS game content type columns (e.g. name, starts_at, image_path, banner_path).
+     * @param  array<string, mixed>  $fields  Keys must match the CMS game type columns (e.g. name, starts_at, banner, main_media), like {@see CmsProductClient}.
      * @return array<string, mixed>
      *
      * @throws ConnectionException
@@ -182,7 +182,7 @@ final readonly class CmsGameClient
     private function filterGamePayload(array $fields): array
     {
         $out = [];
-        foreach (['name', 'title', 'image_path', 'thumbnail', 'banner_path'] as $key) {
+        foreach (['name', 'banner', 'main_media'] as $key) {
             if (! array_key_exists($key, $fields)) {
                 continue;
             }

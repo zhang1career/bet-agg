@@ -10,11 +10,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * Local betting state linked to CMS {@code GET /api/cms/game/{raw_id}} via {@see $raw_id}.
+ * Banner / main image are CMS fields {@code banner} and {@code main_media}, not stored here.
  *
  * @property int $id Local surrogate primary key
  * @property int $raw_id External/CMS game identifier (unique)
- * @property string|null $banner_path OSS object key for banner image
- * @property string|null $main_image_path OSS object key for main image
  * @property int $status 1 open, 2 closed, 3 settled
  * @property list<int>|null $winning_selection_ids JSON when settled
  * @property int $ct
@@ -36,8 +35,6 @@ class SportGame extends Model
 
     protected $fillable = [
         'raw_id',
-        'banner_path',
-        'main_image_path',
         'status',
         'winning_selection_ids',
         'ct',

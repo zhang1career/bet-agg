@@ -3,6 +3,8 @@
 namespace Tests;
 
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
+use Illuminate\Http\Client\Request;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 
 abstract class TestCase extends BaseTestCase
@@ -12,8 +14,8 @@ abstract class TestCase extends BaseTestCase
      */
     final protected static function cmsGatewayGameFakes(): array
     {
-        /** @var callable(\Illuminate\Http\Client\Request): \Illuminate\Http\Client\Response $handler */
-        $handler = function (\Illuminate\Http\Client\Request $request) {
+        /** @var callable(Request): Response $handler */
+        $handler = function (Request $request) {
             if (preg_match('#/api/cms/game/(\\d+)$#', $request->url(), $m)) {
                 $id = (int) $m[1];
                 if ($id === 9_999_991) {
@@ -24,7 +26,8 @@ abstract class TestCase extends BaseTestCase
                     'data' => [
                         'id' => $id,
                         'name' => 'CMS game '.$id,
-                        'image_path' => 'cms/cover.png',
+                        'banner' => 'cms/banner.png',
+                        'main_media' => 'cms/cover.png',
                         'starts_at' => 1_700_000_000_000,
                     ],
                 ], 200);
