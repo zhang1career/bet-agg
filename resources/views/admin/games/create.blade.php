@@ -1,16 +1,27 @@
 @extends('layouts.app')
 
-@section('title', 'Register game')
+@section('title', 'Create game')
 
 @section('content')
-    <form method="post" action="{{ route('admin.games.store') }}" class="bg-white shadow-sm p-4 rounded" style="max-width: 560px;">
+    <form method="post" action="{{ route('admin.games.store') }}" class="bg-white shadow-sm p-4 rounded" style="max-width: 640px;">
         @csrf
-        <h2 class="h5 mb-3">Register game</h2>
-        <p class="text-muted small">Set <code>raw_id</code> to the same numeric id as in CMS (<code>/api/cms/game/{raw_id}</code>). This app stores a separate local row id for markets.</p>
+        <h2 class="h5 mb-3">Create game</h2>
+        <p class="text-muted small">Creates the record in CMS (<code>POST /api/cms/game</code>), then registers local betting state. <code>raw_id</code> is the CMS-assigned id.</p>
+        @if($errors->has('cms'))
+            <div class="alert alert-danger">{{ $errors->first('cms') }}</div>
+        @endif
         <div class="mb-3">
-            <label class="form-label" for="raw_id">Raw id (CMS game id)</label>
-            <input type="number" name="raw_id" id="raw_id" class="form-control" required min="1" value="{{ old('raw_id') }}">
+            <label class="form-label" for="name">Name</label>
+            <input type="text" name="name" id="name" class="form-control" required maxlength="500" value="{{ old('name') }}">
         </div>
+        <div class="mb-3">
+            <label class="form-label" for="starts_at">Starts at (Unix ms)</label>
+            <input type="number" name="starts_at" id="starts_at" class="form-control" min="0" value="{{ old('starts_at', 0) }}">
+        </div>
+        @include('admin.games.partials.media-upload', [
+            'banner_path' => old('banner_path', ''),
+            'main_image_path' => old('main_image_path', ''),
+        ])
         <div class="mb-3">
             <label class="form-label" for="status">Status</label>
             <select name="status" id="status" class="form-select" required>

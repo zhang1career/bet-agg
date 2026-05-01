@@ -13,6 +13,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  *
  * @property int $id Local surrogate primary key
  * @property int $raw_id External/CMS game identifier (unique)
+ * @property string|null $banner_path OSS object key for banner image
+ * @property string|null $main_image_path OSS object key for main image
  * @property int $status 1 open, 2 closed, 3 settled
  * @property list<int>|null $winning_selection_ids JSON when settled
  * @property int $ct
@@ -32,7 +34,15 @@ class SportGame extends Model
 
     protected $table = 'biz_game';
 
-    protected $fillable = ['raw_id', 'status', 'winning_selection_ids', 'ct', 'ut'];
+    protected $fillable = [
+        'raw_id',
+        'banner_path',
+        'main_image_path',
+        'status',
+        'winning_selection_ids',
+        'ct',
+        'ut',
+    ];
 
     protected $casts = [
         'id' => 'integer',

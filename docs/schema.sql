@@ -4,13 +4,15 @@ USE `bet_agg`;
 CREATE TABLE IF NOT EXISTS `biz_game` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `raw_id` bigint unsigned NOT NULL COMMENT '外部/CMS game 主键，对应 /api/cms/game/{raw_id}',
+  `banner_path` varchar(2000) DEFAULT NULL COMMENT 'OSS object key（横幅）',
+  `main_image_path` varchar(2000) DEFAULT NULL COMMENT 'OSS object key（主图）',
   `status` tinyint unsigned NOT NULL DEFAULT '1' COMMENT '1 open, 2 closed, 3 settled',
   `winning_selection_ids` text DEFAULT NULL COMMENT 'JSON 编码的获胜选项 ID 列表',
   `ct` bigint unsigned NOT NULL DEFAULT '0',
   `ut` bigint unsigned NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uni_biz_game_raw_id` (`raw_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='本地博彩状态；`game_id` 关联本表 id；展示字段来自 CMS';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='本地博彩状态；盘口 game_id 关联本表 id';
 
 CREATE TABLE IF NOT EXISTS `biz_market` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,

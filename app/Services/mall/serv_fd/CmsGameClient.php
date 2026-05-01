@@ -6,6 +6,7 @@ namespace App\Services\mall\serv_fd;
 
 use App\Services\api_gw\ResolvedApiGatewayBaseUrl;
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Paganini\Aggregation\Exceptions\DownstreamServiceException;
 use Paganini\Aggregation\Support\DownstreamPayload;
@@ -13,7 +14,9 @@ use RuntimeException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
- * CMS content API client for games (e.g. {@code /api/cms/game/}), analogous to mall {@see CmsProductClient}.
+ * CMS content API client for games (e.g. {@code POST/PUT /api/cms/game}), analogous to mall {@see CmsProductClient}.
+ *
+ * @see https://github.com/... api_cms.json — dynamic columns per content type; write keys must match CMS {@code fields.columns}.
  */
 final readonly class CmsGameClient
 {
@@ -100,6 +103,68 @@ final readonly class CmsGameClient
         return DownstreamPayload::extractData($response->json(), 'cms game detail');
     }
 
+    /**
+     * @param  array<string, mixed>  $fields  Keys must match the CMS game content type columns (e.g. name, starts_at, image_path, banner_path).
+     * @return array<string, mixed>
+     *
+     * @throws ConnectionException
+     */
+    public function create(array $fields): array
+    {
+        $response = Http::timeout($this->timeoutSeconds)
+            ->acceptJson()
+            ->asJson()
+            ->post($this->listUrl(), $this->filterGamePayload($fields));
+
+        return $this->unwrapWriteResponse($response, 'cms game create', [200, 201]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $fields
+     * @return array<string, mixed>
+     *
+     * @throws ConnectionException
+     */
+    public function update(int $id, array $fields): array
+    {
+        $response = Http::timeout($this->timeoutSeconds)
+            ->acceptJson()
+            ->asJson()
+            ->put($this->itemUrl($id), $this->filterGamePayload($fields));
+
+        return $this->unwrapWriteResponse($response, 'cms game update', [200]);
+    }
+
+    /**
+     * @throws ConnectionException
+     */
+    public function delete(int $id): void
+    {
+        $response = Http::timeout($this->timeoutSeconds)
+            ->acceptJson()
+            ->delete($this->itemUrl($id));
+
+        if ($response->status() === 404) {
+            throw new DownstreamServiceException('CMS game not found: '.$id);
+        }
+
+        if (! $response->successful()) {
+            throw new DownstreamServiceException(
+                sprintf('CMS game delete failed with HTTP %d.', $response->status())
+            );
+        }
+
+        $json = $response->json();
+        if (! is_array($json)) {
+            throw new DownstreamServiceException('Invalid CMS game delete payload.');
+        }
+        if ((int) ($json['errorCode'] ?? -1) !== 0) {
+            $message = (string) ($json['message'] ?? 'downstream error');
+
+            throw new DownstreamServiceException('CMS game delete error: '.$message);
+        }
+    }
+
     private function listUrl(): string
     {
         return $this->baseUrl.$this->contentRoute;
@@ -108,5 +173,76 @@ final readonly class CmsGameClient
     private function itemUrl(int $id): string
     {
         return $this->baseUrl.$this->contentRoute.'/'.$id;
+    }
+
+    /**
+     * @param  array<string, mixed>  $fields
+     * @return array<string, mixed>
+     */
+    private function filterGamePayload(array $fields): array
+    {
+        $out = [];
+        foreach (['name', 'title', 'image_path', 'thumbnail', 'banner_path'] as $key) {
+            if (! array_key_exists($key, $fields)) {
+                continue;
+            }
+            $value = $fields[$key];
+            if ($value === null) {
+                continue;
+            }
+            if (! is_string($value)) {
+                throw new RuntimeException('Field '.$key.' must be a string.');
+            }
+            $out[$key] = $value;
+        }
+        if (array_key_exists('starts_at', $fields) && $fields['starts_at'] !== null) {
+            $v = $fields['starts_at'];
+            if (! is_int($v)) {
+                throw new RuntimeException('Field starts_at must be an integer.');
+            }
+            $out['starts_at'] = $v;
+        }
+
+        return $out;
+    }
+
+    /**
+     * @param  list<int>  $successStatuses
+     * @return array<string, mixed>
+     */
+    private function unwrapWriteResponse(Response $response, string $label, array $successStatuses): array
+    {
+        $status = $response->status();
+        if (! in_array($status, $successStatuses, true)) {
+            throw new DownstreamServiceException(
+                sprintf('%s failed with HTTP %d.', $label, $status)
+            );
+        }
+
+        $json = $response->json();
+        if (! is_array($json)) {
+            throw new DownstreamServiceException('Invalid JSON from '.$label);
+        }
+
+        if ((int) ($json['errorCode'] ?? -1) === 100) {
+            $message = (string) ($json['message'] ?? 'validation failed');
+            $data = $json['data'] ?? null;
+            if (is_array($data)) {
+                $first = '';
+                foreach ($data as $k => $v) {
+                    if (is_string($v)) {
+                        $first = $k.': '.$v;
+                        break;
+                    }
+                }
+                if ($first !== '') {
+                    $message = $first;
+                }
+            }
+
+            throw new DownstreamServiceException($label.' validation: '.$message);
+        }
+
+        return DownstreamPayload::extractData($json, $label);
     }
 }

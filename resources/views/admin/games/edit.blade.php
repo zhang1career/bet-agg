@@ -3,11 +3,54 @@
 @section('title', 'Edit game #'.$game->id)
 
 @section('content')
-    <form method="post" action="{{ route('admin.games.update', $game) }}" class="bg-white shadow-sm p-4 rounded" style="max-width: 560px;">
+    <form method="post" action="{{ route('admin.games.update', $game) }}" class="bg-white shadow-sm p-4 rounded" style="max-width: 640px;">
         @csrf
         @method('PUT')
         <h2 class="h5 mb-3">Edit game</h2>
-        <p class="text-muted small">Local id <span class="font-monospace">{{ $game->id }}</span> and raw id <span class="font-monospace">{{ $game->raw_id }}</span> are fixed; change status only here.</p>
+        @if(is_array($cms_game))
+            <p class="text-muted small">
+                @if((int) $game->id === (int) $game->raw_id)
+                    Id <span class="font-monospace">{{ $game->id }}</span> is fixed. Save updates CMS content and local betting fields.
+                @else
+                    Local id <span class="font-monospace">{{ $game->id }}</span> and CMS id <span class="font-monospace">{{ $game->raw_id }}</span> cannot be changed. Save updates both.
+                @endif
+            </p>
+        @else
+            <p class="text-muted small">
+                <strong class="text-warning">CMS record could not be loaded</strong> (check gateway or create this id in CMS). You can still save local status and image paths.
+            </p>
+        @endif
+        @if($errors->has('cms'))
+            <div class="alert alert-danger">{{ $errors->first('cms') }}</div>
+        @endif
+        @php
+            $cms = is_array($cms_game) ? $cms_game : [];
+            $cmsName = old('name', (string) ($cms['name'] ?? $cms['title'] ?? ''));
+            $cmsStarts = old('starts_at', (int) ($cms['starts_at'] ?? 0));
+            $defBanner = (string) ($game->banner_path ?? $cms['banner_path'] ?? '');
+            $defMain = (string) ($game->main_image_path ?? $cms['image_path'] ?? $cms['thumbnail'] ?? '');
+        @endphp
+        @if(is_array($cms_game))
+            <div class="mb-3">
+                <label class="form-label" for="name">Name (CMS)</label>
+                <input type="text" name="name" id="name" class="form-control" required maxlength="500" value="{{ $cmsName }}">
+            </div>
+            <div class="mb-3">
+                <label class="form-label" for="starts_at">Starts at (Unix ms, CMS)</label>
+                <input type="number" name="starts_at" id="starts_at" class="form-control" min="0" value="{{ $cmsStarts }}">
+            </div>
+        @else
+            <div class="mb-3">
+                <span class="form-label d-block">Name / starts at (CMS)</span>
+                <p class="text-muted small mb-1">Not loaded. Fix CMS or gateway for <span class="font-monospace">{{ $game->raw_id }}</span> to sync these fields.</p>
+                <input type="hidden" name="name" value="">
+                <input type="hidden" name="starts_at" value="0">
+            </div>
+        @endif
+        @include('admin.games.partials.media-upload', [
+            'banner_path' => old('banner_path', $defBanner),
+            'main_image_path' => old('main_image_path', $defMain),
+        ])
         <div class="mb-3">
             <label class="form-label" for="status">Status</label>
             <select name="status" id="status" class="form-select" required>

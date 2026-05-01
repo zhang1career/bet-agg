@@ -5,10 +5,10 @@
 @section('content')
     <div class="mall-list-toolbar d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
         <h2 class="h5 mb-0">Games (local betting state)</h2>
-        <a href="{{ route('admin.games.create') }}" class="btn btn-primary btn-sm">Register game</a>
+        <a href="{{ route('admin.games.create') }}" class="btn btn-primary btn-sm">新建</a>
     </div>
 
-    <p class="text-muted small">Local <code>biz_game.id</code> for markets; <code>raw_id</code> is the external/CMS record key. Names and images come from CMS.</p>
+    <p class="text-muted small">Local <code>biz_game.id</code> for markets; <code>raw_id</code> is the CMS record id (create/update uses CMS API). Names and primary times live in CMS.</p>
 
     <div class="mall-console-card card shadow-sm">
         <div class="card-body p-0">

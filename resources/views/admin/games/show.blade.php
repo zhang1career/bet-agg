@@ -16,6 +16,8 @@
         <div class="alert alert-danger">{{ $errors->first('delete') }}</div>
     @endif
 
+    @php $cdnBase = rtrim((string) config('services.cloudfront.domain'), '/'); @endphp
+
     <div class="mall-console-card card shadow-sm mb-4">
         <div class="card-body">
             <dl class="row mb-0">
@@ -23,6 +25,52 @@
                 <dd class="col-sm-9 font-monospace">{{ $game->id }}</dd>
                 <dt class="col-sm-3">Raw id (CMS)</dt>
                 <dd class="col-sm-9 font-monospace">{{ $game->raw_id }}</dd>
+                <dt class="col-sm-3">Name (CMS)</dt>
+                <dd class="col-sm-9">
+                    @if(is_array($cms_game))
+                        {{ $cms_game['name'] ?? $cms_game['title'] ?? '—' }}
+                    @else
+                        <span class="text-muted">—</span>
+                    @endif
+                </dd>
+                <dt class="col-sm-3">Starts at (CMS)</dt>
+                <dd class="col-sm-9">
+                    @if(is_array($cms_game))
+                        @php $cmsStarts = (int) ($cms_game['starts_at'] ?? 0); @endphp
+                        @if($cmsStarts > 0)
+                            {{ \App\Support\MillisTimestampDisplay::format($cmsStarts) }}
+                            <span class="text-muted small font-monospace">({{ $cmsStarts }} ms)</span>
+                        @else
+                            <span class="text-muted">—</span>
+                        @endif
+                    @else
+                        <span class="text-muted">CMS unavailable for raw_id {{ $game->raw_id }}</span>
+                    @endif
+                </dd>
+                <dt class="col-sm-3">Banner</dt>
+                <dd class="col-sm-9">
+                    @if(filled($game->banner_path))
+                        <code class="small text-break d-block mb-2">{{ $game->banner_path }}</code>
+                        @if($cdnBase !== '')
+                            <img src="{{ $cdnBase.'/'.ltrim($game->banner_path, '/') }}" alt="Banner"
+                                 class="img-fluid rounded border" style="max-height: 180px">
+                        @endif
+                    @else
+                        <span class="text-muted">—</span>
+                    @endif
+                </dd>
+                <dt class="col-sm-3">Main image</dt>
+                <dd class="col-sm-9">
+                    @if(filled($game->main_image_path))
+                        <code class="small text-break d-block mb-2">{{ $game->main_image_path }}</code>
+                        @if($cdnBase !== '')
+                            <img src="{{ $cdnBase.'/'.ltrim($game->main_image_path, '/') }}" alt="Main"
+                                 class="img-fluid rounded border" style="max-height: 180px">
+                        @endif
+                    @else
+                        <span class="text-muted">—</span>
+                    @endif
+                </dd>
                 <dt class="col-sm-3">Status</dt>
                 <dd class="col-sm-9">
                     @include('admin.partials.sport_status_label', ['kind' => 'game', 'value' => $game->status])
