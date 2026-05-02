@@ -266,6 +266,60 @@
         applyState();
     }
 
+    /**
+     * List → detail navigation: use history.back when referrer is the list path; otherwise location.replace(fallback).
+     * Same contract as service_foundation app_console main.js returnToList.
+     */
+    window.returnToList = function (fallbackUrl) {
+        var fallback = String(fallbackUrl || '').trim() || '/';
+        var here;
+        try {
+            here = new URL(window.location.href);
+        } catch (e) {
+            window.location.replace(fallback);
+            return false;
+        }
+        var fall;
+        try {
+            fall = new URL(fallback, window.location.origin);
+        } catch (e) {
+            window.location.replace(fallback);
+            return false;
+        }
+        function normPath(p) {
+            var s = p && p !== '/' ? String(p) : '/';
+            if (s.length > 1) {
+                s = s.replace(/\/+$/, '');
+            }
+            return s || '/';
+        }
+        if (!document.referrer) {
+            window.location.replace(fallback);
+            return false;
+        }
+        var ref;
+        try {
+            ref = new URL(document.referrer);
+        } catch (e) {
+            window.location.replace(fallback);
+            return false;
+        }
+        if (ref.origin !== window.location.origin) {
+            window.location.replace(fallback);
+            return false;
+        }
+        if (normPath(ref.pathname) === normPath(here.pathname) && ref.search === here.search) {
+            window.location.replace(fallback);
+            return false;
+        }
+        if (normPath(ref.pathname) === normPath(fall.pathname) && window.history.length > 1) {
+            window.history.back();
+            return false;
+        }
+        window.location.replace(fallback);
+        return false;
+    };
+
     document.addEventListener('DOMContentLoaded', function () {
         initTheme();
         initSidebar();

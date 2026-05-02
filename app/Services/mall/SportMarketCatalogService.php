@@ -184,7 +184,7 @@ final class SportMarketCatalogService
 
         return [
             'id' => $id,
-            'name' => (string) ($cms['name'] ?? ''),
+            'name' => (string) ($cms['title'] ?? ''),
             'image_path' => $this->cmsString($cms, 'main_media'),
             'banner_path' => $this->cmsString($cms, 'banner'),
             'starts_at' => (int) ($cms['starts_at'] ?? 0),

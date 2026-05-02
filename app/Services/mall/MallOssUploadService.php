@@ -17,9 +17,7 @@ use Throwable;
  */
 final readonly class MallOssUploadService
 {
-    public function __construct(private ResolvedApiGatewayBaseUrl $resolvedFoundationBaseUrl)
-    {
-    }
+    public function __construct(private ResolvedApiGatewayBaseUrl $resolvedFoundationBaseUrl) {}
 
     /**
      * @return non-empty-string OSS object key (e.g. bet/uploads/{uuid}.jpg)
@@ -28,12 +26,14 @@ final readonly class MallOssUploadService
     {
         $prefix = trim((string) config('bet_upload.prefix'), '/');
         if ($prefix === '') {
-            $prefix = 'bet/uploads';
+            throw new RuntimeException(
+                'OSS upload prefix is missing: set BET_UPLOAD_PREFIX.'
+            );
         }
 
         $extension = $uploadedFile->getClientOriginalExtension() ?: $uploadedFile->extension() ?: 'bin';
-        $pathId = (string)Str::uuid();
-        $objectKey = $prefix . '/' . $pathId . '.' . $extension;
+        $pathId = (string) Str::uuid();
+        $objectKey = $prefix.'/'.$pathId.'.'.$extension;
 
         $base = $this->resolvedFoundationBaseUrl->resolvePathSuffix('/api/oss');
         $bucket = trim((string) config('bet_upload.oss_bucket'), '/');
@@ -45,7 +45,7 @@ final readonly class MallOssUploadService
         }
 
         $encodedKey = $this->encodeObjectKeyForUrl($objectKey);
-        $uploadUrl = $base . '/' . $bucket . '/' . $encodedKey;
+        $uploadUrl = $base.'/'.$bucket.'/'.$encodedKey;
 
         $mime = $uploadedFile->getMimeType() ?: 'application/octet-stream';
         $path = $uploadedFile->getRealPath();
@@ -66,7 +66,7 @@ final readonly class MallOssUploadService
                 ->withBody($stream, $mime)
                 ->put($uploadUrl);
         } catch (Throwable $e) {
-            throw new RuntimeException('OSS upload request failed: ' . $e->getMessage(), 0, $e);
+            throw new RuntimeException('OSS upload request failed: '.$e->getMessage(), 0, $e);
         } finally {
             if (is_resource($stream)) {
                 fclose($stream);
@@ -91,6 +91,6 @@ final readonly class MallOssUploadService
     {
         $segments = explode('/', $objectKey);
 
-        return implode('/', array_map(static fn(string $s): string => rawurlencode($s), $segments));
+        return implode('/', array_map(static fn (string $s): string => rawurlencode($s), $segments));
     }
 }

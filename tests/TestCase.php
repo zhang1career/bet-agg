@@ -25,7 +25,7 @@ abstract class TestCase extends BaseTestCase
                 return Http::response([
                     'data' => [
                         'id' => $id,
-                        'name' => 'CMS game '.$id,
+                        'title' => 'CMS game '.$id,
                         'banner' => 'cms/banner.png',
                         'main_media' => 'cms/cover.png',
                         'starts_at' => 1_700_000_000_000,

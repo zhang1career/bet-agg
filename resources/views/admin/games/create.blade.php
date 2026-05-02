@@ -14,10 +14,7 @@
             <label class="form-label" for="name">Name</label>
             <input type="text" name="name" id="name" class="form-control" required maxlength="500" value="{{ old('name') }}">
         </div>
-        <div class="mb-3">
-            <label class="form-label" for="starts_at">Starts at (Unix ms)</label>
-            <input type="number" name="starts_at" id="starts_at" class="form-control" min="0" value="{{ old('starts_at', 0) }}">
-        </div>
+        @include('admin.games.partials.starts-at-field', ['startsAtMs' => (int) old('starts_at', 0)])
         @include('admin.games.partials.media-upload', [
             'banner_path' => old('banner_path', ''),
             'main_image_path' => old('main_image_path', ''),

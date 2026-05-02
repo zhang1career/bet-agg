@@ -170,12 +170,12 @@ class AdminGameController extends Controller
 
     /**
      * @param  array<string, mixed>  $v  Validated request including form keys {@code banner_path} / {@code main_image_path}.
-     * @return array<string, mixed> Payload for {@see CmsGameClient} using CMS column names {@code banner} / {@code main_media}.
+     * @return array<string, mixed> Payload for {@see CmsGameClient} ({@code title} / {@code banner} / {@code main_media}).
      */
     private function cmsPayloadFromValidatedGameForm(array $v): array
     {
         return [
-            'name' => (string) $v['name'],
+            'title' => (string) $v['name'],
             'starts_at' => (int) ($v['starts_at'] ?? 0),
             'banner' => (string) ($v['banner_path'] ?? ''),
             'main_media' => (string) ($v['main_image_path'] ?? ''),

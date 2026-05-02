@@ -3,12 +3,16 @@
 @section('title', 'Game #'.$game->id)
 
 @section('content')
+    @include('admin.includes.detail_back_link', [
+        'backUrl' => route('admin.games.index'),
+        'backLabel' => '返回游戏列表',
+    ])
+
     <div class="mall-list-toolbar d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
         <h2 class="h5 mb-0">Game #{{ $game->id }}</h2>
         <div class="d-flex gap-2 flex-wrap">
             <a href="{{ route('admin.markets.create', ['game_id' => $game->id]) }}" class="btn btn-primary btn-sm">New market</a>
             <a href="{{ route('admin.games.edit', $game) }}" class="btn btn-outline-primary btn-sm">Edit</a>
-            <a href="{{ route('admin.games.index') }}" class="btn btn-outline-secondary btn-sm">Back to list</a>
         </div>
     </div>
 
@@ -28,7 +32,7 @@
                 <dt class="col-sm-3">Name (CMS)</dt>
                 <dd class="col-sm-9">
                     @if(is_array($cms_game))
-                        {{ $cms_game['name'] ?? '—' }}
+                        {{ $cms_game['title'] ?? '—' }}
                     @else
                         <span class="text-muted">—</span>
                     @endif

@@ -33,8 +33,11 @@
             'use strict';
 
             var uploadUrl = @json(route('admin.uploads.store'));
-            var meta = document.querySelector('meta[name="csrf-token"]');
-            var csrf = meta ? meta.getAttribute('content') : '';
+
+            function csrfFromMeta() {
+                var m = document.querySelector('meta[name="csrf-token"]');
+                return m ? (m.getAttribute('content') || '') : '';
+            }
 
             function showErr(id, msg) {
                 var el = document.getElementById(id);
@@ -46,7 +49,13 @@
             }
 
             function uploadOne(file) {
+                var csrf = csrfFromMeta();
+                if (!csrf) {
+                    return Promise.reject(new Error('Missing CSRF token; refresh the page and try again.'));
+                }
+
                 var fd = new FormData();
+                fd.append('_token', csrf);
                 fd.append('file', file);
                 return fetch(uploadUrl, {
                     method: 'POST',

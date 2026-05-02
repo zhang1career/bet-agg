@@ -69,7 +69,7 @@ final readonly class OrderCommandService
             if ($rawId > 0) {
                 try {
                     $cmsRow = $this->cms->find($rawId);
-                    $gameName = (string) ($cmsRow['name'] ?? $cmsRow['title'] ?? '');
+                    $gameName = (string) ($cmsRow['title'] ?? '');
                 } catch (DownstreamServiceException|NotFoundHttpException) {
                     $gameName = '';
                 }

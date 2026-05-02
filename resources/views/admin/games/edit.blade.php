@@ -17,7 +17,7 @@
         @endif
         @php
             $cms = is_array($cms_game) ? $cms_game : [];
-            $cmsName = old('name', (string) ($cms['name'] ?? ''));
+            $cmsName = old('name', (string) ($cms['title'] ?? ''));
             $cmsStarts = old('starts_at', (int) ($cms['starts_at'] ?? 0));
             $defBanner = (string) ($cms['banner'] ?? '');
             $defMain = (string) ($cms['main_media'] ?? '');
@@ -27,10 +27,7 @@
                 <label class="form-label" for="name">Name (CMS)</label>
                 <input type="text" name="name" id="name" class="form-control" required maxlength="500" value="{{ $cmsName }}">
             </div>
-            <div class="mb-3">
-                <label class="form-label" for="starts_at">Starts at (Unix ms, CMS)</label>
-                <input type="number" name="starts_at" id="starts_at" class="form-control" min="0" value="{{ $cmsStarts }}">
-            </div>
+            @include('admin.games.partials.starts-at-field', ['startsAtMs' => $cmsStarts])
         @else
             <div class="mb-3">
                 <span class="form-label d-block">Name / starts at (CMS)</span>
