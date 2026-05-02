@@ -59,12 +59,14 @@ final readonly class MallOssUploadService
         }
 
         try {
-            $response = Http::timeout(120)
-                ->withHeaders([
-                    'Accept' => '*/*',
-                ])
-                ->withBody($stream, $mime)
-                ->put($uploadUrl);
+            $request = Http::timeout(120)->withHeaders([
+                'Accept' => '*/*',
+            ]);
+            $gatewayBearer = (string) config('bet_upload.gateway_bearer_token', '');
+            if ($gatewayBearer !== '') {
+                $request = $request->withToken($gatewayBearer);
+            }
+            $response = $request->withBody($stream, $mime)->put($uploadUrl);
         } catch (Throwable $e) {
             throw new RuntimeException('OSS upload request failed: '.$e->getMessage(), 0, $e);
         } finally {
@@ -73,11 +75,12 @@ final readonly class MallOssUploadService
             }
         }
 
-        if ($response->status() !== 200) {
+        $status = $response->status();
+        if (! in_array($status, [200, 204], true)) {
             $preview = mb_substr($response->body(), 0, 500);
 
             throw new RuntimeException(
-                sprintf('OSS upload rejected: HTTP %d. %s', $response->status(), $preview)
+                sprintf('OSS upload rejected: HTTP %d. %s', $status, $preview)
             );
         }
 
