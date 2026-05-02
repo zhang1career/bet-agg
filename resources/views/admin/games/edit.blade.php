@@ -24,13 +24,13 @@
         @endphp
         @if(is_array($cms_game))
             <div class="mb-3">
-                <label class="form-label" for="name">Name (CMS)</label>
+                <label class="form-label" for="name">Title (CMS)</label>
                 <input type="text" name="name" id="name" class="form-control" required maxlength="500" value="{{ $cmsName }}">
             </div>
             @include('admin.games.partials.starts-at-field', ['startsAtMs' => $cmsStarts])
         @else
             <div class="mb-3">
-                <span class="form-label d-block">Name / starts at (CMS)</span>
+                <span class="form-label d-block">Title / starts at (CMS)</span>
                 <p class="text-muted small mb-1">Not loaded. Fix CMS or gateway for <span class="font-monospace">{{ $game->raw_id }}</span> to sync these fields.</p>
                 <input type="hidden" name="name" value="">
                 <input type="hidden" name="starts_at" value="0">

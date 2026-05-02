@@ -11,29 +11,28 @@ use Illuminate\Support\Str;
 use RuntimeException;
 use Throwable;
 
-/**
- * Uploads files to the foundation OSS API (HTTP PUT), same mechanism as Django
- * app_user.services.avatar_storage_service (HTTP PUT to /api/oss/{bucket}/{key}).
- */
+/** Foundation OSS: HTTP PUT {@code /api/oss/{bucket}/{key}} (same idea as Django avatar_storage_service). */
 final readonly class MallOssUploadService
 {
+    /** @var list<string> */
+    public const GAME_MEDIA_SEGMENTS = ['banner', 'main_media'];
+
     public function __construct(private ResolvedApiGatewayBaseUrl $resolvedFoundationBaseUrl) {}
 
     /**
-     * @return non-empty-string OSS object key (e.g. bet/uploads/{uuid}.jpg)
+     * Object key {@code {segment}/{uuid}.ext}; {@code segment} must be in {@see self::GAME_MEDIA_SEGMENTS}.
+     *
+     * @return non-empty-string
      */
-    public function uploadProductFile(UploadedFile $uploadedFile): string
+    public function uploadGameMediaFile(UploadedFile $uploadedFile, string $segment): string
     {
-        $prefix = trim((string) config('bet_upload.prefix'), '/');
-        if ($prefix === '') {
-            throw new RuntimeException(
-                'OSS upload prefix is missing: set BET_UPLOAD_PREFIX.'
-            );
+        if (! in_array($segment, self::GAME_MEDIA_SEGMENTS, true)) {
+            throw new RuntimeException('Invalid game media segment.');
         }
 
         $extension = $uploadedFile->getClientOriginalExtension() ?: $uploadedFile->extension() ?: 'bin';
         $pathId = (string) Str::uuid();
-        $objectKey = $prefix.'/'.$pathId.'.'.$extension;
+        $objectKey = $segment.'/'.$pathId.'.'.$extension;
 
         $base = $this->resolvedFoundationBaseUrl->resolvePathSuffix('/api/oss');
         $bucket = trim((string) config('bet_upload.oss_bucket'), '/');

@@ -9,6 +9,7 @@ use App\Services\mall\MallOssUploadService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Validation\Rule;
 use RuntimeException;
 
 final class AdminUploadController extends Controller
@@ -45,10 +46,14 @@ final class AdminUploadController extends Controller
 
         $validated = $request->validate([
             'file' => ['required', 'file', 'image', 'max:102400'],
+            'upload_kind' => ['required', 'string', Rule::in(MallOssUploadService::GAME_MEDIA_SEGMENTS)],
         ]);
 
         try {
-            $objectKey = $this->mallOssUpload->uploadProductFile($validated['file']);
+            $objectKey = $this->mallOssUpload->uploadGameMediaFile(
+                $validated['file'],
+                $validated['upload_kind']
+            );
         } catch (RuntimeException $e) {
             return response()->json(['message' => $e->getMessage()], 502);
         }

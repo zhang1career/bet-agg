@@ -11,7 +11,7 @@
             <div class="alert alert-danger">{{ $errors->first('cms') }}</div>
         @endif
         <div class="mb-3">
-            <label class="form-label" for="name">Name</label>
+            <label class="form-label" for="name">Title (CMS)</label>
             <input type="text" name="name" id="name" class="form-control" required maxlength="500" value="{{ old('name') }}">
         </div>
         @include('admin.games.partials.starts-at-field', ['startsAtMs' => (int) old('starts_at', 0)])

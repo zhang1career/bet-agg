@@ -29,7 +29,7 @@
                 <dd class="col-sm-9 font-monospace">{{ $game->id }}</dd>
                 <dt class="col-sm-3">Raw id (CMS)</dt>
                 <dd class="col-sm-9 font-monospace">{{ $game->raw_id }}</dd>
-                <dt class="col-sm-3">Name (CMS)</dt>
+                <dt class="col-sm-3">Title (CMS)</dt>
                 <dd class="col-sm-9">
                     @if(is_array($cms_game))
                         {{ $cms_game['title'] ?? '—' }}
@@ -67,12 +67,12 @@
                         <span class="text-muted">—</span>
                     @endif
                 </dd>
-                <dt class="col-sm-3">Main image (CMS)</dt>
+                <dt class="col-sm-3">Main media (CMS)</dt>
                 <dd class="col-sm-9">
                     @if(filled($cmsMain))
                         <code class="small text-break d-block mb-2">{{ $cmsMain }}</code>
                         @if($cdnBase !== '')
-                            <img src="{{ $cdnBase.'/'.ltrim($cmsMain, '/') }}" alt="Main"
+                            <img src="{{ $cdnBase.'/'.ltrim($cmsMain, '/') }}" alt="Main media"
                                  class="img-fluid rounded border" style="max-height: 180px">
                         @endif
                     @else

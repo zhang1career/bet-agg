@@ -16,7 +16,7 @@
     </div>
 
     <div class="mb-3">
-        <label class="form-label" for="gg-main_image_path">Main image</label>
+        <label class="form-label" for="gg-main_image_path">Main media</label>
         <div class="d-flex flex-column gap-2">
             <input type="text" name="main_image_path" id="gg-main_image_path" class="form-control font-monospace small"
                    value="{{ $main_image_path }}" placeholder="OSS object key (upload or paste)">
@@ -48,7 +48,7 @@
                 el.classList.toggle('d-none', !msg);
             }
 
-            function uploadOne(file) {
+            function uploadOne(file, uploadKind) {
                 var csrf = csrfFromMeta();
                 if (!csrf) {
                     return Promise.reject(new Error('Missing CSRF token; refresh the page and try again.'));
@@ -57,6 +57,7 @@
                 var fd = new FormData();
                 fd.append('_token', csrf);
                 fd.append('file', file);
+                fd.append('upload_kind', uploadKind);
                 return fetch(uploadUrl, {
                     method: 'POST',
                     headers: {
@@ -93,7 +94,7 @@
                         if (!f) {
                             return;
                         }
-                        uploadOne(f).then(function (path) {
+                        uploadOne(f, 'banner').then(function (path) {
                             bannerInput.value = path;
                             bannerFile.value = '';
                         }).catch(function (e) {
@@ -112,7 +113,7 @@
                         if (!f) {
                             return;
                         }
-                        uploadOne(f).then(function (path) {
+                        uploadOne(f, 'main_media').then(function (path) {
                             mainInput.value = path;
                             mainFile.value = '';
                         }).catch(function (e) {
