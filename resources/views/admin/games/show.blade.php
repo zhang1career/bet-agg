@@ -11,7 +11,6 @@
     <div class="mall-list-toolbar d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
         <h2 class="h5 mb-0">Game #{{ $game->id }}</h2>
         <div class="d-flex gap-2 flex-wrap">
-            <a href="{{ route('admin.markets.create', ['game_id' => $game->id]) }}" class="btn btn-primary btn-sm">New market</a>
             <a href="{{ route('admin.games.edit', $game) }}" class="btn btn-outline-primary btn-sm">Edit</a>
         </div>
     </div>
@@ -97,7 +96,7 @@
 
     <div class="mall-list-toolbar d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
         <h3 class="h6 mb-0">Markets</h3>
-        <a href="{{ route('admin.markets.index', ['game_id' => $game->id]) }}" class="btn btn-outline-secondary btn-sm">Filter market list</a>
+        <a href="{{ route('admin.markets.create', ['game_id' => $game->id]) }}" class="btn btn-primary btn-sm">New market</a>
     </div>
 
     <div class="mall-console-card card shadow-sm">
