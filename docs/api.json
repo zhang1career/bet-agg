@@ -216,12 +216,12 @@
           "name": {
             "type": "string"
           },
-          "image_path": {
+          "main_media": {
             "type": "string",
             "nullable": true,
             "description": "CMS `main_media` OSS key"
           },
-          "banner_path": {
+          "banner": {
             "type": "string",
             "nullable": true,
             "description": "CMS `banner` OSS key"
@@ -254,9 +254,9 @@
             "type": "integer",
             "description": "CMS game id (same as catalog game `id`), not local `biz_game.id`"
           },
-          "market_type": {
-            "type": "integer",
-            "description": "SportMarketType backed int (e.g. 1 = 1X2)"
+          "name": {
+            "type": "string",
+            "description": "Local display label on `biz_market`"
           },
           "status": {
             "type": "integer"
@@ -271,12 +271,12 @@
               "name": {
                 "type": "string"
               },
-              "image_path": {
+              "main_media": {
                 "type": "string",
                 "nullable": true,
                 "description": "CMS `main_media` OSS key"
               },
-              "banner_path": {
+              "banner": {
                 "type": "string",
                 "nullable": true,
                 "description": "CMS `banner` OSS key"
@@ -314,9 +314,8 @@
               "id": {
                 "type": "integer"
               },
-              "market_type": {
-                "type": "integer",
-                "description": "SportMarketType backed int (e.g. 1 = 1X2)"
+              "name": {
+                "type": "string"
               },
               "status": {
                 "type": "integer"
@@ -333,12 +332,12 @@
               "name": {
                 "type": "string"
               },
-              "image_path": {
+              "main_media": {
                 "type": "string",
                 "nullable": true,
                 "description": "CMS `main_media` OSS key"
               },
-              "banner_path": {
+              "banner": {
                 "type": "string",
                 "nullable": true,
                 "description": "CMS `banner` OSS key"
@@ -506,7 +505,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "Comma-separated dictionary codes",
+            "description": "Comma-separated MallDictionaryService codes (unknown codes ignored).",
             "example": "points_hold_state"
           },
           {

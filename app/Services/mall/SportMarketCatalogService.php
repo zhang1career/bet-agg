@@ -185,8 +185,8 @@ final class SportMarketCatalogService
         return [
             'id' => $id,
             'name' => (string) ($cms['title'] ?? ''),
-            'image_path' => $this->cmsString($cms, 'main_media'),
-            'banner_path' => $this->cmsString($cms, 'banner'),
+            'main_media' => $this->cmsString($cms, 'main_media'),
+            'banner' => $this->cmsString($cms, 'banner'),
             'starts_at' => (int) ($cms['starts_at'] ?? 0),
             'status' => $status,
             'winning_selection_ids' => $local !== null ? ($local->winning_selection_ids ?? []) : [],
@@ -217,7 +217,7 @@ final class SportMarketCatalogService
             'status' => (int) $sel->status,
             'market' => $market === null ? null : [
                 'id' => (int) $market->id,
-                'market_type' => (int) $market->market_type->value,
+                'name' => $market->name,
                 'status' => (int) $market->status,
             ],
             'game' => $game === null ? null : $this->serializeGameForNested($game),
@@ -234,7 +234,7 @@ final class SportMarketCatalogService
         return [
             'id' => (int) $market->id,
             'game_id' => (int) ($game?->raw_id ?? 0),
-            'market_type' => (int) $market->market_type->value,
+            'name' => $market->name,
             'status' => (int) $market->status,
             'game' => $game === null ? null : $this->serializeGameForNested($game),
         ];

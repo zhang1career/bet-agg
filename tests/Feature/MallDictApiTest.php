@@ -37,4 +37,13 @@ class MallDictApiTest extends TestCase
             ->assertJsonMissingPath('data.unknown_code')
             ->assertJsonPath('data.points_hold_state.0.v', '10');
     }
+
+    public function test_dict_returns_sport_market_status(): void
+    {
+        $this->getJson('/api/bet/dict?codes=sport_market_status')
+            ->assertOk()
+            ->assertJsonPath('errorCode', ResponseConstant::RET_OK)
+            ->assertJsonPath('data.sport_market_status.0.v', '1')
+            ->assertJsonPath('data.sport_market_status.0.k', 'Open');
+    }
 }

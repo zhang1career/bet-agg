@@ -3,20 +3,6 @@
     /** @var int $value */
     $kind = $kind ?? 'event';
     $value = (int) ($value ?? 0);
-    $label = match ($kind) {
-        'game', 'event' => match ($value) {
-            1 => 'Open',
-            2 => 'Closed',
-            3 => 'Settled',
-            default => (string) $value,
-        },
-        'market', 'selection' => match ($value) {
-            1 => 'Open',
-            2 => 'Suspended',
-            3 => 'Settled',
-            default => (string) $value,
-        },
-        default => (string) $value,
-    };
+    $code = in_array($kind, ['market', 'selection'], true) ? 'sport_market_status' : 'sport_game_status';
 @endphp
-{{ $label }}
+<span data-mall-dict-code="{{ $code }}" data-mall-dict-value="{{ $value }}">{{ $value }}</span>

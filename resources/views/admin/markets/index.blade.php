@@ -25,7 +25,7 @@
                     <tr>
                         <th>ID</th>
                         <th>Game</th>
-                        <th>Type</th>
+                        <th>Name</th>
                         <th>Status</th>
                         <th class="text-end">Selections</th>
                         <th class="text-end text-nowrap">Actions</th>
@@ -40,7 +40,7 @@
                             <td>
                                 <a href="{{ route('admin.games.show', $m->game_id) }}">Game #{{ $m->game_id }}</a>
                             </td>
-                            <td>{{ $m->market_type->label() }} ({{ $m->market_type->value }})</td>
+                            <td>{{ $m->name }}</td>
                             <td>
                                 @include('admin.partials.sport_status_label', ['kind' => 'market', 'value' => $m->status])
                                 <span class="text-muted">({{ $m->status }})</span>

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use App\Enums\SportMarketType;
 use App\Models\Concerns\HasMillisTimestamps;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -13,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 /**
  * @property int $id
  * @property int $game_id Local {@see SportGame::$id}
- * @property SportMarketType $market_type
+ * @property string $name Display label stored locally (not from CMS).
  * @property int $status
  * @property int $ct
  * @property int $ut
@@ -32,11 +31,11 @@ class SportMarket extends Model
 
     protected $table = 'biz_market';
 
-    protected $fillable = ['game_id', 'market_type', 'status', 'ct', 'ut'];
+    protected $fillable = ['game_id', 'name', 'status', 'ct', 'ut'];
 
     protected $casts = [
         'game_id' => 'integer',
-        'market_type' => SportMarketType::class,
+        'name' => 'string',
         'status' => 'integer',
         'ct' => 'integer',
         'ut' => 'integer',

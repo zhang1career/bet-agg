@@ -21,11 +21,9 @@
         ])
         <div class="mb-3">
             <label class="form-label" for="status">Status</label>
-            <select name="status" id="status" class="form-select" required>
-                <option value="1" @selected((int) old('status', 1) === 1)>Open</option>
-                <option value="2" @selected((int) old('status', 1) === 2)>Closed</option>
-                <option value="3" @selected((int) old('status', 1) === 3)>Settled</option>
-            </select>
+            <select name="status" id="status" class="form-select" required
+                    data-mall-dict-options="sport_game_status"
+                    data-mall-dict-selected="{{ (int) old('status', 1) }}"></select>
         </div>
         <button type="submit" class="btn btn-primary">Create</button>
         <a href="{{ route('admin.games.index') }}" class="btn btn-link">Cancel</a>

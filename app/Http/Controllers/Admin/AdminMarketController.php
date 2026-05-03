@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Admin;
 
-use App\Enums\SportMarketType;
+use App\Enums\SportMarketStatus;
 use App\Http\Controllers\Controller;
 use App\Models\SportGame;
 use App\Models\SportMarket;
@@ -53,19 +53,19 @@ class AdminMarketController extends Controller
     {
         $v = $request->validate([
             'game_id' => 'required|integer|exists:biz_game,id',
-            'market_type' => ['required', 'integer', Rule::enum(SportMarketType::class)->except(SportMarketType::Unknown)],
-            'status' => 'required|integer|in:1,2,3',
+            'name' => 'string|max:256',
+            'status' => ['required', 'integer', Rule::enum(SportMarketStatus::class)],
             'selections' => 'required|array|min:1',
             'selections.*.label' => 'required|string|max:256',
             'selections.*.current_odds_millis' => 'required|integer|min:1000',
-            'selections.*.status' => 'required|integer|in:1,2,3',
+            'selections.*.status' => ['required', 'integer', Rule::enum(SportMarketStatus::class)],
         ]);
 
         /** @var SportMarket $market */
         $market = DB::transaction(static function () use ($v): SportMarket {
             $market = new SportMarket([
                 'game_id' => (int) $v['game_id'],
-                'market_type' => SportMarketType::from((int) $v['market_type']),
+                'name' => trim($v['name']),
                 'status' => (int) $v['status'],
             ]);
             $market->save();
@@ -114,13 +114,13 @@ class AdminMarketController extends Controller
     {
         $v = $request->validate([
             'game_id' => 'required|integer|exists:biz_game,id',
-            'market_type' => ['required', 'integer', Rule::enum(SportMarketType::class)->except(SportMarketType::Unknown)],
-            'status' => 'required|integer|in:1,2,3',
+            'name' => 'string|max:256',
+            'status' => ['required', 'integer', Rule::enum(SportMarketStatus::class)],
         ]);
 
         $market->fill([
             'game_id' => (int) $v['game_id'],
-            'market_type' => SportMarketType::from((int) $v['market_type']),
+            'name' => trim($v['name']),
             'status' => (int) $v['status'],
         ]);
         $market->save();
@@ -143,7 +143,7 @@ class AdminMarketController extends Controller
         $v = $request->validate([
             'label' => 'required|string|max:256',
             'current_odds_millis' => 'required|integer|min:1000',
-            'status' => 'required|integer|in:1,2,3',
+            'status' => ['required', 'integer', Rule::enum(SportMarketStatus::class)],
         ]);
 
         $sel = new SportSelection([
@@ -164,7 +164,7 @@ class AdminMarketController extends Controller
         $v = $request->validate([
             'label' => 'required|string|max:256',
             'current_odds_millis' => 'required|integer|min:1000',
-            'status' => 'required|integer|in:1,2,3',
+            'status' => ['required', 'integer', Rule::enum(SportMarketStatus::class)],
         ]);
 
         $selection->fill([

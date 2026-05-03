@@ -86,7 +86,6 @@ final readonly class OrderCommandService
                 'market_id' => $market ? (int) $market->id : 0,
                 'game_id' => $rawId,
                 'game_name' => $gameName,
-                'market_type' => $market ? $market->market_type->value : 0,
                 'label' => $selection->label,
                 'decimal_odds_millis' => $millis,
             ];

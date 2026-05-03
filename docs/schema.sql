@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS `biz_game` (
 CREATE TABLE IF NOT EXISTS `biz_market` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `game_id` bigint unsigned NOT NULL,
-  `market_type` smallint unsigned NOT NULL DEFAULT '0' COMMENT 'SportMarketType 枚举 id',
+  `name` varchar(256) NOT NULL DEFAULT '' COMMENT '盘口展示名称',
   `status` tinyint unsigned NOT NULL DEFAULT '1' COMMENT '1 open, 2 suspended, 3 settled',
   `ct` bigint unsigned NOT NULL DEFAULT '0',
   `ut` bigint unsigned NOT NULL DEFAULT '0',

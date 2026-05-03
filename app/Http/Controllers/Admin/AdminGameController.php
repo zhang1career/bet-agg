@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\SportGameStatus;
 use App\Http\Controllers\Controller;
 use App\Models\SportGame;
 use App\Services\mall\serv_fd\CmsGameClient;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Paganini\Aggregation\Exceptions\DownstreamServiceException;
 use Throwable;
@@ -43,7 +45,7 @@ class AdminGameController extends Controller
             'starts_at' => 'nullable|integer|min:0',
             'banner_path' => 'nullable|string|max:2000',
             'main_image_path' => 'nullable|string|max:2000',
-            'status' => 'required|integer|in:1,2,3',
+            'status' => ['required', 'integer', Rule::enum(SportGameStatus::class)],
         ]);
 
         $cmsPayload = $this->cmsPayloadFromValidatedGameForm($v);
@@ -115,7 +117,7 @@ class AdminGameController extends Controller
         $rules = [
             'banner_path' => 'nullable|string|max:2000',
             'main_image_path' => 'nullable|string|max:2000',
-            'status' => 'required|integer|in:1,2,3',
+            'status' => ['required', 'integer', Rule::enum(SportGameStatus::class)],
         ];
         if ($cmsReachable) {
             $rules['name'] = 'required|string|max:500';

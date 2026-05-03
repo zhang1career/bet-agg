@@ -53,7 +53,7 @@ final class BetCatalogApiTest extends TestCase
         $res->assertOk();
         $this->assertSame(303, $res->json('data.id'));
         $this->assertSame('CMS game 303', $res->json('data.name'));
-        $this->assertSame('cms/cover.png', $res->json('data.image_path'));
+        $this->assertSame('cms/cover.png', $res->json('data.main_media'));
         $this->assertSame([], $res->json('data.winning_selection_ids'));
     }
 
@@ -84,6 +84,7 @@ final class BetCatalogApiTest extends TestCase
         $res = $this->getJson('/api/bet/markets/'.$marketId);
         $res->assertOk();
         $this->assertSame($marketId, $res->json('data.id'));
+        $this->assertSame('Full-time 1X2', $res->json('data.name'));
         $this->assertArrayHasKey('game', $res->json('data'));
     }
 

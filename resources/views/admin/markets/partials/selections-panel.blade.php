@@ -69,11 +69,9 @@
             </div>
             <div class="col-md-3">
                 <label class="form-label" for="new_sel_status">Status</label>
-                <select name="status" id="new_sel_status" class="form-select" required>
-                    <option value="1" @selected((int) old('status', 1) === 1)>Open</option>
-                    <option value="2" @selected((int) old('status', 1) === 2)>Suspended</option>
-                    <option value="3" @selected((int) old('status', 1) === 3)>Settled</option>
-                </select>
+                <select name="status" id="new_sel_status" class="form-select" required
+                        data-mall-dict-options="sport_market_status"
+                        data-mall-dict-selected="{{ (int) old('status', 1) }}"></select>
             </div>
             <div class="col-md-2">
                 <button type="submit" class="btn btn-primary w-100">Add</button>
@@ -103,11 +101,8 @@
                     </div>
                     <div class="mb-0">
                         <label class="form-label" for="edit_sel_status">Status</label>
-                        <select name="status" id="edit_sel_status" class="form-select" required>
-                            <option value="1">Open</option>
-                            <option value="2">Suspended</option>
-                            <option value="3">Settled</option>
-                        </select>
+                        <select name="status" id="edit_sel_status" class="form-select" required
+                                data-mall-dict-options="sport_market_status"></select>
                     </div>
                 </div>
                 <div class="modal-footer">

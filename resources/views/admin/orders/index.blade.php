@@ -28,7 +28,7 @@
                                 <a href="{{ route('admin.orders.show', $order->id) }}" class="font-monospace">{{ $order->id }}</a>
                             </td>
                             <td>{{ $order->uid }}</td>
-                            <td>{{ $order->status->label() }} ({{ $order->status->value }})</td>
+                            <td><span data-mall-dict-code="bet_order_status" data-mall-dict-value="{{ $order->status->value }}">{{ $order->status->value }}</span></td>
                             <td>{{ $order->total_price }}</td>
                             <td class="text-muted small">{{ \App\Support\MillisTimestampDisplay::format($order->ct) }}</td>
                             <td class="text-end text-nowrap">
@@ -62,11 +62,8 @@
                     </div>
                     <div class="modal-body">
                         <label class="form-label" for="order-status-select">Status</label>
-                        <select name="status" id="order-status-select" class="form-select" required>
-                            @foreach($statuses as $st)
-                                <option value="{{ $st->value }}">{{ $st->label() }} ({{ $st->value }})</option>
-                            @endforeach
-                        </select>
+                        <select name="status" id="order-status-select" class="form-select" required
+                                data-mall-dict-options="bet_order_status"></select>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>

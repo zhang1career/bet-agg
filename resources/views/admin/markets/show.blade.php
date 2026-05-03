@@ -26,8 +26,8 @@
                 <dd class="col-sm-9">
                     <a href="{{ route('admin.games.show', $market->game_id) }}">Game #{{ $market->game_id }}</a>
                 </dd>
-                <dt class="col-sm-3">Type</dt>
-                <dd class="col-sm-9">{{ $market->market_type->label() }} ({{ $market->market_type->value }})</dd>
+                <dt class="col-sm-3">Name</dt>
+                <dd class="col-sm-9">{{ $market->name }}</dd>
                 <dt class="col-sm-3">Status</dt>
                 <dd class="col-sm-9">
                     @include('admin.partials.sport_status_label', ['kind' => 'market', 'value' => $market->status])

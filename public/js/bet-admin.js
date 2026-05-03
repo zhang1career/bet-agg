@@ -69,7 +69,46 @@
                 set[c] = true;
             }
         });
+        root.querySelectorAll('select[data-mall-dict-options]').forEach(function (el) {
+            var dco = el.getAttribute('data-mall-dict-options');
+            if (dco) {
+                set[dco] = true;
+            }
+        });
         return Object.keys(set);
+    }
+
+    /**
+     * Fill selects from cached GET /api/bet/dict rows ({ k: label, v: value }).
+     * Uses data-mall-dict-selected when set; otherwise keeps the select value before repaint.
+     */
+    function mallDictPopulateSelects(root) {
+        root = root || document;
+        root.querySelectorAll('select[data-mall-dict-options]').forEach(function (sel) {
+            var code = sel.getAttribute('data-mall-dict-options');
+            if (!code) {
+                return;
+            }
+            var list = mallDictCache[code];
+            if (!list || list.length === 0) {
+                return;
+            }
+            var picked = sel.getAttribute('data-mall-dict-selected');
+            var previousValue = picked !== null ? picked : sel.value;
+            sel.innerHTML = '';
+            list.forEach(function (item) {
+                var opt = document.createElement('option');
+                opt.value = item.v;
+                opt.textContent = item.k + ' (' + item.v + ')';
+                sel.appendChild(opt);
+            });
+            if (previousValue) {
+                sel.value = previousValue;
+            }
+            if (!sel.value && sel.options.length > 0) {
+                sel.selectedIndex = 0;
+            }
+        });
     }
 
     function mallDictApply(root) {
@@ -86,17 +125,21 @@
 
     function mallDictInit(root) {
         var codes = mallDictCollectCodes(root || document);
+        var scope = root || document;
         if (codes.length === 0) {
+            mallDictPopulateSelects(scope);
             return;
         }
         mallDictFetch(codes, function () {
-            mallDictApply(root || document);
+            mallDictApply(scope);
+            mallDictPopulateSelects(scope);
         });
     }
 
     window.mallDictLabel = mallDictLabel;
     window.mallDictEnsure = mallDictEnsure;
     window.mallDictInit = mallDictInit;
+    window.mallDictPopulateSelects = mallDictPopulateSelects;
 
     var THEME_KEY = 'mall-admin-theme';
     var DARK = 'dark';

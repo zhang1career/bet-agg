@@ -10,36 +10,24 @@
             <a href="{{ $prefillGameId ? route('admin.games.show', $prefillGameId) : route('admin.markets.index') }}" class="btn btn-outline-secondary btn-sm">Cancel</a>
         </div>
 
-        <div class="row">
-            <div class="col-md-6 mb-3">
-                <label class="form-label" for="game_id">Game</label>
-                <select name="game_id" id="game_id" class="form-select" required>
-                    @foreach($games as $g)
-                        <option value="{{ $g->id }}" @selected((int) old('game_id', $prefillGameId) === $g->id)>Local #{{ $g->id }} · raw {{ $g->raw_id }}</option>
-                    @endforeach
-                </select>
-            </div>
-            <div class="col-md-6 mb-3">
-                <label class="form-label" for="market_type">Market type</label>
-                <select name="market_type" id="market_type" class="form-select" required>
-                    @foreach(\App\Enums\SportMarketType::cases() as $case)
-                        @if($case === \App\Enums\SportMarketType::Unknown)
-                            @continue
-                        @endif
-                        <option value="{{ $case->value }}" @selected((int) old('market_type', \App\Enums\SportMarketType::MatchResult1x2->value) === $case->value)>
-                            {{ $case->label() }} ({{ $case->value }})
-                        </option>
-                    @endforeach
-                </select>
-            </div>
+        <div class="mb-3">
+            <label class="form-label" for="game_id">Game</label>
+            <select name="game_id" id="game_id" class="form-select" required>
+                @foreach($games as $g)
+                    <option value="{{ $g->id }}" @selected((int) old('game_id', $prefillGameId) === $g->id)>Local #{{ $g->id }} · raw {{ $g->raw_id }}</option>
+                @endforeach
+            </select>
+        </div>
+        <div class="mb-3">
+            <label class="form-label" for="name">Name</label>
+            <input type="text" name="name" id="name" class="form-control" maxlength="256"
+                   value="{{ old('name', '') }}" placeholder="Display label for this market">
         </div>
         <div class="mb-4">
             <label class="form-label" for="status">Market status</label>
-            <select name="status" id="status" class="form-select" required>
-                <option value="1" @selected((int) old('status', 1) === 1)>Open</option>
-                <option value="2" @selected((int) old('status', 1) === 2)>Suspended</option>
-                <option value="3" @selected((int) old('status', 1) === 3)>Settled</option>
-            </select>
+            <select name="status" id="status" class="form-select" required
+                    data-mall-dict-options="sport_market_status"
+                    data-mall-dict-selected="{{ (int) old('status', 1) }}"></select>
         </div>
 
         <h3 class="h6">Selections</h3>
@@ -70,11 +58,9 @@
                                    required min="1000" value="{{ $row['current_odds_millis'] ?? '1950' }}">
                         </td>
                         <td>
-                            <select name="selections[{{ $idx }}][status]" class="form-select form-select-sm" required>
-                                <option value="1" @selected((int)($row['status'] ?? 1) === 1)>Open</option>
-                                <option value="2" @selected((int)($row['status'] ?? 1) === 2)>Suspended</option>
-                                <option value="3" @selected((int)($row['status'] ?? 1) === 3)>Settled</option>
-                            </select>
+                            <select name="selections[{{ $idx }}][status]" class="form-select form-select-sm" required
+                                    data-mall-dict-options="sport_market_status"
+                                    data-mall-dict-selected="{{ (int)($row['status'] ?? 1) }}"></select>
                         </td>
                         <td class="text-end">
                             <button type="button" class="btn btn-outline-danger btn-sm selection-remove" title="Remove row">×</button>
@@ -100,11 +86,9 @@
                 <input type="number" name="selections[__I__][current_odds_millis]" class="form-control form-control-sm" required min="1000" value="1950">
             </td>
             <td>
-                <select name="selections[__I__][status]" class="form-select form-select-sm" required>
-                    <option value="1" selected>Open</option>
-                    <option value="2">Suspended</option>
-                    <option value="3">Settled</option>
-                </select>
+                <select name="selections[__I__][status]" class="form-select form-select-sm" required
+                        data-mall-dict-options="sport_market_status"
+                        data-mall-dict-selected="1"></select>
             </td>
             <td class="text-end">
                 <button type="button" class="btn btn-outline-danger btn-sm selection-remove" title="Remove row">×</button>
@@ -155,6 +139,9 @@
                 body.appendChild(row);
                 bindRemove(row);
                 renumber();
+                if (typeof window.mallDictPopulateSelects === 'function') {
+                    window.mallDictPopulateSelects(row);
+                }
             });
         });
     </script>

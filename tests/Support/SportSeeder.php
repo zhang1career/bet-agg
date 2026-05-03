@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Support;
 
-use App\Enums\SportMarketType;
 use App\Models\SportGame;
 use App\Models\SportMarket;
 use App\Models\SportSelection;
@@ -23,7 +22,7 @@ final class SportSeeder
 
         $market = new SportMarket([
             'game_id' => $game->id,
-            'market_type' => SportMarketType::MatchResult1x2,
+            'name' => 'Full-time 1X2',
             'status' => SportMarket::STATUS_OPEN,
         ]);
         $market->save();
