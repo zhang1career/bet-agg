@@ -5,34 +5,37 @@ declare(strict_types=1);
 namespace App\Services\mall;
 
 use App\Enums\PointsHoldState;
-use App\Models\MallPointsBalance;
+use App\Models\PointsBalance;
 use App\Models\PointsFlow;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
-final class MallPointsTccService
+/**
+ * Points try / confirm / cancel hold (TCC) for bet checkout.
+ */
+final class PointsTccService
 {
     /**
-     * Available points for the user (minor units); no account row yields 0.
+     * Available points balance for {@code uid}; missing row yields 0.
      */
-    public function availableBalanceMinor(int $uid): int
+    public function availableBalance(int $uid): int
     {
-        $row = MallPointsBalance::query()->where('uid', $uid)->first();
+        $row = PointsBalance::query()->where('uid', $uid)->first();
         if ($row === null) {
             return 0;
         }
 
-        return (int) $row->balance_minor;
+        return (int) $row->balance;
     }
 
-    public function ensureAccount(int $uid): MallPointsBalance
+    public function ensureAccount(int $uid): PointsBalance
     {
-        $row = MallPointsBalance::query()->where('uid', $uid)->first();
+        $row = PointsBalance::query()->where('uid', $uid)->first();
         if ($row !== null) {
             return $row;
         }
 
-        $row = new MallPointsBalance(['uid' => $uid, 'balance_minor' => 0]);
+        $row = new PointsBalance(['uid' => $uid, 'balance' => 0]);
         $row->save();
 
         return $row;
@@ -41,50 +44,50 @@ final class MallPointsTccService
     /**
      * Move amount from available balance into hold, keyed by bet order id (points_flow.oid).
      */
-    public function tryFreeze(int $uid, int $amountMinor, int $betOrderId): void
+    public function tryFreeze(int $uid, int $points, int $betOrderId): void
     {
         if ($betOrderId < 1) {
             throw new RuntimeException('Bet order id is required for points hold.');
         }
-        if ($amountMinor < 1) {
+        if ($points < 1) {
             throw new RuntimeException('Points amount must be positive.');
         }
 
-        DB::transaction(function () use ($uid, $amountMinor, $betOrderId): void {
+        DB::transaction(function () use ($uid, $points, $betOrderId): void {
             $existing = PointsFlow::query()
                 ->where('uid', $uid)
                 ->where('oid', $betOrderId)
                 ->where('state', PointsHoldState::TrySucceeded)
                 ->first();
             if ($existing !== null) {
-                if ((int) $existing->amount_minor === $amountMinor) {
+                if ((int) $existing->amount === $points) {
                     return;
                 }
                 throw new RuntimeException('Existing points hold for this order with a different amount.');
             }
 
-            $balance = MallPointsBalance::query()->where('uid', $uid)->lockForUpdate()->first();
+            $balance = PointsBalance::query()->where('uid', $uid)->lockForUpdate()->first();
             if ($balance === null) {
-                MallPointsBalance::query()->create([
+                PointsBalance::query()->create([
                     'uid' => $uid,
-                    'balance_minor' => 0,
+                    'balance' => 0,
                 ]);
-                $balance = MallPointsBalance::query()->where('uid', $uid)->lockForUpdate()->first();
+                $balance = PointsBalance::query()->where('uid', $uid)->lockForUpdate()->first();
             }
             if ($balance === null) {
                 throw new RuntimeException('Points balance missing.');
             }
-            if ($balance->balance_minor < $amountMinor) {
+            if ($balance->balance < $points) {
                 throw new RuntimeException('Insufficient points.');
             }
 
-            $balance->balance_minor -= $amountMinor;
+            $balance->balance -= $points;
             $balance->save();
 
             $hold = new PointsFlow([
                 'uid' => $uid,
                 'oid' => $betOrderId,
-                'amount_minor' => $amountMinor,
+                'amount' => $points,
                 'state' => PointsHoldState::TrySucceeded,
             ]);
             $hold->save();
@@ -142,11 +145,11 @@ final class MallPointsTccService
                     throw new RuntimeException('Points hold not in try-succeeded state.');
                 }
 
-                $balance = MallPointsBalance::query()->where('uid', $hold->uid)->lockForUpdate()->first();
+                $balance = PointsBalance::query()->where('uid', $hold->uid)->lockForUpdate()->first();
                 if ($balance === null) {
                     throw new RuntimeException('Points balance missing.');
                 }
-                $balance->balance_minor += $hold->amount_minor;
+                $balance->balance += $hold->amount;
                 $balance->save();
 
                 $hold->state = PointsHoldState::RolledBack;

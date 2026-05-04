@@ -5,7 +5,7 @@
 @section('content')
     <div class="bg-white shadow-sm p-4 rounded mb-4">
         <p><strong>Uid:</strong> {{ $order->uid }}</p>
-        <p><strong>Status:</strong> {{ $order->status->label() }} ({{ $order->status->value }})</p>
+        <p><strong>Status:</strong> <span data-mall-dict-code="bet_order_status" data-mall-dict-value="{{ $order->status->value }}">{{ $order->status->value }}</span></p>
         <p><strong>Total stake (points):</strong> {{ $order->total_price }}</p>
         <p><strong>ct / ut:</strong> {{ \App\Support\MillisTimestampDisplay::format($order->ct) }}
             / {{ \App\Support\MillisTimestampDisplay::format($order->ut) }}</p>
@@ -39,11 +39,9 @@
         @csrf
         @method('PATCH')
         <label class="form-label">Change status</label>
-        <select name="status" class="form-select w-auto">
-            @foreach($statuses as $st)
-                <option value="{{ $st->value }}" @selected($order->status === $st)>{{ $st->label() }}</option>
-            @endforeach
-        </select>
+        <select name="status" class="form-select w-auto" required
+                data-mall-dict-options="bet_order_status"
+                data-mall-dict-selected="{{ $order->status->value }}"></select>
         <button type="submit" class="btn btn-primary mt-2">Update status</button>
     </form>
 

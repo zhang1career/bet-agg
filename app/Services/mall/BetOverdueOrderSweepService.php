@@ -12,14 +12,14 @@ use Illuminate\Support\Facades\Log;
 use Throwable;
 
 /**
- * Closes pending bets that exceeded the payment window (XXL-Job / scheduled maintenance).
+ * Cancels pending draft slips that were never checked out within the configured window (XXL-Job).
  */
-final readonly class MallOverdueOrderSweepService
+final readonly class BetOverdueOrderSweepService
 {
     public function __construct(
         private OrderCommandService $orders,
         private InventoryOutboundContract $inventory,
-        private MallPointsTccService $pointsTcc,
+        private PointsTccService $pointsTcc,
     ) {}
 
     /**
@@ -38,15 +38,8 @@ final readonly class MallOverdueOrderSweepService
 
         $query = BetOrder::query()
             ->where('status', BetOrderStatus::Pending)
-            ->where(function ($q) use ($now, $timeoutMs): void {
-                $q->where(function ($q2) use ($now, $timeoutMs): void {
-                    $q2->where('checkout_phase', CheckoutPhase::None->value)
-                        ->whereRaw('ct + ? < ?', [$timeoutMs, $now]);
-                })->orWhere(function ($q2) use ($now, $timeoutMs): void {
-                    $q2->where('checkout_phase', CheckoutPhase::AwaitPayment->value)
-                        ->whereRaw('ut + ? < ?', [$timeoutMs, $now]);
-                });
-            })
+            ->where('checkout_phase', CheckoutPhase::None->value)
+            ->whereRaw('ct + ? < ?', [$timeoutMs, $now])
             ->orderBy('id');
 
         $query->chunkById(50, function ($orders) use (&$closed, &$errors): void {

@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "bet-agg HTTP API",
-    "description": "Laravel bet aggregation service: public `/api/*` JSON APIs and health check. User profile is **not** served here—call the Foundation (or API gateway) user API; bet-agg only **outbounds** to that service to resolve `X-User-Access-Token`. Most JSON responses use the `ApiResponse` envelope (`data`, `errorCode`, `message`, `_req_id`). XXL-Job executor endpoints use a different envelope (`code`, `msg`, `data`). Catalog data is stored in `biz_event`, `biz_market`, and `biz_selection`; order lines reference a selection via `kid`.\n\n**Examples:** Reusable request/response samples are under `components.examples` and referenced from operations. **Contract tests:** `Tests\\Feature\\OpenApiRoutesContractTest` asserts every path/method in this file is registered in the app.",
+    "description": "Laravel bet aggregation service: public `/api/*` JSON APIs and health check. User profile is **not** served here—call the Foundation (or API gateway) user API; bet-agg only **outbounds** to that service to resolve `X-User-Access-Token`. Most JSON responses use the `ApiResponse` envelope (`data`, `errorCode`, `message`, `_req_id`). XXL-Job executor endpoints use a different envelope (`code`, `msg`, `data`). Local catalog state is in `biz_game` (betting status only; titles/images from CMS `/api/cms/game/`), `biz_market`, and `biz_selection`; order lines reference a selection via `kid`.\n\n**Examples:** Reusable request/response samples are under `components.examples` and referenced from operations. **Contract tests:** `Tests\\Feature\\OpenApiRoutesContractTest` asserts every path/method in this file is registered in the app.",
     "version": "1.2.0"
   },
   "servers": [
@@ -15,14 +15,6 @@
     {
       "name": "Bet",
       "description": "Betting catalog, orders, points, checkout"
-    },
-    {
-      "name": "Bet Admin",
-      "description": "Admin API token–protected mall points"
-    },
-    {
-      "name": "Payment",
-      "description": "Payment gateway callbacks"
     },
     {
       "name": "Jobs",
@@ -41,22 +33,11 @@
         "name": "X-User-Access-Token",
         "description": "Raw JWT from the Foundation (or BFF) auth service; not issued by bet-agg. Send on bet APIs that require a logged-in user."
       },
-      "AdminBearer": {
-        "type": "http",
-        "scheme": "bearer",
-        "description": "Must match `bet_agg.admin.api_token` (plain token after `Bearer `)."
-      },
       "XxlJobAccessToken": {
         "type": "apiKey",
         "in": "header",
         "name": "XXL-JOB-ACCESS-TOKEN",
         "description": "Must match `xxl.token` configuration."
-      },
-      "PaymentCallbackToken": {
-        "type": "apiKey",
-        "in": "header",
-        "name": "X-Payment-Callback-Token",
-        "description": "Required when `bet_agg.payment.callback_token` is non-empty; must match that secret."
       }
     },
     "schemas": {
@@ -141,11 +122,9 @@
           "total_price": {
             "type": "integer"
           },
-          "points_deduct_minor": {
-            "type": "integer"
-          },
-          "cash_payable_minor": {
-            "type": "integer"
+          "points_held": {
+            "type": "integer",
+            "description": "Stake held from user's points wallet after checkout (normally equals total_price)"
           },
           "ct": {
             "type": "integer"
@@ -162,7 +141,8 @@
           "ext_inventory": {},
           "ext_id": {},
           "checkout_phase": {
-            "type": "string"
+            "type": "integer",
+            "description": "CheckoutPhase: 0 draft (none), 50 await payment (reserved), 60 completed. API serializes numeric value."
           }
         }
       },
@@ -206,9 +186,94 @@
           }
         }
       },
+      "SportGame": {
+        "type": "object",
+        "description": "CMS game fields merged with local `biz_game` betting state. `id` in responses is the external/CMS game id; persistence uses local `biz_game.id` + unique `raw_id`.",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "main_media": {
+            "type": "string",
+            "nullable": true,
+            "description": "CMS `main_media` OSS key"
+          },
+          "banner": {
+            "type": "string",
+            "nullable": true,
+            "description": "CMS `banner` OSS key"
+          },
+          "starts_at": {
+            "type": "integer",
+            "description": "Unix time in milliseconds"
+          },
+          "status": {
+            "type": "integer",
+            "description": "1 = open, 2 = closed, 3 = settled"
+          },
+          "winning_selection_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Set when status is settled; empty array otherwise"
+          }
+        }
+      },
+      "SportMarket": {
+        "type": "object",
+        "description": "Public `biz_market` row with nested game summary (CMS + local state). List endpoint returns open markets on open games only.",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "game_id": {
+            "type": "integer",
+            "description": "CMS game id (same as catalog game `id`), not local `biz_game.id`"
+          },
+          "name": {
+            "type": "string",
+            "description": "Local display label on `biz_market`"
+          },
+          "status": {
+            "type": "integer"
+          },
+          "game": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "name": {
+                "type": "string"
+              },
+              "main_media": {
+                "type": "string",
+                "nullable": true,
+                "description": "CMS `main_media` OSS key"
+              },
+              "banner": {
+                "type": "string",
+                "nullable": true,
+                "description": "CMS `banner` OSS key"
+              },
+              "starts_at": {
+                "type": "integer"
+              },
+              "status": {
+                "type": "integer"
+              }
+            }
+          }
+        }
+      },
       "SportSelection": {
         "type": "object",
-        "description": "Public catalog row; persisted in `biz_selection` with market/event from `biz_market` / `biz_event`.",
+        "description": "Public catalog row; persisted in `biz_selection` with market/game from `biz_market` / `biz_game`.",
         "properties": {
           "id": {
             "type": "integer"
@@ -229,16 +294,15 @@
               "id": {
                 "type": "integer"
               },
-              "market_type": {
-                "type": "integer",
-                "description": "SportMarketType backed int (e.g. 1 = 1X2)"
+              "name": {
+                "type": "string"
               },
               "status": {
                 "type": "integer"
               }
             }
           },
-          "event": {
+          "game": {
             "type": "object",
             "nullable": true,
             "properties": {
@@ -247,6 +311,16 @@
               },
               "name": {
                 "type": "string"
+              },
+              "main_media": {
+                "type": "string",
+                "nullable": true,
+                "description": "CMS `main_media` OSS key"
+              },
+              "banner": {
+                "type": "string",
+                "nullable": true,
+                "description": "CMS `banner` OSS key"
               },
               "starts_at": {
                 "type": "integer"
@@ -258,8 +332,9 @@
           }
         }
       },
-      "MallPointsAccount": {
+      "PointsAccountRow": {
         "type": "object",
+        "description": "`points_balance` row (developer/admin listings).",
         "properties": {
           "id": {
             "type": "integer"
@@ -267,7 +342,7 @@
           "uid": {
             "type": "integer"
           },
-          "balance_minor": {
+          "balance": {
             "type": "integer"
           },
           "ct": {
@@ -290,7 +365,7 @@
           "oid": {
             "type": "integer"
           },
-          "amount_minor": {
+          "amount": {
             "type": "integer"
           },
           "state": {
@@ -319,40 +394,16 @@
         }
       },
       "BetCheckoutBody": {
-        "summary": "Checkout: pay with points",
-        "description": "See `Tests\\Feature\\MallCheckoutControllerTest`.",
+        "summary": "Checkout",
+        "description": "Debit full stake in points.",
         "value": {
-          "order_id": 1,
-          "points_minor": 100
+          "order_id": 1
         }
       },
       "BetOrderPatchBody": {
         "summary": "Transition order status",
         "value": {
           "status": "cancelled"
-        }
-      },
-      "PaymentCallbackBody": {
-        "summary": "Payment gateway acknowledges paid",
-        "description": "See `Tests\\Feature\\PaymentCallbackControllerTest`.",
-        "value": {
-          "order_id": 1,
-          "status": "paid"
-        }
-      },
-      "AdminPointsOpenAccountBody": {
-        "summary": "Open mall points account",
-        "description": "See `Tests\\Feature\\MallAdminPointsApiTest`.",
-        "value": {
-          "uid": 42,
-          "balance_minor": 100
-        }
-      },
-      "AdminPointsAdjustBody": {
-        "summary": "Adjust balance by delta",
-        "value": {
-          "delta_minor": 25,
-          "oid": 0
         }
       },
       "XxlJobRunBody": {
@@ -411,7 +462,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "Comma-separated dictionary codes",
+            "description": "Comma-separated MallDictionaryService codes (unknown codes ignored).",
             "example": "points_hold_state"
           },
           {
@@ -437,6 +488,259 @@
         }
       }
     },
+    "/api/bet/games": {
+      "get": {
+        "tags": [
+          "Bet"
+        ],
+        "summary": "Paginated open games (local biz_game + CMS)",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 15
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Items and pagination",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "items": {
+                              "type": "array",
+                              "items": {
+                                "$ref": "#/components/schemas/SportGame"
+                              }
+                            },
+                            "pagination": {
+                              "$ref": "#/components/schemas/ListPagination"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bet/games/{game_id}": {
+      "get": {
+        "tags": [
+          "Bet"
+        ],
+        "summary": "Single game detail (CMS + local state)",
+        "parameters": [
+          {
+            "name": "game_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Game",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/SportGame"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bet/markets": {
+      "get": {
+        "tags": [
+          "Bet"
+        ],
+        "summary": "Paginated open markets (biz_market); optional filter by game",
+        "parameters": [
+          {
+            "name": "game_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 15
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Items and pagination",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "items": {
+                              "type": "array",
+                              "items": {
+                                "$ref": "#/components/schemas/SportMarket"
+                              }
+                            },
+                            "pagination": {
+                              "$ref": "#/components/schemas/ListPagination"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bet/markets/{market_id}": {
+      "get": {
+        "tags": [
+          "Bet"
+        ],
+        "summary": "Single market detail",
+        "parameters": [
+          {
+            "name": "market_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Market",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/SportMarket"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/bet/selections": {
       "get": {
         "tags": [
@@ -444,6 +748,16 @@
         ],
         "summary": "Paginated open selections (biz_selection)",
         "parameters": [
+          {
+            "name": "market_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "description": "When set, only selections for this market"
+          },
           {
             "name": "page",
             "in": "query",
@@ -494,6 +808,16 @@
                       }
                     }
                   ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
                 }
               }
             }
@@ -793,7 +1117,7 @@
           "Bet"
         ],
         "summary": "Transition order status",
-        "description": "`status` accepts int enum, or strings such as `pending`, `paid`, `accepted`, `cancel`/`cancelled`, `won`, `lost`, `void`, `init`.",
+        "description": "`status` accepts the int enum or strings: `pending`, `init` (pending), `accepted` or `paid` (same meaning), `cancel`/`cancelled`, `won`, `lost`, `void`. Typical user flow: draft order with POST `/api/bet/orders`, then POST `/api/bet/checkout` to accept; PATCH is for allowed status transitions (not a payment callback).",
         "security": [
           {
             "UserAccessToken": []
@@ -901,7 +1225,8 @@
         "tags": [
           "Bet"
         ],
-        "summary": "Current user's available points (minor units)",
+        "summary": "Current user's available points balance",
+        "description": "`data.balance` is the spendable points integer (same unit as stake and `total_price`).",
         "security": [
           {
             "UserAccessToken": []
@@ -922,9 +1247,13 @@
                       "properties": {
                         "data": {
                           "type": "object",
+                          "required": [
+                            "balance"
+                          ],
                           "properties": {
-                            "balance_minor": {
-                              "type": "integer"
+                            "balance": {
+                              "type": "integer",
+                              "description": "Spendable points for the authenticated user"
                             }
                           }
                         }
@@ -953,7 +1282,8 @@
         "tags": [
           "Bet"
         ],
-        "summary": "Run checkout for an existing order",
+        "summary": "Checkout a pending order",
+        "description": "In one step: re-validates selections, debits the full stake from the user's points wallet, and transitions the order to accepted. Response `data` contains only the updated `order` (no separate payment payload).",
         "security": [
           {
             "UserAccessToken": []
@@ -983,10 +1313,6 @@
                   "order_id": {
                     "type": "integer",
                     "minimum": 1
-                  },
-                  "points_minor": {
-                    "type": "integer",
-                    "minimum": 0
                   }
                 }
               },
@@ -1000,7 +1326,7 @@
         },
         "responses": {
           "201": {
-            "description": "Checkout started / result",
+            "description": "Success: order accepted; stake debited (see `data.order.status` and `checkout_phase`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1016,12 +1342,11 @@
                           "properties": {
                             "order": {
                               "$ref": "#/components/schemas/BetOrderFull"
-                            },
-                            "prepay": {
-                              "type": "object",
-                              "additionalProperties": true
                             }
-                          }
+                          },
+                          "required": [
+                            "order"
+                          ]
                         }
                       }
                     }
@@ -1052,326 +1377,6 @@
           },
           "422": {
             "description": "Validation or orchestration error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiEnvelope"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/bet/payment/callback": {
-      "post": {
-        "tags": [
-          "Payment"
-        ],
-        "summary": "Notify paid / success for an order",
-        "description": "When `bet_agg.payment.callback_token` is set, requests must send matching `X-Payment-Callback-Token`. If unset, the route accepts calls without that header.",
-        "parameters": [
-          {
-            "name": "X-Payment-Callback-Token",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "type": "string"
-            },
-            "description": "Required when payment callback token is configured in app config."
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "order_id"
-                ],
-                "properties": {
-                  "order_id": {
-                    "type": "integer",
-                    "minimum": 1
-                  },
-                  "status": {
-                    "type": "string",
-                    "description": "Normalized to success when one of: paid, success, payment.success (default paid)"
-                  }
-                },
-                "additionalProperties": true
-              },
-              "examples": {
-                "paid": {
-                  "$ref": "#/components/examples/PaymentCallbackBody"
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Acknowledged",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/ApiEnvelope"
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "data": {
-                          "type": "object",
-                          "properties": {
-                            "order_id": {
-                              "type": "integer"
-                            },
-                            "status": {
-                              "type": "integer"
-                            }
-                          }
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Invalid callback token when configured",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiEnvelope"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Unsupported status or handler error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiEnvelope"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/bet/admin/points": {
-      "post": {
-        "tags": [
-          "Bet Admin"
-        ],
-        "summary": "Open mall points account for uid",
-        "security": [
-          {
-            "AdminBearer": []
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "uid"
-                ],
-                "properties": {
-                  "uid": {
-                    "type": "integer",
-                    "minimum": 1
-                  },
-                  "balance_minor": {
-                    "type": "integer",
-                    "minimum": 0
-                  }
-                }
-              },
-              "examples": {
-                "open": {
-                  "$ref": "#/components/examples/AdminPointsOpenAccountBody"
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Account created",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/ApiEnvelope"
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "data": {
-                          "type": "object",
-                          "properties": {
-                            "account": {
-                              "$ref": "#/components/schemas/MallPointsAccount"
-                            }
-                          }
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden (bad bearer)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiEnvelope"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation or business error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiEnvelope"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "Admin API token not configured",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiEnvelope"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/bet/admin/points/{balance_id}": {
-      "post": {
-        "tags": [
-          "Bet Admin"
-        ],
-        "summary": "Adjust mall points balance",
-        "security": [
-          {
-            "AdminBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "balance_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "minimum": 1
-            },
-            "description": "Mall points balance row id (`mall_points_balances.id`)"
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "delta_minor"
-                ],
-                "properties": {
-                  "delta_minor": {
-                    "type": "integer",
-                    "not": {
-                      "enum": [
-                        0
-                      ]
-                    }
-                  },
-                  "oid": {
-                    "type": "integer",
-                    "minimum": 0
-                  }
-                }
-              },
-              "examples": {
-                "credit": {
-                  "$ref": "#/components/examples/AdminPointsAdjustBody"
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Account and flow row",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/ApiEnvelope"
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "data": {
-                          "type": "object",
-                          "properties": {
-                            "account": {
-                              "$ref": "#/components/schemas/MallPointsAccount"
-                            },
-                            "flow": {
-                              "$ref": "#/components/schemas/PointsFlow"
-                            }
-                          }
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiEnvelope"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation or business error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiEnvelope"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "Admin API token not configured",
             "content": {
               "application/json": {
                 "schema": {

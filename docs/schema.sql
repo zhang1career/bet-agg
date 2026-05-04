@@ -1,26 +1,26 @@
 CREATE DATABASE IF NOT EXISTS `bet_agg` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci */;
 USE `bet_agg`;
 
-CREATE TABLE IF NOT EXISTS `biz_event` (
+CREATE TABLE IF NOT EXISTS `biz_game` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `name` varchar(512) NOT NULL,
-  `starts_at` bigint unsigned NOT NULL DEFAULT '0' COMMENT 'Unix ms',
+  `raw_id` bigint unsigned NOT NULL COMMENT '外部/CMS game 主键，对应 /api/cms/game/{raw_id}',
   `status` tinyint unsigned NOT NULL DEFAULT '1' COMMENT '1 open, 2 closed, 3 settled',
   `winning_selection_ids` text DEFAULT NULL COMMENT 'JSON 编码的获胜选项 ID 列表',
   `ct` bigint unsigned NOT NULL DEFAULT '0',
   `ut` bigint unsigned NOT NULL DEFAULT '0',
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='体育赛事';
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uni_biz_game_raw_id` (`raw_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='本地博彩状态；盘口 game_id 关联本表 id';
 
 CREATE TABLE IF NOT EXISTS `biz_market` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `event_id` bigint unsigned NOT NULL,
-  `market_type` smallint unsigned NOT NULL DEFAULT '0' COMMENT 'SportMarketType 枚举 id',
+  `game_id` bigint unsigned NOT NULL,
+  `name` varchar(256) NOT NULL DEFAULT '' COMMENT '盘口展示名称',
   `status` tinyint unsigned NOT NULL DEFAULT '1' COMMENT '1 open, 2 suspended, 3 settled',
   `ct` bigint unsigned NOT NULL DEFAULT '0',
   `ut` bigint unsigned NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
-  KEY `idx_biz_market_event` (`event_id`)
+  KEY `idx_biz_market_game` (`game_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='体育盘口';
 
 CREATE TABLE IF NOT EXISTS `biz_selection` (
@@ -43,8 +43,7 @@ CREATE TABLE IF NOT EXISTS `order` (
   `checkout_phase` smallint unsigned NOT NULL DEFAULT '0',
   `ext_inventory` tinyint(1) NOT NULL DEFAULT '0',
   `ext_id` varchar(128) NOT NULL DEFAULT '',
-  `points_deduct_minor` int NOT NULL DEFAULT '0',
-  `cash_payable_minor` int NOT NULL DEFAULT '0',
+  `points_held` int NOT NULL DEFAULT '0' COMMENT 'Checkout 后记入的已占用 stake（通常为 total_price）',
   `ct` bigint unsigned NOT NULL DEFAULT '0',
   `ut` bigint unsigned NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
@@ -70,7 +69,7 @@ CREATE TABLE IF NOT EXISTS `order_item` (
 CREATE TABLE IF NOT EXISTS `points_balance` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `uid` bigint unsigned NOT NULL,
-  `balance_minor` bigint NOT NULL DEFAULT '0',
+  `balance` bigint NOT NULL DEFAULT '0' COMMENT '可用点数',
   `ct` bigint unsigned NOT NULL DEFAULT '0',
   `ut` bigint unsigned NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
@@ -81,7 +80,7 @@ CREATE TABLE IF NOT EXISTS `points_flow` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `uid` bigint unsigned NOT NULL DEFAULT '0',
   `oid` bigint unsigned NOT NULL DEFAULT '0' COMMENT 'order.id',
-  `amount_minor` bigint NOT NULL DEFAULT '0',
+  `amount` bigint NOT NULL DEFAULT '0',
   `state` tinyint unsigned NOT NULL DEFAULT '0',
   `ct` bigint unsigned NOT NULL DEFAULT '0',
   `ut` bigint unsigned NOT NULL DEFAULT '0',

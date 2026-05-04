@@ -18,10 +18,17 @@ class SportSelectionController extends Controller
 
     public function index(Request $request): JsonResponse
     {
+        $request->validate([
+            'market_id' => 'sometimes|integer|min:1',
+        ]);
+
         $page = max(1, (int) $request->query('page', 1));
         $perPage = min(50, max(1, (int) $request->query('per_page', 15)));
 
-        $pack = $this->catalog->listOpenSelections($page, $perPage);
+        $marketIdRaw = $request->query('market_id');
+        $marketId = $marketIdRaw === null || $marketIdRaw === '' ? null : (int) $marketIdRaw;
+
+        $pack = $this->catalog->listOpenSelections($page, $perPage, $marketId);
         $this->logHandledApiRequest($request, ['handler' => 'bet.selections.index']);
 
         return response()->json(ApiResponse::ok($pack));
@@ -29,12 +36,7 @@ class SportSelectionController extends Controller
 
     public function show(Request $request, int $id): JsonResponse
     {
-        try {
-            $row = $this->catalog->getSelectionDetail($id);
-        } catch (\RuntimeException $e) {
-            return response()->json(ApiResponse::error(40401, $e->getMessage()), 404);
-        }
-
+        $row = $this->catalog->getSelectionDetail($id);
         $this->logHandledApiRequest($request, ['handler' => 'bet.selections.show', 'selection_id' => $id]);
 
         return response()->json(ApiResponse::ok($row));

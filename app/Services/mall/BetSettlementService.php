@@ -6,11 +6,9 @@ namespace App\Services\mall;
 
 use App\Enums\BetLineResult;
 use App\Enums\BetOrderStatus;
-use App\Enums\PointsHoldState;
 use App\Models\BetOrder;
 use App\Models\BetOrderLine;
-use App\Models\SportEvent;
-use App\Models\SportEventResult;
+use App\Models\SportGame;
 use App\Models\SportMarket;
 use App\Models\SportSelection;
 use Illuminate\Support\Facades\DB;
@@ -22,56 +20,46 @@ use RuntimeException;
 final readonly class BetSettlementService
 {
     public function __construct(
-        private MallPointsAdminService $pointsAdmin,
+        private PointsAdminService $pointsAdmin,
     ) {}
 
     /**
      * @param  list<int>  $winningSelectionIds
      */
-    public function applyEventResult(int $eventId, array $winningSelectionIds): SportEventResult
+    public function applyGameResult(int $gameId, array $winningSelectionIds): SportGame
     {
-        if ($eventId < 1) {
-            throw new RuntimeException('Invalid event_id.');
+        if ($gameId < 1) {
+            throw new RuntimeException('Invalid game_id.');
         }
         $winners = array_values(array_unique(array_filter(
             array_map(static fn (mixed $v): int => (int) $v, $winningSelectionIds),
             static fn (int $id) => $id > 0
         )));
 
-        return DB::transaction(function () use ($eventId, $winners): SportEventResult {
-            $event = SportEvent::query()->whereKey($eventId)->lockForUpdate()->first();
-            if ($event === null) {
-                throw new RuntimeException('Event not found.');
+        return DB::transaction(function () use ($gameId, $winners): SportGame {
+            $game = SportGame::query()->whereKey($gameId)->lockForUpdate()->first();
+            if ($game === null) {
+                throw new RuntimeException('Game not found.');
             }
-            if ($event->status === SportEvent::STATUS_SETTLED) {
-                throw new RuntimeException('Event already settled.');
-            }
-
-            $existing = SportEventResult::query()->where('event_id', $eventId)->first();
-            if ($existing !== null) {
-                throw new RuntimeException('Event result already recorded.');
+            if ($game->status === SportGame::STATUS_SETTLED) {
+                throw new RuntimeException('Game already settled.');
             }
 
-            $result = new SportEventResult([
-                'event_id' => $eventId,
-                'winning_selection_ids' => $winners,
-            ]);
-            $result->save();
-
-            $now = SportEvent::nowMillis();
+            $now = SportGame::nowMillis();
             SportMarket::query()
-                ->where('event_id', $eventId)
+                ->where('game_id', $gameId)
                 ->update(['status' => SportMarket::STATUS_SETTLED, 'ut' => $now]);
 
             SportSelection::query()
-                ->whereIn('market_id', SportMarket::query()->where('event_id', $eventId)->select('id'))
+                ->whereIn('market_id', SportMarket::query()->where('game_id', $gameId)->select('id'))
                 ->update(['status' => SportSelection::STATUS_SETTLED, 'ut' => $now]);
 
-            $event->status = SportEvent::STATUS_SETTLED;
-            $event->save();
+            $game->status = SportGame::STATUS_SETTLED;
+            $game->winning_selection_ids = $winners;
+            $game->save();
 
-            $selectionIdsForEvent = SportSelection::query()
-                ->whereIn('market_id', SportMarket::query()->where('event_id', $eventId)->select('id'))
+            $selectionIdsForGame = SportSelection::query()
+                ->whereIn('market_id', SportMarket::query()->where('game_id', $gameId)->select('id'))
                 ->pluck('id')
                 ->all();
 
@@ -79,8 +67,8 @@ final readonly class BetSettlementService
 
             $orders = BetOrder::query()
                 ->where('status', BetOrderStatus::Accepted)
-                ->whereHas('lines', static function ($q) use ($selectionIdsForEvent): void {
-                    $q->whereIn('selection_id', $selectionIdsForEvent);
+                ->whereHas('lines', static function ($q) use ($selectionIdsForGame): void {
+                    $q->whereIn('kid', $selectionIdsForGame);
                 })
                 ->with('lines')
                 ->lockForUpdate()
@@ -90,7 +78,7 @@ final readonly class BetSettlementService
                 $this->settleOrderAgainstResult($order, $winnerSet);
             }
 
-            return $result->fresh() ?? $result;
+            return $game->fresh() ?? $game;
         });
     }
 
@@ -106,10 +94,10 @@ final readonly class BetSettlementService
 
         /** @var BetOrderLine $line */
         $line = $order->lines->first();
-        $sid = (int) $line->selection_id;
+        $kid = (int) $line->kid;
 
-        if (! isset($winnerSet[$sid])) {
-            $line->line_result = BetLineResult::Lose;
+        if (! isset($winnerSet[$kid])) {
+            $line->result = BetLineResult::Lose;
             $line->save();
             $order->status = BetOrderStatus::Lost;
             $order->save();
@@ -117,15 +105,19 @@ final readonly class BetSettlementService
             return;
         }
 
-        $line->line_result = BetLineResult::Win;
+        $line->result = BetLineResult::Win;
         $line->save();
 
         $payout = (int) $line->potential_return_points;
-        $this->pointsAdmin->appendImmutableLedger(
+        $bookmakerUid = (int) config('bet_agg.points.bookmaker_uid');
+        if ($bookmakerUid < 1) {
+            throw new RuntimeException('Bookmaker account is not configured (bet_agg.points.bookmaker_uid).');
+        }
+        $this->pointsAdmin->payoutBetWinFromBookmaker(
+            $bookmakerUid,
             (int) $order->uid,
             $payout,
-            (int) $order->id,
-            PointsHoldState::SettlementPayout
+            (int) $order->id
         );
 
         $order->status = BetOrderStatus::Won;

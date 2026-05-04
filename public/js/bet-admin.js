@@ -69,7 +69,46 @@
                 set[c] = true;
             }
         });
+        root.querySelectorAll('select[data-mall-dict-options]').forEach(function (el) {
+            var dco = el.getAttribute('data-mall-dict-options');
+            if (dco) {
+                set[dco] = true;
+            }
+        });
         return Object.keys(set);
+    }
+
+    /**
+     * Fill selects from cached GET /api/bet/dict rows ({ k: label, v: value }).
+     * Uses data-mall-dict-selected when set; otherwise keeps the select value before repaint.
+     */
+    function mallDictPopulateSelects(root) {
+        root = root || document;
+        root.querySelectorAll('select[data-mall-dict-options]').forEach(function (sel) {
+            var code = sel.getAttribute('data-mall-dict-options');
+            if (!code) {
+                return;
+            }
+            var list = mallDictCache[code];
+            if (!list || list.length === 0) {
+                return;
+            }
+            var picked = sel.getAttribute('data-mall-dict-selected');
+            var previousValue = picked !== null ? picked : sel.value;
+            sel.innerHTML = '';
+            list.forEach(function (item) {
+                var opt = document.createElement('option');
+                opt.value = item.v;
+                opt.textContent = item.k + ' (' + item.v + ')';
+                sel.appendChild(opt);
+            });
+            if (previousValue) {
+                sel.value = previousValue;
+            }
+            if (!sel.value && sel.options.length > 0) {
+                sel.selectedIndex = 0;
+            }
+        });
     }
 
     function mallDictApply(root) {
@@ -86,17 +125,21 @@
 
     function mallDictInit(root) {
         var codes = mallDictCollectCodes(root || document);
+        var scope = root || document;
         if (codes.length === 0) {
+            mallDictPopulateSelects(scope);
             return;
         }
         mallDictFetch(codes, function () {
-            mallDictApply(root || document);
+            mallDictApply(scope);
+            mallDictPopulateSelects(scope);
         });
     }
 
     window.mallDictLabel = mallDictLabel;
     window.mallDictEnsure = mallDictEnsure;
     window.mallDictInit = mallDictInit;
+    window.mallDictPopulateSelects = mallDictPopulateSelects;
 
     var THEME_KEY = 'mall-admin-theme';
     var DARK = 'dark';
@@ -265,6 +308,60 @@
 
         applyState();
     }
+
+    /**
+     * List → detail navigation: use history.back when referrer is the list path; otherwise location.replace(fallback).
+     * Same contract as service_foundation app_console main.js returnToList.
+     */
+    window.returnToList = function (fallbackUrl) {
+        var fallback = String(fallbackUrl || '').trim() || '/';
+        var here;
+        try {
+            here = new URL(window.location.href);
+        } catch (e) {
+            window.location.replace(fallback);
+            return false;
+        }
+        var fall;
+        try {
+            fall = new URL(fallback, window.location.origin);
+        } catch (e) {
+            window.location.replace(fallback);
+            return false;
+        }
+        function normPath(p) {
+            var s = p && p !== '/' ? String(p) : '/';
+            if (s.length > 1) {
+                s = s.replace(/\/+$/, '');
+            }
+            return s || '/';
+        }
+        if (!document.referrer) {
+            window.location.replace(fallback);
+            return false;
+        }
+        var ref;
+        try {
+            ref = new URL(document.referrer);
+        } catch (e) {
+            window.location.replace(fallback);
+            return false;
+        }
+        if (ref.origin !== window.location.origin) {
+            window.location.replace(fallback);
+            return false;
+        }
+        if (normPath(ref.pathname) === normPath(here.pathname) && ref.search === here.search) {
+            window.location.replace(fallback);
+            return false;
+        }
+        if (normPath(ref.pathname) === normPath(fall.pathname) && window.history.length > 1) {
+            window.history.back();
+            return false;
+        }
+        window.location.replace(fallback);
+        return false;
+    };
 
     document.addEventListener('DOMContentLoaded', function () {
         initTheme();

@@ -9,6 +9,7 @@ use App\Http\Controllers\Controller;
 use App\Services\MallDictionaryService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Paganini\Constants\ResponseConstant;
 
 final class BetDictController extends Controller
 {
@@ -17,12 +18,12 @@ final class BetDictController extends Controller
         $reqId = $request->header('X-Request-Id') ?: '';
         $codesRaw = $request->query('codes');
         if (! is_string($codesRaw) || trim($codesRaw) === '') {
-            return response()->json(ApiResponse::error(101, 'codes is required', $reqId));
+            return response()->json(ApiResponse::error(ResponseConstant::RET_MISSING_PARAM, 'codes is required', $reqId));
         }
 
         $codes = array_values(array_filter(array_map(trim(...), explode(',', $codesRaw))));
         if ($codes === []) {
-            return response()->json(ApiResponse::error(101, 'codes is required', $reqId));
+            return response()->json(ApiResponse::error(ResponseConstant::RET_MISSING_PARAM, 'codes is required', $reqId));
         }
 
         $data = $dictionary->resolve($codes);

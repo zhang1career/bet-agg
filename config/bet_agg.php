@@ -1,5 +1,9 @@
 <?php
 
+declare(strict_types=1);
+
+use Paganini\Constants\ResponseConstant;
+
 return [
     'api' => [
         'log_http_errors' => (bool) env('BET_AGG_API_LOG_HTTP_ERRORS', true),
@@ -15,18 +19,15 @@ return [
         ],
         'me_endpoint' => '/api/user/me',
         'timeout_seconds' => 3,
-        'unauthorized_code' => 40101,
-    ],
-
-    'payment' => [
-        'callback_token' => env('BET_PAYMENT_CALLBACK_TOKEN', ''),
+        'unauthorized_code' => ResponseConstant::RET_UNAUTHORIZED,
     ],
 
     'orders' => [
         'pending_payment_timeout_ms' => (int) env('BET_PENDING_PAYMENT_TIMEOUT_MS', 1_800_000),
     ],
 
-    'admin' => [
-        'api_token' => env('BET_ADMIN_API_TOKEN', ''),
+    'points' => [
+        /** Dedicated Foundation user id: receives accepted stakes and funds winner payouts */
+        'bookmaker_uid' => (int) env('BET_BOOKMAKER_UID', 0),
     ],
 ];

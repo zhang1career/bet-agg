@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\mall;
 
-use App\Models\SportEvent;
+use App\Models\SportGame;
 use App\Models\SportMarket;
 use App\Models\SportSelection;
 use RuntimeException;
@@ -36,7 +36,7 @@ final readonly class SportSelectionBookService
             }
 
             $selection = SportSelection::query()
-                ->with(['market.event'])
+                ->with(['market.game'])
                 ->whereKey($selectionId)
                 ->first();
             if ($selection === null) {
@@ -47,13 +47,13 @@ final readonly class SportSelectionBookService
             if ($market === null) {
                 throw new RuntimeException('Market missing for selection '.$selectionId);
             }
-            $event = $market->event;
-            if ($event === null) {
-                throw new RuntimeException('Event missing for selection '.$selectionId);
+            $game = $market?->game;
+            if ($game === null) {
+                throw new RuntimeException('Game missing for selection '.$selectionId);
             }
 
-            if ($event->status !== SportEvent::STATUS_OPEN) {
-                throw new RuntimeException('Event is not open for betting.');
+            if ($game->status !== SportGame::STATUS_OPEN) {
+                throw new RuntimeException('Game is not open for betting.');
             }
             if ($market->status !== SportMarket::STATUS_OPEN) {
                 throw new RuntimeException('Market is not open for betting.');
@@ -98,17 +98,17 @@ final readonly class SportSelectionBookService
             return [];
         }
         $selections = SportSelection::query()
-            ->with(['market.event'])
+            ->with(['market.game'])
             ->whereIn('id', $selectionIds)
             ->get();
 
         $out = [];
         foreach ($selections as $sel) {
             $market = $sel->market;
-            $event = $market?->event;
-            $ok = $event !== null
+            $game = $market?->game;
+            $ok = $game !== null
                 && $market !== null
-                && $event->status === SportEvent::STATUS_OPEN
+                && $game->status === SportGame::STATUS_OPEN
                 && $market->status === SportMarket::STATUS_OPEN
                 && $sel->status === SportSelection::STATUS_OPEN
                 && $sel->current_odds_millis >= 1000;

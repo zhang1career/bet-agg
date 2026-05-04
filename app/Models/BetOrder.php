@@ -16,8 +16,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int $uid Foundation user id (from `UserFoundationGateway` / outbound profile)
  * @property BetOrderStatus $status
  * @property int $total_price Total stake points (integer); denormalized from lines
- * @property int $points_deduct_minor Points frozen at checkout; 0 until checkout
- * @property int $cash_payable_minor Third-party cash after points; 0 for points-only stakes
+ * @property int $points_held Stake removed from user's points wallet after checkout completes (usually equals total_price)
  * @property int $ct
  * @property int $ut
  * @property CheckoutPhase $checkout_phase
@@ -37,8 +36,7 @@ class BetOrder extends Model
         'uid',
         'status',
         'total_price',
-        'points_deduct_minor',
-        'cash_payable_minor',
+        'points_held',
         'ct',
         'ut',
         'checkout_phase',
@@ -50,8 +48,7 @@ class BetOrder extends Model
         'uid' => 'integer',
         'status' => BetOrderStatus::class,
         'total_price' => 'integer',
-        'points_deduct_minor' => 'integer',
-        'cash_payable_minor' => 'integer',
+        'points_held' => 'integer',
         'ct' => 'integer',
         'ut' => 'integer',
         'checkout_phase' => CheckoutPhase::class,

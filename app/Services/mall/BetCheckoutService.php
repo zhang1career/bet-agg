@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\mall;
 
-use App\Contracts\PaymentOutboundContract;
 use App\Enums\BetOrderStatus;
 use App\Enums\CheckoutPhase;
 use App\Models\BetOrder;
@@ -12,21 +11,21 @@ use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
 /**
- * Local checkout: one DB transaction — re-validate book, optional points hold, prepay or immediate acceptance.
+ * Local checkout: one DB transaction — re-validate book, freeze full stake from points balance, accept.
  */
 final readonly class BetCheckoutService
 {
     public function __construct(
         private OrderCommandService $orders,
         private SportSelectionBookService $book,
-        private MallPointsTccService $points,
-        private PaymentOutboundContract $payment,
+        private PointsTccService $points,
+        private PointsAdminService $ledger,
     ) {}
 
     /**
-     * @return array{order: BetOrder, prepay: array<string, mixed>}
+     * @return array{order: BetOrder}
      */
-    public function checkoutExistingOrder(int $uid, BetOrder $order, int $pointsMinor): array
+    public function checkoutExistingOrder(int $uid, BetOrder $order): array
     {
         if ($order->uid !== $uid) {
             throw new RuntimeException('Order does not belong to the current user.');
@@ -37,11 +36,8 @@ final readonly class BetCheckoutService
         if ($order->checkout_phase !== CheckoutPhase::None) {
             throw new RuntimeException('Order is not a draft; checkout already started or completed.');
         }
-        if ($pointsMinor < 0 || $pointsMinor > $order->total_price) {
-            throw new RuntimeException('Invalid points_minor.');
-        }
 
-        return DB::transaction(function () use ($uid, $order, $pointsMinor): array {
+        return DB::transaction(function () use ($uid, $order): array {
             /** @var BetOrder $order */
             $order = BetOrder::query()->whereKey($order->id)->lockForUpdate()->firstOrFail();
 
@@ -54,53 +50,30 @@ final readonly class BetCheckoutService
             $this->book->assertSelectionsAcceptingBets($uid, $lines);
 
             $total = (int) $order->total_price;
-            $cash = $total - $pointsMinor;
-            $order->points_deduct_minor = $pointsMinor;
-            $order->cash_payable_minor = $cash;
-
-            if ($pointsMinor > 0) {
-                $this->points->tryFreeze($uid, $pointsMinor, (int) $order->id);
+            if ($total < 1) {
+                throw new RuntimeException('Order total is invalid.');
             }
 
-            if ($cash < 1) {
-                if ($pointsMinor > 0) {
-                    $this->points->confirmHoldForBetOrder((int) $order->id);
-                }
-                $order = $this->orders->transitionStatus($order, BetOrderStatus::Accepted, false);
-                $order->checkout_phase = CheckoutPhase::Completed;
-                $order->save();
-
-                return [
-                    'order' => $order->fresh(['lines']) ?? $order,
-                    'prepay' => [
-                        'schema_version' => '1',
-                        'pay_channel' => 'stub',
-                        'order_id' => (int) $order->id,
-                        'uid' => $uid,
-                        'amount_minor' => 0,
-                        'invoke_payment' => 'none',
-                        'status' => 'points_only_accepted',
-                    ],
-                ];
+            $bookmakerUid = (int) config('bet_agg.points.bookmaker_uid');
+            if ($bookmakerUid < 1) {
+                throw new RuntimeException('Bookmaker account is not configured (bet_agg.points.bookmaker_uid).');
+            }
+            if ($bookmakerUid === $uid) {
+                throw new RuntimeException('Player cannot use the configured bookmaker account.');
             }
 
-            $payIdem = 'bet:order:'.$order->id.':prepay';
-            $partial = $this->payment->prepay($payIdem, (int) $order->id, $cash, $uid);
-            $prepay = array_merge([
-                'schema_version' => '1',
-                'pay_channel' => 'stub',
-                'order_id' => (int) $order->id,
-                'uid' => $uid,
-                'amount_minor' => $cash,
-                'invoke_payment' => 'placeholder',
-            ], $partial);
+            $order->points_held = $total;
 
-            $order->checkout_phase = CheckoutPhase::AwaitPayment;
+            $this->points->tryFreeze($uid, $total, (int) $order->id);
+            $this->points->confirmHoldForBetOrder((int) $order->id);
+            $this->ledger->creditBookmakerAcceptedStake($bookmakerUid, $total, (int) $order->id);
+
+            $order = $this->orders->transitionStatus($order, BetOrderStatus::Accepted, false);
+            $order->checkout_phase = CheckoutPhase::Completed;
             $order->save();
 
             return [
                 'order' => $order->fresh(['lines']) ?? $order,
-                'prepay' => $prepay,
             ];
         });
     }

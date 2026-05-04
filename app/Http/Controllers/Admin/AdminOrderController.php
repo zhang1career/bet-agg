@@ -29,7 +29,6 @@ class AdminOrderController extends Controller
 
         return view('admin.orders.index', [
             'orders' => $orders,
-            'statuses' => BetOrderStatus::cases(),
         ]);
     }
 
@@ -42,7 +41,6 @@ class AdminOrderController extends Controller
 
         return view('admin.orders.show', [
             'order' => $order,
-            'statuses' => BetOrderStatus::cases(),
         ]);
     }
 

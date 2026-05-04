@@ -17,8 +17,8 @@
                 <dd class="col-sm-9">{{ $flow->uid }}</dd>
                 <dt class="col-sm-3">OID</dt>
                 <dd class="col-sm-9">{{ $flow->oid }}</dd>
-                <dt class="col-sm-3">Amount (minor)</dt>
-                <dd class="col-sm-9 font-monospace">{{ number_format((int) $flow->amount_minor) }}</dd>
+                <dt class="col-sm-3">Amount (points)</dt>
+                <dd class="col-sm-9 font-monospace">{{ number_format((int) $flow->amount) }}</dd>
                 <dt class="col-sm-3">State</dt>
                 <dd class="col-sm-9">
                     <span class="badge mall-badge-soft"

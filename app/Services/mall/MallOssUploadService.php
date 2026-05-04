@@ -11,29 +11,28 @@ use Illuminate\Support\Str;
 use RuntimeException;
 use Throwable;
 
-/**
- * Uploads files to the foundation OSS API (HTTP PUT), same mechanism as Django
- * app_user.services.avatar_storage_service (HTTP PUT to /api/oss/{bucket}/{key}).
- */
+/** Foundation OSS: HTTP PUT {@code /api/oss/{bucket}/{key}} (same idea as Django avatar_storage_service). */
 final readonly class MallOssUploadService
 {
-    public function __construct(private ResolvedApiGatewayBaseUrl $resolvedFoundationBaseUrl)
-    {
-    }
+    /** @var list<string> */
+    public const GAME_MEDIA_SEGMENTS = ['banner', 'main_media'];
+
+    public function __construct(private ResolvedApiGatewayBaseUrl $resolvedFoundationBaseUrl) {}
 
     /**
-     * @return non-empty-string OSS object key (e.g. bet/uploads/{uuid}.jpg)
+     * Object key {@code {segment}/{uuid}.ext}; {@code segment} must be in {@see self::GAME_MEDIA_SEGMENTS}.
+     *
+     * @return non-empty-string
      */
-    public function uploadProductFile(UploadedFile $uploadedFile): string
+    public function uploadGameMediaFile(UploadedFile $uploadedFile, string $segment): string
     {
-        $prefix = trim((string) config('bet_upload.prefix'), '/');
-        if ($prefix === '') {
-            $prefix = 'bet/uploads';
+        if (! in_array($segment, self::GAME_MEDIA_SEGMENTS, true)) {
+            throw new RuntimeException('Invalid game media segment.');
         }
 
         $extension = $uploadedFile->getClientOriginalExtension() ?: $uploadedFile->extension() ?: 'bin';
-        $pathId = (string)Str::uuid();
-        $objectKey = $prefix . '/' . $pathId . '.' . $extension;
+        $pathId = (string) Str::uuid();
+        $objectKey = $segment.'/'.$pathId.'.'.$extension;
 
         $base = $this->resolvedFoundationBaseUrl->resolvePathSuffix('/api/oss');
         $bucket = trim((string) config('bet_upload.oss_bucket'), '/');
@@ -45,7 +44,7 @@ final readonly class MallOssUploadService
         }
 
         $encodedKey = $this->encodeObjectKeyForUrl($objectKey);
-        $uploadUrl = $base . '/' . $bucket . '/' . $encodedKey;
+        $uploadUrl = $base.'/'.$bucket.'/'.$encodedKey;
 
         $mime = $uploadedFile->getMimeType() ?: 'application/octet-stream';
         $path = $uploadedFile->getRealPath();
@@ -59,25 +58,28 @@ final readonly class MallOssUploadService
         }
 
         try {
-            $response = Http::timeout(120)
-                ->withHeaders([
-                    'Accept' => '*/*',
-                ])
-                ->withBody($stream, $mime)
-                ->put($uploadUrl);
+            $request = Http::timeout(120)->withHeaders([
+                'Accept' => '*/*',
+            ]);
+            $gatewayBearer = (string) config('bet_upload.gateway_bearer_token', '');
+            if ($gatewayBearer !== '') {
+                $request = $request->withToken($gatewayBearer);
+            }
+            $response = $request->withBody($stream, $mime)->put($uploadUrl);
         } catch (Throwable $e) {
-            throw new RuntimeException('OSS upload request failed: ' . $e->getMessage(), 0, $e);
+            throw new RuntimeException('OSS upload request failed: '.$e->getMessage(), 0, $e);
         } finally {
             if (is_resource($stream)) {
                 fclose($stream);
             }
         }
 
-        if ($response->status() !== 200) {
+        $status = $response->status();
+        if (! in_array($status, [200, 204], true)) {
             $preview = mb_substr($response->body(), 0, 500);
 
             throw new RuntimeException(
-                sprintf('OSS upload rejected: HTTP %d. %s', $response->status(), $preview)
+                sprintf('OSS upload rejected: HTTP %d. %s', $status, $preview)
             );
         }
 
@@ -91,6 +93,6 @@ final readonly class MallOssUploadService
     {
         $segments = explode('/', $objectKey);
 
-        return implode('/', array_map(static fn(string $s): string => rawurlencode($s), $segments));
+        return implode('/', array_map(static fn (string $s): string => rawurlencode($s), $segments));
     }
 }

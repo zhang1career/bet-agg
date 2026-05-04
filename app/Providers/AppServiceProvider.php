@@ -3,7 +3,6 @@
 namespace App\Providers;
 
 use App\Contracts\InventoryOutboundContract;
-use App\Contracts\PaymentOutboundContract;
 use App\Http\Client\OutboundHttpDebugMiddleware;
 use App\Infrastructure\ServiceDiscovery\LaravelRedisStringClient;
 use App\Logging\monolog\TodayAppLogHandler;
@@ -14,15 +13,14 @@ use App\Services\api_gw\MemoizedServiceDiscoveryUrl;
 use App\Services\api_gw\ResolvedApiGatewayBaseUrl;
 use App\Services\api_gw\ResolvedXxlJobAdminAddress;
 use App\Services\mall\BetCheckoutService;
+use App\Services\mall\BetOverdueOrderSweepService;
 use App\Services\mall\BetSettlementService;
-use App\Services\mall\MallOverdueOrderSweepService;
-use App\Services\mall\MallPaymentCallbackService;
-use App\Services\mall\MallPointsTccService;
 use App\Services\mall\OrderCommandService;
+use App\Services\mall\PointsTccService;
+use App\Services\mall\serv_fd\CmsGameClient;
 use App\Services\mall\SportMarketCatalogService;
 use App\Services\mall\SportSelectionBookService;
 use App\Services\outbound\StubInventoryOutboundClient;
-use App\Services\outbound\StubPaymentOutboundClient;
 use App\Services\XxlJobRegistry;
 use DateTimeZone;
 use Illuminate\Contracts\Foundation\Application;
@@ -73,15 +71,15 @@ class AppServiceProvider extends ServiceProvider
             );
         });
 
+        $this->app->singleton(CmsGameClient::class, static fn () => CmsGameClient::fromConfig());
+
         $this->app->singleton(SportSelectionBookService::class);
         $this->app->singleton(SportMarketCatalogService::class);
         $this->app->singleton(OrderCommandService::class);
         $this->app->singleton(InventoryOutboundContract::class, StubInventoryOutboundClient::class);
-        $this->app->singleton(PaymentOutboundContract::class, StubPaymentOutboundClient::class);
-        $this->app->singleton(MallPointsTccService::class);
+        $this->app->singleton(PointsTccService::class);
         $this->app->singleton(BetCheckoutService::class);
-        $this->app->singleton(MallPaymentCallbackService::class);
-        $this->app->singleton(MallOverdueOrderSweepService::class);
+        $this->app->singleton(BetOverdueOrderSweepService::class);
         $this->app->singleton(BetSettlementService::class);
 
         $this->app->singleton(XxlJobRegistry::class, function () {
