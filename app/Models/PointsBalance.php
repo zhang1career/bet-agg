@@ -8,13 +8,15 @@ use App\Models\Concerns\HasMillisTimestamps;
 use Illuminate\Database\Eloquent\Model;
 
 /**
+ * User points wallet (single account unit for betting and payouts).
+ *
  * @property int $id
  * @property int $uid
- * @property int $balance_minor
+ * @property int $balance
  * @property int $ct
  * @property int $ut
  */
-class MallPointsBalance extends Model
+class PointsBalance extends Model
 {
     use HasMillisTimestamps;
 
@@ -24,7 +26,7 @@ class MallPointsBalance extends Model
 
     protected $fillable = [
         'uid',
-        'balance_minor',
+        'balance',
         'ct',
         'ut',
     ];
@@ -32,7 +34,7 @@ class MallPointsBalance extends Model
     protected $casts = [
         'id' => 'integer',
         'uid' => 'integer',
-        'balance_minor' => 'integer',
+        'balance' => 'integer',
         'ct' => 'integer',
         'ut' => 'integer',
     ];

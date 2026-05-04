@@ -15,8 +15,8 @@
                 <dd class="col-sm-9 font-monospace">{{ $balance->id }}</dd>
                 <dt class="col-sm-3">UID</dt>
                 <dd class="col-sm-9">{{ $balance->uid }}</dd>
-                <dt class="col-sm-3">Balance (minor)</dt>
-                <dd class="col-sm-9 font-monospace">{{ number_format((int) $balance->balance_minor) }}</dd>
+                <dt class="col-sm-3">Balance (points)</dt>
+                <dd class="col-sm-9 font-monospace">{{ number_format((int) $balance->balance) }}</dd>
                 <dt class="col-sm-3">ct / ut</dt>
                 <dd class="col-sm-9 text-muted small">{{ \App\Support\MillisTimestampDisplay::format($balance->ct) }}
                     / {{ \App\Support\MillisTimestampDisplay::format($balance->ut) }}</dd>

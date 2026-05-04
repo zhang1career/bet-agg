@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
-use App\Models\MallPointsBalance;
+use App\Models\PointsBalance;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Paganini\Constants\ResponseConstant;
@@ -40,10 +40,10 @@ class MallPointsControllerTest extends TestCase
         $this->withHeader('X-User-Access-Token', 'tok')->getJson('/api/bet/points')
             ->assertOk()
             ->assertJsonPath('errorCode', ResponseConstant::RET_OK)
-            ->assertJsonPath('data.balance_minor', 0);
+            ->assertJsonPath('data.balance', 0);
     }
 
-    public function test_points_returns_balance_minor(): void
+    public function test_points_returns_balance(): void
     {
         Http::fake(array_merge([
             'http://foundation.local/api/user/me' => Http::response([
@@ -53,9 +53,9 @@ class MallPointsControllerTest extends TestCase
             ], 200),
         ], self::cmsGatewayGameFakes()));
 
-        MallPointsBalance::query()->create([
+        PointsBalance::query()->create([
             'uid' => 88,
-            'balance_minor' => 12_345,
+            'balance' => 12_345,
             'ct' => 1,
             'ut' => 1,
         ]);
@@ -63,6 +63,6 @@ class MallPointsControllerTest extends TestCase
         $this->withHeader('X-User-Access-Token', 'tok')->getJson('/api/bet/points')
             ->assertOk()
             ->assertJsonPath('errorCode', ResponseConstant::RET_OK)
-            ->assertJsonPath('data.balance_minor', 12_345);
+            ->assertJsonPath('data.balance', 12_345);
     }
 }

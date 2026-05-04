@@ -23,12 +23,16 @@
         <div class="mall-console-card card shadow-sm">
             <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-striped table-hover mb-0 mall-data-table align-middle">
+                    <table class="table table-striped table-hover mb-0 mall-data-table align-middle"
+                           @if($balances->isNotEmpty())
+                               data-mall-balance-user-ids="{{ $balances->pluck('uid')->unique()->join(',') }}"
+                           @endif>
                         <thead>
                         <tr>
                             <th>ID</th>
                             <th>UID</th>
-                            <th class="text-end">Balance (minor)</th>
+                            <th>Username</th>
+                            <th class="text-end">Balance (points)</th>
                             <th>Updated</th>
                             <th class="text-end text-nowrap">Actions</th>
                         </tr>
@@ -50,7 +54,9 @@
                                         {{ $row->uid }}
                                     </button>
                                 </td>
-                                <td class="text-end font-monospace">{{ number_format((int) $row->balance_minor) }}</td>
+                                <td class="mall-points-balance-username text-muted small"
+                                    data-mall-balance-username-for="{{ $row->uid }}">—</td>
+                                <td class="text-end font-monospace">{{ number_format((int) $row->balance) }}</td>
                                 <td class="text-muted small">{{ \App\Support\MillisTimestampDisplay::format($row->ut) }}</td>
                                 <td class="text-end text-nowrap">
                                     <button type="button" class="mall-icon-btn d-inline-flex p-1 rounded" title="Adjust"
@@ -67,7 +73,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="5" class="text-center text-muted py-4">No accounts yet.</td>
+                                <td colspan="6" class="text-center text-muted py-4">No accounts yet.</td>
                             </tr>
                         @endforelse
                         </tbody>
@@ -104,7 +110,7 @@
                                 </td>
                                 <td>{{ $f->uid }}</td>
                                 <td>{{ $f->oid }}</td>
-                                <td class="text-end font-monospace">{{ number_format((int) $f->amount_minor) }}</td>
+                                <td class="text-end font-monospace">{{ number_format((int) $f->amount) }}</td>
                                 <td>
                                     <span class="badge mall-badge-soft"
                                           data-mall-dict-code="points_hold_state"
@@ -116,7 +122,7 @@
                                             data-flow-id="{{ $f->id }}"
                                             data-flow-uid="{{ $f->uid }}"
                                             data-flow-oid="{{ $f->oid }}"
-                                            data-flow-amount="{{ $f->amount_minor }}"
+                                            data-flow-amount="{{ $f->amount }}"
                                             data-flow-state="{{ $f->state->value }}"
                                             data-flow-ct="{{ \App\Support\MillisTimestampDisplay::format($f->ct) }}"
                                             data-flow-ut="{{ \App\Support\MillisTimestampDisplay::format($f->ut) }}">
@@ -156,8 +162,8 @@
                             <input type="number" name="uid" id="m-open-uid" class="form-control" required min="1" value="{{ old('uid') }}">
                         </div>
                         <div class="mb-0">
-                            <label class="form-label" for="m-open-bal">Initial balance (minor)</label>
-                            <input type="number" name="balance_minor" id="m-open-bal" class="form-control" min="0" value="{{ old('balance_minor', 0) }}">
+                            <label class="form-label" for="m-open-bal">Initial balance (points)</label>
+                            <input type="number" name="balance" id="m-open-bal" class="form-control" min="0" value="{{ old('balance', 0) }}">
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -188,8 +194,8 @@
                             <input type="number" name="uid" id="m-adj-uid" class="form-control" required min="1" readonly>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label" for="m-adj-delta">Delta (minor)</label>
-                            <input type="number" name="delta_minor" id="m-adj-delta" class="form-control" required value="{{ old('delta_minor') }}">
+                            <label class="form-label" for="m-adj-delta">Delta (points)</label>
+                            <input type="number" name="delta_points" id="m-adj-delta" class="form-control" required value="{{ old('delta_points') }}">
                         </div>
                         <div class="mb-0">
                             <label class="form-label" for="m-adj-oid">Order id (optional)</label>
@@ -257,6 +263,43 @@
 @push('scripts')
     <script>
         (function () {
+            var balanceUserTable = document.querySelector('table[data-mall-balance-user-ids]');
+            if (balanceUserTable) {
+                var rawIds = balanceUserTable.getAttribute('data-mall-balance-user-ids');
+                var batchUrl = @json(route('admin.users.index'));
+                if (rawIds && rawIds.trim() !== '') {
+                    fetch(batchUrl + '?user_ids=' + encodeURIComponent(rawIds), { headers: { Accept: 'application/json' } })
+                        .then(function (r) {
+                            return r.json().then(function (j) {
+                                return { ok: r.ok, json: j };
+                            });
+                        })
+                        .then(function (res) {
+                            if (!res.ok || !res.json || !Array.isArray(res.json.users)) {
+                                return;
+                            }
+                            var byId = {};
+                            res.json.users.forEach(function (u) {
+                                if (u && typeof u === 'object' && u.id !== undefined && u.id !== null) {
+                                    var un = u.username;
+                                    byId[String(u.id)] = un === undefined || un === null ? '' : String(un);
+                                }
+                            });
+                            balanceUserTable.querySelectorAll('[data-mall-balance-username-for]').forEach(function (cell) {
+                                var uid = cell.getAttribute('data-mall-balance-username-for');
+                                if (!uid) {
+                                    return;
+                                }
+                                var name = byId[uid];
+                                if (name !== undefined && name !== '') {
+                                    cell.textContent = name;
+                                    cell.classList.remove('text-muted');
+                                }
+                            });
+                        })
+                        .catch(function () { /* leave placeholders */ });
+                }
+            }
             var adjModal = document.getElementById('mallModalAdjust');
             if (adjModal) {
                 adjModal.addEventListener('show.bs.modal', function (e) {

@@ -17,10 +17,6 @@
       "description": "Betting catalog, orders, points, checkout"
     },
     {
-      "name": "Payment",
-      "description": "Payment gateway callbacks"
-    },
-    {
       "name": "Jobs",
       "description": "XXL-Job executor HTTP surface"
     },
@@ -42,12 +38,6 @@
         "in": "header",
         "name": "XXL-JOB-ACCESS-TOKEN",
         "description": "Must match `xxl.token` configuration."
-      },
-      "PaymentCallbackToken": {
-        "type": "apiKey",
-        "in": "header",
-        "name": "X-Payment-Callback-Token",
-        "description": "Required when `bet_agg.payment.callback_token` is non-empty; must match that secret."
       }
     },
     "schemas": {
@@ -132,11 +122,9 @@
           "total_price": {
             "type": "integer"
           },
-          "points_deduct_minor": {
-            "type": "integer"
-          },
-          "cash_payable_minor": {
-            "type": "integer"
+          "points_held": {
+            "type": "integer",
+            "description": "Stake held from user's points wallet after checkout (normally equals total_price)"
           },
           "ct": {
             "type": "integer"
@@ -343,8 +331,9 @@
           }
         }
       },
-      "MallPointsAccount": {
+      "PointsAccountRow": {
         "type": "object",
+        "description": "`points_balance` row (developer/admin listings).",
         "properties": {
           "id": {
             "type": "integer"
@@ -352,7 +341,7 @@
           "uid": {
             "type": "integer"
           },
-          "balance_minor": {
+          "balance": {
             "type": "integer"
           },
           "ct": {
@@ -375,7 +364,7 @@
           "oid": {
             "type": "integer"
           },
-          "amount_minor": {
+          "amount": {
             "type": "integer"
           },
           "state": {
@@ -404,25 +393,16 @@
         }
       },
       "BetCheckoutBody": {
-        "summary": "Checkout: pay with points",
-        "description": "See `Tests\\Feature\\MallCheckoutControllerTest`.",
+        "summary": "Checkout",
+        "description": "Debit full stake in points.",
         "value": {
-          "order_id": 1,
-          "points_minor": 100
+          "order_id": 1
         }
       },
       "BetOrderPatchBody": {
         "summary": "Transition order status",
         "value": {
           "status": "cancelled"
-        }
-      },
-      "PaymentCallbackBody": {
-        "summary": "Payment gateway acknowledges paid",
-        "description": "See `Tests\\Feature\\PaymentCallbackControllerTest`.",
-        "value": {
-          "order_id": 1,
-          "status": "paid"
         }
       },
       "XxlJobRunBody": {
@@ -1266,7 +1246,7 @@
                         "data": {
                           "type": "object",
                           "properties": {
-                            "balance_minor": {
+                            "balance": {
                               "type": "integer"
                             }
                           }
@@ -1326,10 +1306,6 @@
                   "order_id": {
                     "type": "integer",
                     "minimum": 1
-                  },
-                  "points_minor": {
-                    "type": "integer",
-                    "minimum": 0
                   }
                 }
               },
@@ -1359,12 +1335,11 @@
                           "properties": {
                             "order": {
                               "$ref": "#/components/schemas/BetOrderFull"
-                            },
-                            "prepay": {
-                              "type": "object",
-                              "additionalProperties": true
                             }
-                          }
+                          },
+                          "required": [
+                            "order"
+                          ]
                         }
                       }
                     }
@@ -1395,107 +1370,6 @@
           },
           "422": {
             "description": "Validation or orchestration error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiEnvelope"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/bet/payment/callback": {
-      "post": {
-        "tags": [
-          "Payment"
-        ],
-        "summary": "Notify paid / success for an order",
-        "description": "When `bet_agg.payment.callback_token` is set, requests must send matching `X-Payment-Callback-Token`. If unset, the route accepts calls without that header.",
-        "parameters": [
-          {
-            "name": "X-Payment-Callback-Token",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "type": "string"
-            },
-            "description": "Required when payment callback token is configured in app config."
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "order_id"
-                ],
-                "properties": {
-                  "order_id": {
-                    "type": "integer",
-                    "minimum": 1
-                  },
-                  "status": {
-                    "type": "string",
-                    "description": "Normalized to success when one of: paid, success, payment.success (default paid)"
-                  }
-                },
-                "additionalProperties": true
-              },
-              "examples": {
-                "paid": {
-                  "$ref": "#/components/examples/PaymentCallbackBody"
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Acknowledged",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/ApiEnvelope"
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "data": {
-                          "type": "object",
-                          "properties": {
-                            "order_id": {
-                              "type": "integer"
-                            },
-                            "status": {
-                              "type": "integer"
-                            }
-                          }
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Invalid callback token when configured",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiEnvelope"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Unsupported status or handler error",
             "content": {
               "application/json": {
                 "schema": {

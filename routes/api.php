@@ -6,7 +6,6 @@ use App\Http\Controllers\api\BetGameController;
 use App\Http\Controllers\api\BetMarketController;
 use App\Http\Controllers\api\BetOrderController;
 use App\Http\Controllers\api\BetPointsController;
-use App\Http\Controllers\api\PaymentCallbackController;
 use App\Http\Controllers\api\SportSelectionController;
 use App\Http\Controllers\XxlJobController;
 use App\Http\Middleware\XxljobAuthentication;
@@ -33,6 +32,5 @@ Route::prefix('')->middleware([])->group(function () {
         Route::get('orders/{id}', [BetOrderController::class, 'show'])->whereNumber('id');
         Route::get('points', [BetPointsController::class, 'show']);
         Route::post('checkout', [BetCheckoutController::class, 'store']);
-        Route::post('payment/callback', PaymentCallbackController::class);
     });
 });

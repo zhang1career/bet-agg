@@ -7,7 +7,7 @@ namespace Tests\Feature;
 use App\Enums\BetOrderStatus;
 use App\Enums\CheckoutPhase;
 use App\Models\BetOrder;
-use App\Models\MallPointsBalance;
+use App\Models\PointsBalance;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Paganini\Constants\ResponseConstant;
@@ -56,24 +56,22 @@ class MallCheckoutControllerTest extends TestCase
         $create->assertCreated();
         $orderId = (int) $create->json('data.id');
 
-        MallPointsBalance::query()->create(['uid' => 42, 'balance_minor' => 500]);
+        PointsBalance::query()->create(['uid' => 42, 'balance' => 500]);
 
         $response = $this->withHeader('X-User-Access-Token', 'tok')->postJson('/api/bet/checkout', [
             'order_id' => $orderId,
-            'points_minor' => 100,
         ]);
 
         $response->assertCreated()
             ->assertJsonPath('errorCode', ResponseConstant::RET_OK)
-            ->assertJsonPath('data.order.status', BetOrderStatus::Accepted->value)
-            ->assertJsonPath('data.prepay.invoke_payment', 'none');
+            ->assertJsonPath('data.order.status', BetOrderStatus::Accepted->value);
 
         $order = BetOrder::query()->find($orderId);
         $this->assertNotNull($order);
         $this->assertSame(CheckoutPhase::Completed, $order->checkout_phase);
     }
 
-    public function test_checkout_with_cash_portion_sets_await_payment(): void
+    public function test_checkout_returns_422_when_insufficient_points_balance(): void
     {
         $this->fakeUserMe(42);
 
@@ -83,21 +81,18 @@ class MallCheckoutControllerTest extends TestCase
             'lines' => [['kid' => $sid, 'stake_points' => 100]],
         ])->json('data.id');
 
-        MallPointsBalance::query()->create(['uid' => 42, 'balance_minor' => 30]);
+        PointsBalance::query()->create(['uid' => 42, 'balance' => 30]);
 
         $response = $this->withHeader('X-User-Access-Token', 'tok')->postJson('/api/bet/checkout', [
             'order_id' => $orderId,
-            'points_minor' => 30,
         ]);
 
-        $response->assertCreated()
-            ->assertJsonPath('data.order.status', BetOrderStatus::Pending->value)
-            ->assertJsonPath('data.prepay.amount_minor', 70)
-            ->assertJsonPath('data.prepay.invoke_payment', 'placeholder');
+        $response->assertStatus(422)
+            ->assertJsonPath('errorCode', ResponseConstant::RET_BUSINESS_ERROR);
 
         $order = BetOrder::query()->find($orderId);
         $this->assertNotNull($order);
-        $this->assertSame(CheckoutPhase::AwaitPayment, $order->checkout_phase);
+        $this->assertSame(CheckoutPhase::None, $order->checkout_phase);
     }
 
     public function test_checkout_rejects_when_order_not_draft(): void

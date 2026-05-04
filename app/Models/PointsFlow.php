@@ -15,7 +15,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $id
  * @property int $uid
  * @property int $oid 0 = not linked to an order row
- * @property int $amount_minor
+ * @property int $amount
  * @property PointsHoldState $state
  * @property int $ct
  * @property int $ut
@@ -31,7 +31,7 @@ class PointsFlow extends Model
     protected $fillable = [
         'uid',
         'oid',
-        'amount_minor',
+        'amount',
         'state',
         'ct',
         'ut',
@@ -40,7 +40,7 @@ class PointsFlow extends Model
     protected $casts = [
         'uid' => 'integer',
         'oid' => 'integer',
-        'amount_minor' => 'integer',
+        'amount' => 'integer',
         'state' => PointsHoldState::class,
         'ct' => 'integer',
         'ut' => 'integer',

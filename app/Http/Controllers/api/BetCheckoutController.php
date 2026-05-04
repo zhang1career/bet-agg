@@ -30,22 +30,19 @@ class BetCheckoutController extends Controller
 
         $request->validate([
             'order_id' => 'required|integer|min:1',
-            'points_minor' => 'sometimes|integer|min:0',
         ]);
 
         $orderId = (int) $request->input('order_id');
-        $pointsMinor = (int) $request->input('points_minor', 0);
         $uid = FoundationUser::id($user);
 
         $order = $this->orders->findForUser($orderId, $uid);
-        $result = $this->checkout->checkoutExistingOrder($uid, $order, $pointsMinor);
+        $result = $this->checkout->checkoutExistingOrder($uid, $order);
 
         $order = $result['order'];
         $this->logHandledApiRequest($request, ['handler' => 'bet.checkout.store', 'order_id' => $order->id]);
 
         return response()->json(ApiResponse::ok([
             'order' => $this->serializeOrder($order),
-            'prepay' => $result['prepay'],
         ]), 201);
     }
 
@@ -88,8 +85,7 @@ class BetCheckoutController extends Controller
             'uid' => $order->uid,
             'status' => $order->status->value,
             'total_price' => $order->total_price,
-            'points_deduct_minor' => $order->points_deduct_minor,
-            'cash_payable_minor' => $order->cash_payable_minor,
+            'points_held' => $order->points_held,
             'ct' => $order->ct,
             'ut' => $order->ut,
             'lines' => $lines,

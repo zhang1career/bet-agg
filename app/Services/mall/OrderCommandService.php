@@ -19,7 +19,7 @@ use RuntimeException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
- * Bet orders: draft slip then local checkout (points hold + payment stub).
+ * Bet orders: draft slip then checkout (points debit).
  */
 final readonly class OrderCommandService
 {
@@ -97,8 +97,7 @@ final readonly class OrderCommandService
                 'checkout_phase' => CheckoutPhase::None,
                 'ext_inventory' => false,
                 'ext_id' => '',
-                'points_deduct_minor' => 0,
-                'cash_payable_minor' => 0,
+                'points_held' => 0,
             ]);
             $order->save();
 

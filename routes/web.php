@@ -32,6 +32,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
     Route::patch('orders/{id}', [AdminOrderController::class, 'update'])->name('orders.update');
 
     Route::get('points', [AdminPointsController::class, 'index'])->name('points.index');
+    Route::get('users', [AdminPointsController::class, 'indexUsers'])->name('users.index');
     Route::get('users/{user_id}', [AdminPointsController::class, 'showUser'])
         ->whereNumber('user_id')
         ->name('users.show');

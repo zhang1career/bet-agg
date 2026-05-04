@@ -8,7 +8,7 @@ use App\Components\ApiResponse;
 use App\Exceptions\FoundationAuthRequiredException;
 use App\Http\Controllers\Controller;
 use App\Services\mall\FoundationUser;
-use App\Services\mall\MallPointsTccService;
+use App\Services\mall\PointsTccService;
 use App\Services\user\UserFoundationGateway;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -17,7 +17,7 @@ class BetPointsController extends Controller
 {
     public function __construct(
         private readonly UserFoundationGateway $foundationGateway,
-        private readonly MallPointsTccService $points,
+        private readonly PointsTccService $points,
     ) {}
 
     /**
@@ -29,12 +29,12 @@ class BetPointsController extends Controller
     {
         $user = $this->requireAuthenticatedUser($request);
 
-        $minor = $this->points->availableBalanceMinor(FoundationUser::id($user));
+        $balance = $this->points->availableBalance(FoundationUser::id($user));
 
         $this->logHandledApiRequest($request, ['handler' => 'bet.points.show']);
 
         return response()->json(ApiResponse::ok([
-            'balance_minor' => $minor,
+            'balance' => $balance,
         ]));
     }
 

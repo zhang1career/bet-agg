@@ -21,7 +21,7 @@ use RuntimeException;
 final readonly class BetSettlementService
 {
     public function __construct(
-        private MallPointsAdminService $pointsAdmin,
+        private PointsAdminService $pointsAdmin,
     ) {}
 
     /**

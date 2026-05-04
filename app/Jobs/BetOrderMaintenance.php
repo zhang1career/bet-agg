@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
-use App\Services\mall\MallOverdueOrderSweepService;
+use App\Services\mall\BetOverdueOrderSweepService;
 use Illuminate\Support\Facades\Log;
 use Paganini\XxlJobExecutor\Attributes\XxlJob;
 use Throwable;
@@ -21,7 +21,7 @@ final class BetOrderMaintenance
     public static function closeExpiredOrders(mixed $_executorParams): array
     {
         try {
-            $stats = app(MallOverdueOrderSweepService::class)->sweepExpired();
+            $stats = app(BetOverdueOrderSweepService::class)->sweepExpired();
             Log::debug('[xxljob] closeExpiredOrders', $stats);
 
             return [true, $stats, null];

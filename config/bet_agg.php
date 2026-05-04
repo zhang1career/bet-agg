@@ -22,10 +22,6 @@ return [
         'unauthorized_code' => ResponseConstant::RET_UNAUTHORIZED,
     ],
 
-    'payment' => [
-        'callback_token' => env('BET_PAYMENT_CALLBACK_TOKEN', ''),
-    ],
-
     'orders' => [
         'pending_payment_timeout_ms' => (int) env('BET_PENDING_PAYMENT_TIMEOUT_MS', 1_800_000),
     ],
