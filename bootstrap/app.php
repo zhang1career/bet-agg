@@ -2,7 +2,6 @@
 
 use App\Exceptions\ApiJsonExceptionHandler;
 use App\Http\Middleware\LogApiHttpErrors;
-use App\Http\Middleware\VerifyAdminApiToken;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -24,12 +23,9 @@ $app = Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->appendToGroup('api', LogApiHttpErrors::class);
-        $middleware->alias([
-            'admin.api' => VerifyAdminApiToken::class,
-        ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        $exceptions->render(function (\Throwable $exception, Request $request) {
+        $exceptions->render(function (Throwable $exception, Request $request) {
             return ApiJsonExceptionHandler::render($request, $exception);
         });
     })->create();

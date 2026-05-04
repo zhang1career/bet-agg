@@ -84,8 +84,6 @@ final class OpenApiRoutesContractTest extends TestCase
             ['BetCheckoutBody'],
             ['BetOrderPatchBody'],
             ['PaymentCallbackBody'],
-            ['AdminPointsOpenAccountBody'],
-            ['AdminPointsAdjustBody'],
             ['XxlJobRunBody'],
             ['XxlJobKillBody'],
             ['ApiEnvelopeSuccess'],

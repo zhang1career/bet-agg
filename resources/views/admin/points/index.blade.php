@@ -39,7 +39,17 @@
                                 <td>
                                     <a href="{{ route('admin.points.balances.show', $row->id) }}" class="font-monospace">{{ $row->id }}</a>
                                 </td>
-                                <td>{{ $row->uid }}</td>
+                                <td>
+                                    <button type="button"
+                                            class="btn btn-link p-0 align-baseline font-monospace text-decoration-none"
+                                            title="View user"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#mallModalUserDetail"
+                                            data-gateway-user-id="{{ $row->uid }}"
+                                            data-gateway-user-url="{{ route('admin.points.gateway-users.show', ['id' => $row->uid]) }}">
+                                        {{ $row->uid }}
+                                    </button>
+                                </td>
                                 <td class="text-end font-monospace">{{ number_format((int) $row->balance_minor) }}</td>
                                 <td class="text-muted small">{{ \App\Support\MillisTimestampDisplay::format($row->ut) }}</td>
                                 <td class="text-end text-nowrap">
@@ -195,6 +205,25 @@
         </div>
     </div>
 
+    {{-- Gateway user (GET /api/users/:id via admin proxy) --}}
+    <div class="modal fade" id="mallModalUserDetail" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title h5">User <span id="m-user-title-id"></span></h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small mb-2" id="m-user-status">Loading…</p>
+                    <div id="m-user-detail-body"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     {{-- Flow read-only --}}
     <div class="modal fade" id="mallModalFlowView" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
@@ -236,6 +265,95 @@
                     var input = document.getElementById('m-adj-uid');
                     if (input && uid) {
                         input.value = uid;
+                    }
+                });
+            }
+            var userModal = document.getElementById('mallModalUserDetail');
+            if (userModal) {
+                userModal.addEventListener('show.bs.modal', function (e) {
+                    var btn = e.relatedTarget;
+                    var url = btn && btn.getAttribute('data-gateway-user-url');
+                    var uid = btn && btn.getAttribute('data-gateway-user-id');
+                    var titleEl = document.getElementById('m-user-title-id');
+                    var statusEl = document.getElementById('m-user-status');
+                    var bodyEl = document.getElementById('m-user-detail-body');
+                    if (!url || !bodyEl) {
+                        return;
+                    }
+                    if (titleEl) {
+                        titleEl.textContent = uid ? '#' + uid : '';
+                    }
+                    if (statusEl) {
+                        statusEl.textContent = 'Loading…';
+                        statusEl.classList.remove('text-danger', 'd-none');
+                        statusEl.classList.add('text-muted');
+                    }
+                    bodyEl.innerHTML = '';
+                    fetch(url, { headers: { Accept: 'application/json' } })
+                        .then(function (r) {
+                            return r.json().then(function (j) {
+                                return { ok: r.ok, status: r.status, json: j };
+                            });
+                        })
+                        .then(function (res) {
+                            if (!statusEl) {
+                                return;
+                            }
+                            if (!res.ok) {
+                                statusEl.textContent = (res.json && res.json.message) ? String(res.json.message) : ('HTTP ' + res.status);
+                                statusEl.classList.remove('text-muted');
+                                statusEl.classList.add('text-danger');
+                                return;
+                            }
+                            var user = res.json && res.json.user;
+                            if (!user || typeof user !== 'object') {
+                                statusEl.textContent = 'Invalid response.';
+                                statusEl.classList.remove('text-muted');
+                                statusEl.classList.add('text-danger');
+                                return;
+                            }
+                            statusEl.textContent = '';
+                            statusEl.classList.add('d-none');
+                            var dl = document.createElement('dl');
+                            dl.className = 'row mb-0 small';
+                            Object.keys(user).sort().forEach(function (k) {
+                                var v = user[k];
+                                var dt = document.createElement('dt');
+                                dt.className = 'col-sm-4 text-break';
+                                dt.textContent = k;
+                                var dd = document.createElement('dd');
+                                dd.className = 'col-sm-8';
+                                if (v !== null && typeof v === 'object') {
+                                    var pre = document.createElement('pre');
+                                    pre.className = 'mb-0 small font-monospace';
+                                    pre.textContent = JSON.stringify(v, null, 2);
+                                    dd.appendChild(pre);
+                                } else {
+                                    dd.textContent = (v === null || v === undefined) ? '—' : String(v);
+                                }
+                                dl.appendChild(dt);
+                                dl.appendChild(dd);
+                            });
+                            bodyEl.appendChild(dl);
+                        })
+                        .catch(function () {
+                            if (statusEl) {
+                                statusEl.textContent = 'Request failed.';
+                                statusEl.classList.remove('text-muted');
+                                statusEl.classList.add('text-danger');
+                            }
+                        });
+                });
+                userModal.addEventListener('hidden.bs.modal', function () {
+                    var s = document.getElementById('m-user-status');
+                    var b = document.getElementById('m-user-detail-body');
+                    if (s) {
+                        s.textContent = 'Loading…';
+                        s.classList.remove('text-danger', 'd-none');
+                        s.classList.add('text-muted');
+                    }
+                    if (b) {
+                        b.innerHTML = '';
                     }
                 });
             }

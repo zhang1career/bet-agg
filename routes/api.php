@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Controllers\api\BetAdminPointsController;
 use App\Http\Controllers\api\BetCheckoutController;
 use App\Http\Controllers\api\BetDictController;
 use App\Http\Controllers\api\BetGameController;
@@ -35,10 +34,5 @@ Route::prefix('')->middleware([])->group(function () {
         Route::get('points', [BetPointsController::class, 'show']);
         Route::post('checkout', [BetCheckoutController::class, 'store']);
         Route::post('payment/callback', PaymentCallbackController::class);
-
-        Route::prefix('admin')->middleware(['admin.api'])->group(function () {
-            Route::post('points', [BetAdminPointsController::class, 'storeAccount']);
-            Route::post('points/{balance_id}', [BetAdminPointsController::class, 'adjust'])->whereNumber('balance_id');
-        });
     });
 });

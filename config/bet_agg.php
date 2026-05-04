@@ -29,8 +29,4 @@ return [
     'orders' => [
         'pending_payment_timeout_ms' => (int) env('BET_PENDING_PAYMENT_TIMEOUT_MS', 1_800_000),
     ],
-
-    'admin' => [
-        'api_token' => env('BET_ADMIN_API_TOKEN', ''),
-    ],
 ];

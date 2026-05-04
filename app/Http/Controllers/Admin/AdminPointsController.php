@@ -4,19 +4,24 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Admin;
 
+use App\Exceptions\ConfigurationMissingException;
 use App\Http\Controllers\Controller;
 use App\Models\MallPointsBalance;
 use App\Models\PointsFlow;
 use App\Services\mall\MallPointsAdminService;
+use App\Services\user\GatewayUserByIdClient;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
+use Paganini\Aggregation\Exceptions\DownstreamServiceException;
 use RuntimeException;
 
 class AdminPointsController extends Controller
 {
     public function __construct(
         private readonly MallPointsAdminService $adminPoints,
+        private readonly GatewayUserByIdClient $gatewayUserById,
     ) {}
 
     public function index(Request $request): View
@@ -41,6 +46,23 @@ class AdminPointsController extends Controller
             'balances' => null,
             'flows' => $flows,
         ]);
+    }
+
+    public function showGatewayUser(int $id): JsonResponse
+    {
+        try {
+            $user = $this->gatewayUserById->fetch($id);
+        } catch (ConfigurationMissingException $e) {
+            return response()->json(['message' => $e->getMessage()], 503);
+        } catch (DownstreamServiceException $e) {
+            return response()->json(['message' => $e->getMessage()], 502);
+        }
+
+        if ($user === null) {
+            return response()->json(['message' => 'User not found.'], 404);
+        }
+
+        return response()->json(['user' => $user]);
     }
 
     public function showBalance(int $id): View
@@ -109,5 +131,4 @@ class AdminPointsController extends Controller
 
         return redirect()->route('admin.points.index', ['tab' => 'balances'])->with('status', 'Account deleted.');
     }
-
 }

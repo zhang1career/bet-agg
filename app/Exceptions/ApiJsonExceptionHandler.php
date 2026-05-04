@@ -25,7 +25,10 @@ final class ApiJsonExceptionHandler
     public static function render(Request $request, Throwable $exception): ?JsonResponse
     {
         $path = $request->path();
-        if (! str_starts_with($path, 'api/') && ! str_starts_with($path, 'internal/')) {
+        $jsonEnvelopePath = str_starts_with($path, 'api/')
+            || str_starts_with($path, 'internal/')
+            || str_starts_with($path, 'admin/bet/');
+        if (! $jsonEnvelopePath) {
             return null;
         }
 
@@ -149,7 +152,8 @@ final class ApiJsonExceptionHandler
             );
         }
 
-        if ($request->is('api/bet/points') || $request->is('api/bet/points/*')) {
+        if ($request->is('api/bet/points')
+            || $request->is('api/bet/points/*')) {
             return response()->json(
                 ApiResponse::error(ResponseConstant::RET_DEPENDENCY_ERROR, $exception->getMessage(), $reqId),
                 502

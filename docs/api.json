@@ -17,10 +17,6 @@
       "description": "Betting catalog, orders, points, checkout"
     },
     {
-      "name": "Bet Admin",
-      "description": "Admin API token–protected mall points"
-    },
-    {
       "name": "Payment",
       "description": "Payment gateway callbacks"
     },
@@ -40,11 +36,6 @@
         "in": "header",
         "name": "X-User-Access-Token",
         "description": "Raw JWT from the Foundation (or BFF) auth service; not issued by bet-agg. Send on bet APIs that require a logged-in user."
-      },
-      "AdminBearer": {
-        "type": "http",
-        "scheme": "bearer",
-        "description": "Must match `bet_agg.admin.api_token` (plain token after `Bearer `)."
       },
       "XxlJobAccessToken": {
         "type": "apiKey",
@@ -432,21 +423,6 @@
         "value": {
           "order_id": 1,
           "status": "paid"
-        }
-      },
-      "AdminPointsOpenAccountBody": {
-        "summary": "Open mall points account",
-        "description": "See `Tests\\Feature\\MallAdminPointsApiTest`.",
-        "value": {
-          "uid": 42,
-          "balance_minor": 100
-        }
-      },
-      "AdminPointsAdjustBody": {
-        "summary": "Adjust balance by delta",
-        "value": {
-          "delta_minor": 25,
-          "oid": 0
         }
       },
       "XxlJobRunBody": {
@@ -1520,225 +1496,6 @@
           },
           "422": {
             "description": "Unsupported status or handler error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiEnvelope"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/bet/admin/points": {
-      "post": {
-        "tags": [
-          "Bet Admin"
-        ],
-        "summary": "Open mall points account for uid",
-        "security": [
-          {
-            "AdminBearer": []
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "uid"
-                ],
-                "properties": {
-                  "uid": {
-                    "type": "integer",
-                    "minimum": 1
-                  },
-                  "balance_minor": {
-                    "type": "integer",
-                    "minimum": 0
-                  }
-                }
-              },
-              "examples": {
-                "open": {
-                  "$ref": "#/components/examples/AdminPointsOpenAccountBody"
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Account created",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/ApiEnvelope"
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "data": {
-                          "type": "object",
-                          "properties": {
-                            "account": {
-                              "$ref": "#/components/schemas/MallPointsAccount"
-                            }
-                          }
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden (bad bearer)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiEnvelope"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation or business error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiEnvelope"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "Admin API token not configured",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiEnvelope"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/bet/admin/points/{balance_id}": {
-      "post": {
-        "tags": [
-          "Bet Admin"
-        ],
-        "summary": "Adjust mall points balance",
-        "security": [
-          {
-            "AdminBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "balance_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "minimum": 1
-            },
-            "description": "Mall points balance row id (`mall_points_balances.id`)"
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "delta_minor"
-                ],
-                "properties": {
-                  "delta_minor": {
-                    "type": "integer",
-                    "not": {
-                      "enum": [
-                        0
-                      ]
-                    }
-                  },
-                  "oid": {
-                    "type": "integer",
-                    "minimum": 0
-                  }
-                }
-              },
-              "examples": {
-                "credit": {
-                  "$ref": "#/components/examples/AdminPointsAdjustBody"
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Account and flow row",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/ApiEnvelope"
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "data": {
-                          "type": "object",
-                          "properties": {
-                            "account": {
-                              "$ref": "#/components/schemas/MallPointsAccount"
-                            },
-                            "flow": {
-                              "$ref": "#/components/schemas/PointsFlow"
-                            }
-                          }
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiEnvelope"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation or business error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiEnvelope"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "Admin API token not configured",
             "content": {
               "application/json": {
                 "schema": {
