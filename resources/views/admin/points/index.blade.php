@@ -205,7 +205,7 @@
         </div>
     </div>
 
-    {{-- User JSON via GET /admin/users/{user_id} (proxies gateway /api/users/{id}) --}}
+    {{-- User JSON via GET /admin/users/{user_id} (proxies gateway /api/user/users/{id}) --}}
     <div class="modal fade" id="mallModalUserDetail" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
             <div class="modal-content">

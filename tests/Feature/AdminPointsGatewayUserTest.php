@@ -13,7 +13,7 @@ class AdminPointsGatewayUserTest extends TestCase
     public function test_gateway_user_proxy_returns_payload(): void
     {
         Http::fake([
-            'http://gw.test/api/users/7' => Http::response([
+            'http://gw.test/api/user/users/7' => Http::response([
                 'errorCode' => ResponseConstant::RET_OK,
                 'data' => ['id' => 7, 'username' => 'u7'],
                 'message' => '',
@@ -29,7 +29,7 @@ class AdminPointsGatewayUserTest extends TestCase
     public function test_gateway_user_proxy_maps_404(): void
     {
         Http::fake([
-            'http://gw.test/api/users/99' => Http::response([], 404),
+            'http://gw.test/api/user/users/99' => Http::response([], 404),
         ]);
 
         $this->getJson(route('admin.users.show', ['user_id' => 99]))

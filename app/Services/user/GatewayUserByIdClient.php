@@ -15,7 +15,7 @@ readonly class GatewayUserByIdClient
     public function __construct(private ResolvedApiGatewayBaseUrl $resolvedGatewayBaseUrl) {}
 
     /**
-     * GET `{gateway}/api/users/{id}`; {@see DownstreamPayload::extractData} on success body.
+     * GET `{gateway}/api/user/users/{id}`; {@see DownstreamPayload::extractData} on success body.
      *
      * @return array<string, mixed>|null absent when HTTP 404
      *
@@ -30,7 +30,7 @@ readonly class GatewayUserByIdClient
         }
 
         $timeout = (int) config('bet_agg.foundation.timeout_seconds', 3);
-        $url = rtrim($baseUrl, '/').'/api/users/'.$userId;
+        $url = rtrim($baseUrl, '/').'/api/user/users/'.$userId;
 
         $response = Http::timeout($timeout)->acceptJson()->get($url);
 
@@ -44,6 +44,6 @@ readonly class GatewayUserByIdClient
             );
         }
 
-        return DownstreamPayload::extractData($response->json(), 'gateway GET /api/users/{id}');
+        return DownstreamPayload::extractData($response->json(), 'gateway GET /api/user/users/{id}');
     }
 }
