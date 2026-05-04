@@ -32,5 +32,6 @@
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="API_GATEWAY_BASE_URL" value="http://gw.test"/>
         <env name="API_GATEWAY_CMS_URL" value="/api/cms/"/>
+        <env name="BET_BOOKMAKER_UID" value="900001"/>
     </php>
 </phpunit>

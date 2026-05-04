@@ -6,7 +6,6 @@ namespace App\Services\mall;
 
 use App\Enums\BetLineResult;
 use App\Enums\BetOrderStatus;
-use App\Enums\PointsHoldState;
 use App\Models\BetOrder;
 use App\Models\BetOrderLine;
 use App\Models\SportGame;
@@ -110,11 +109,15 @@ final readonly class BetSettlementService
         $line->save();
 
         $payout = (int) $line->potential_return_points;
-        $this->pointsAdmin->appendImmutableLedger(
+        $bookmakerUid = (int) config('bet_agg.points.bookmaker_uid');
+        if ($bookmakerUid < 1) {
+            throw new RuntimeException('Bookmaker account is not configured (bet_agg.points.bookmaker_uid).');
+        }
+        $this->pointsAdmin->payoutBetWinFromBookmaker(
+            $bookmakerUid,
             (int) $order->uid,
             $payout,
-            (int) $order->id,
-            PointsHoldState::SettlementPayout
+            (int) $order->id
         );
 
         $order->status = BetOrderStatus::Won;

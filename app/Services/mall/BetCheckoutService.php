@@ -19,6 +19,7 @@ final readonly class BetCheckoutService
         private OrderCommandService $orders,
         private SportSelectionBookService $book,
         private PointsTccService $points,
+        private PointsAdminService $ledger,
     ) {}
 
     /**
@@ -53,10 +54,19 @@ final readonly class BetCheckoutService
                 throw new RuntimeException('Order total is invalid.');
             }
 
+            $bookmakerUid = (int) config('bet_agg.points.bookmaker_uid');
+            if ($bookmakerUid < 1) {
+                throw new RuntimeException('Bookmaker account is not configured (bet_agg.points.bookmaker_uid).');
+            }
+            if ($bookmakerUid === $uid) {
+                throw new RuntimeException('Player cannot use the configured bookmaker account.');
+            }
+
             $order->points_held = $total;
 
             $this->points->tryFreeze($uid, $total, (int) $order->id);
             $this->points->confirmHoldForBetOrder((int) $order->id);
+            $this->ledger->creditBookmakerAcceptedStake($bookmakerUid, $total, (int) $order->id);
 
             $order = $this->orders->transitionStatus($order, BetOrderStatus::Accepted, false);
             $order->checkout_phase = CheckoutPhase::Completed;

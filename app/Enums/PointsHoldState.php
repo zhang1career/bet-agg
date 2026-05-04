@@ -22,6 +22,12 @@ enum PointsHoldState: int implements HasDictionaryLabel
     /** Automated void refund (stake return). */
     case SettlementRefund = 71;
 
+    /** Accepted bet stake credited to internal bookmaker account. */
+    case BookStakeCredit = 72;
+
+    /** Bookmaker liquidity debited when paying an accepted bet win (paired with SettlementPayout on user). */
+    case BookPayoutDebit = 73;
+
     public function label(): string
     {
         return match ($this) {
@@ -32,6 +38,8 @@ enum PointsHoldState: int implements HasDictionaryLabel
             self::AdminLedger => 'admin ledger',
             self::SettlementPayout => 'settlement payout',
             self::SettlementRefund => 'settlement refund',
+            self::BookStakeCredit => 'book stake credit',
+            self::BookPayoutDebit => 'book payout debit',
         };
     }
 }

@@ -25,4 +25,9 @@ return [
     'orders' => [
         'pending_payment_timeout_ms' => (int) env('BET_PENDING_PAYMENT_TIMEOUT_MS', 1_800_000),
     ],
+
+    'points' => [
+        /** Dedicated Foundation user id: receives accepted stakes and funds winner payouts */
+        'bookmaker_uid' => (int) env('BET_BOOKMAKER_UID', 0),
+    ],
 ];

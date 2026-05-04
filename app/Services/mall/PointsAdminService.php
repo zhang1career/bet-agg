@@ -124,6 +124,100 @@ final class PointsAdminService
     }
 
     /**
+     * Locks bookmaker liquidity and pays a winning bet snapshot amount (deposit × decimal odds stored on the line).
+     *
+     * @return array{user_flow: PointsFlow, book_flow: PointsFlow}
+     */
+    public function payoutBetWinFromBookmaker(int $bookUid, int $winnerUid, int $payoutPoints, int $betOrderId): array
+    {
+        if ($bookUid < 1 || $winnerUid < 1) {
+            throw new RuntimeException('Invalid user id.');
+        }
+        if ($bookUid === $winnerUid) {
+            throw new RuntimeException('Bookmaker uid cannot match winner uid.');
+        }
+        if ($payoutPoints < 1) {
+            throw new RuntimeException('Payout amount must be positive.');
+        }
+        if ($betOrderId < 1) {
+            throw new RuntimeException('Invalid bet order id.');
+        }
+
+        return DB::transaction(function () use ($bookUid, $winnerUid, $payoutPoints, $betOrderId): array {
+            $bookBal = PointsBalance::query()->where('uid', $bookUid)->lockForUpdate()->first();
+            if ($bookBal === null || (int) $bookBal->balance < $payoutPoints) {
+                throw new RuntimeException('Insufficient bookmaker liquidity for this payout.');
+            }
+
+            $userBal = PointsBalance::query()->where('uid', $winnerUid)->lockForUpdate()->first();
+            if ($userBal === null) {
+                throw new RuntimeException('Points account does not exist.');
+            }
+
+            $bookBal->balance = (int) $bookBal->balance - $payoutPoints;
+            $bookBal->save();
+
+            $userBal->balance = (int) $userBal->balance + $payoutPoints;
+            $userBal->save();
+
+            $bookFlow = new PointsFlow([
+                'uid' => $bookUid,
+                'oid' => $betOrderId,
+                'amount' => -$payoutPoints,
+                'state' => PointsHoldState::BookPayoutDebit,
+            ]);
+            $bookFlow->save();
+
+            $userFlow = new PointsFlow([
+                'uid' => $winnerUid,
+                'oid' => $betOrderId,
+                'amount' => $payoutPoints,
+                'state' => PointsHoldState::SettlementPayout,
+            ]);
+            $userFlow->save();
+
+            return ['user_flow' => $userFlow, 'book_flow' => $bookFlow];
+        });
+    }
+
+    /** Credits the internal pool when a bet checkout is confirmed (paired with player's stake debit). */
+    public function creditBookmakerAcceptedStake(int $bookUid, int $stakePoints, int $betOrderId): void
+    {
+        if ($bookUid < 1) {
+            throw new RuntimeException('Invalid bookmaker user id.');
+        }
+        if ($stakePoints < 1 || $betOrderId < 1) {
+            throw new RuntimeException('Invalid stake posting.');
+        }
+
+        DB::transaction(function () use ($bookUid, $stakePoints, $betOrderId): void {
+            $balance = PointsBalance::query()->where('uid', $bookUid)->lockForUpdate()->first();
+            if ($balance === null) {
+                $balance = new PointsBalance([
+                    'uid' => $bookUid,
+                    'balance' => 0,
+                ]);
+                $balance->save();
+                $balance = PointsBalance::query()->where('uid', $bookUid)->lockForUpdate()->first();
+            }
+            if ($balance === null) {
+                throw new RuntimeException('Bookmaker points account missing.');
+            }
+
+            $balance->balance = (int) $balance->balance + $stakePoints;
+            $balance->save();
+
+            $flow = new PointsFlow([
+                'uid' => $bookUid,
+                'oid' => $betOrderId,
+                'amount' => $stakePoints,
+                'state' => PointsHoldState::BookStakeCredit,
+            ]);
+            $flow->save();
+        });
+    }
+
+    /**
      * Immutable ledger append (settlement payouts/refunds). Application-layer audit guarantee.
      */
     public function appendImmutableLedger(int $uid, int $deltaPoints, int $oid, PointsHoldState $state): PointsFlow

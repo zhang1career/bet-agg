@@ -141,7 +141,8 @@
           "ext_inventory": {},
           "ext_id": {},
           "checkout_phase": {
-            "type": "string"
+            "type": "integer",
+            "description": "CheckoutPhase: 0 draft (none), 50 await payment (reserved), 60 completed. API serializes numeric value."
           }
         }
       },
@@ -1116,7 +1117,7 @@
           "Bet"
         ],
         "summary": "Transition order status",
-        "description": "`status` accepts int enum, or strings such as `pending`, `paid`, `accepted`, `cancel`/`cancelled`, `won`, `lost`, `void`, `init`.",
+        "description": "`status` accepts the int enum or strings: `pending`, `init` (pending), `accepted` or `paid` (same meaning), `cancel`/`cancelled`, `won`, `lost`, `void`. Typical user flow: draft order with POST `/api/bet/orders`, then POST `/api/bet/checkout` to accept; PATCH is for allowed status transitions (not a payment callback).",
         "security": [
           {
             "UserAccessToken": []
@@ -1224,7 +1225,8 @@
         "tags": [
           "Bet"
         ],
-        "summary": "Current user's available points (minor units)",
+        "summary": "Current user's available points balance",
+        "description": "`data.balance` is the spendable points integer (same unit as stake and `total_price`).",
         "security": [
           {
             "UserAccessToken": []
@@ -1245,9 +1247,13 @@
                       "properties": {
                         "data": {
                           "type": "object",
+                          "required": [
+                            "balance"
+                          ],
                           "properties": {
                             "balance": {
-                              "type": "integer"
+                              "type": "integer",
+                              "description": "Spendable points for the authenticated user"
                             }
                           }
                         }
@@ -1276,7 +1282,8 @@
         "tags": [
           "Bet"
         ],
-        "summary": "Run checkout for an existing order",
+        "summary": "Checkout a pending order",
+        "description": "In one step: re-validates selections, debits the full stake from the user's points wallet, and transitions the order to accepted. Response `data` contains only the updated `order` (no separate payment payload).",
         "security": [
           {
             "UserAccessToken": []
@@ -1319,7 +1326,7 @@
         },
         "responses": {
           "201": {
-            "description": "Checkout started / result",
+            "description": "Success: order accepted; stake debited (see `data.order.status` and `checkout_phase`)",
             "content": {
               "application/json": {
                 "schema": {
