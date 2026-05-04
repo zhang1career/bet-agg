@@ -143,14 +143,14 @@ class AdminMarketController extends Controller
         $v = $request->validate([
             'label' => 'required|string|max:256',
             'current_odds_millis' => 'required|integer|min:1000',
-            'status' => ['required', 'integer', Rule::enum(SportMarketStatus::class)],
+            'selection_status' => ['required', 'integer', Rule::enum(SportMarketStatus::class)],
         ]);
 
         $sel = new SportSelection([
             'market_id' => $market->id,
             'label' => $v['label'],
             'current_odds_millis' => (int) $v['current_odds_millis'],
-            'status' => (int) $v['status'],
+            'status' => (int) $v['selection_status'],
         ]);
         $sel->save();
 

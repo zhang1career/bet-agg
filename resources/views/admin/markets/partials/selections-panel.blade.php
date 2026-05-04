@@ -1,10 +1,18 @@
 @php
     /** @var \App\Models\SportMarket $market */
+    $mallOpenSelectionCreateModal = $errors->any()
+        && ($errors->has('label') || $errors->has('current_odds_millis') || $errors->has('selection_status'));
 @endphp
+
+<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+    <h3 class="h5 mb-0">Selections</h3>
+    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#mallModalSelectionCreate">
+        新建选项
+    </button>
+</div>
 
 <div class="mall-console-card card shadow-sm mb-4">
     <div class="card-body">
-        <h3 class="h6 mb-3">Selections</h3>
         <div class="table-responsive">
             <table class="table table-sm table-striped mb-0 mall-data-table align-middle">
                 <thead>
@@ -45,7 +53,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="5" class="text-center text-muted py-3">No selections yet. Add one below.</td>
+                        <td colspan="5" class="text-center text-muted py-3">No selections yet.</td>
                     </tr>
                 @endforelse
                 </tbody>
@@ -54,29 +62,46 @@
     </div>
 </div>
 
-<div class="mall-console-card card shadow-sm mb-4">
-    <div class="card-body">
-        <h4 class="h6 mb-3">Add selection</h4>
-        <form method="post" action="{{ route('admin.markets.selections.store', $market) }}" class="row g-3 align-items-end">
-            @csrf
-            <div class="col-md-4">
-                <label class="form-label" for="new_sel_label">Label</label>
-                <input type="text" name="label" id="new_sel_label" class="form-control" required maxlength="256" value="{{ old('label') }}">
-            </div>
-            <div class="col-md-3">
-                <label class="form-label" for="new_sel_odds">Odds × 1000</label>
-                <input type="number" name="current_odds_millis" id="new_sel_odds" class="form-control" required min="1000" value="{{ old('current_odds_millis', 1950) }}">
-            </div>
-            <div class="col-md-3">
-                <label class="form-label" for="new_sel_status">Status</label>
-                <select name="status" id="new_sel_status" class="form-select" required
-                        data-mall-dict-options="sport_market_status"
-                        data-mall-dict-selected="{{ (int) old('status', 1) }}"></select>
-            </div>
-            <div class="col-md-2">
-                <button type="submit" class="btn btn-primary w-100">Add</button>
-            </div>
-        </form>
+<div class="modal fade" id="mallModalSelectionCreate" tabindex="-1" aria-labelledby="mallModalSelectionCreateLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form method="post" action="{{ route('admin.markets.selections.store', $market) }}" id="mall-form-selection-create">
+                @csrf
+                <div class="modal-header">
+                    <h2 class="modal-title h5" id="mallModalSelectionCreateLabel">新建选项</h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label" for="create_sel_label">Label</label>
+                        <input type="text" name="label" id="create_sel_label" class="form-control @error('label') is-invalid @enderror" required maxlength="256" value="{{ old('label') }}">
+                        @error('label')
+                            <div class="invalid-feedback d-block">{{ $message }}</div>
+                        @enderror
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="create_sel_odds">Odds × 1000</label>
+                        <input type="number" name="current_odds_millis" id="create_sel_odds" class="form-control @error('current_odds_millis') is-invalid @enderror" required min="1000" value="{{ old('current_odds_millis', 1950) }}">
+                        @error('current_odds_millis')
+                            <div class="invalid-feedback d-block">{{ $message }}</div>
+                        @enderror
+                    </div>
+                    <div class="mb-0">
+                        <label class="form-label" for="create_sel_status">Status</label>
+                        <select name="selection_status" id="create_sel_status" class="form-select @error('selection_status') is-invalid @enderror" required
+                                data-mall-dict-options="sport_market_status"
+                                data-mall-dict-selected="{{ (int) old('selection_status', 1) }}"></select>
+                        @error('selection_status')
+                            <div class="invalid-feedback d-block">{{ $message }}</div>
+                        @enderror
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create</button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 
@@ -117,6 +142,34 @@
 @push('scripts')
     <script>
         document.addEventListener('DOMContentLoaded', function () {
+            var createModalEl = document.getElementById('mallModalSelectionCreate');
+            var createForm = document.getElementById('mall-form-selection-create');
+            if (createModalEl && createForm) {
+                createModalEl.addEventListener('show.bs.modal', function (ev) {
+                    if (!ev.relatedTarget) {
+                        return;
+                    }
+                    var labelInp = createForm.querySelector('#create_sel_label');
+                    if (labelInp) {
+                        labelInp.value = '';
+                    }
+                    var odds = createForm.querySelector('#create_sel_odds');
+                    if (odds) {
+                        odds.value = '1950';
+                    }
+                    var st = createForm.querySelector('#create_sel_status');
+                    if (st) {
+                        st.value = '1';
+                    }
+                });
+            }
+
+            @if($mallOpenSelectionCreateModal)
+                if (createModalEl) {
+                    bootstrap.Modal.getOrCreateInstance(createModalEl).show();
+                }
+            @endif
+
             var modalEl = document.getElementById('mallModalSelectionEdit');
             var form = document.getElementById('mall-form-selection-update');
             if (!modalEl || !form) return;

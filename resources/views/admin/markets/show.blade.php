@@ -7,8 +7,6 @@
         <h2 class="h5 mb-0">Market #{{ $market->id }}</h2>
         <div class="d-flex gap-2 flex-wrap">
             <a href="{{ route('admin.markets.edit', $market) }}" class="btn btn-primary btn-sm">Edit market</a>
-            <a href="{{ route('admin.games.show', $market->game_id) }}" class="btn btn-outline-secondary btn-sm">Game</a>
-            <a href="{{ route('admin.markets.index', ['game_id' => $market->game_id]) }}" class="btn btn-outline-secondary btn-sm">Markets for game</a>
             <button type="button" class="btn btn-outline-danger btn-sm" title="Delete"
                     data-mall-delete-url="{{ route('admin.markets.destroy', $market) }}"
                     data-mall-delete-message="Delete market #{{ $market->id }} and all selections?">
