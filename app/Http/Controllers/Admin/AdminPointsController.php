@@ -48,10 +48,10 @@ class AdminPointsController extends Controller
         ]);
     }
 
-    public function showGatewayUser(int $id): JsonResponse
+    public function showUser(int $user_id): JsonResponse
     {
         try {
-            $user = $this->gatewayUserById->fetch($id);
+            $user = $this->gatewayUserById->fetch($user_id);
         } catch (ConfigurationMissingException $e) {
             return response()->json(['message' => $e->getMessage()], 503);
         } catch (DownstreamServiceException $e) {

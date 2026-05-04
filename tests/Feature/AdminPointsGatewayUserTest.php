@@ -20,7 +20,7 @@ class AdminPointsGatewayUserTest extends TestCase
             ], 200),
         ]);
 
-        $this->getJson(route('admin.points.gateway-users.show', ['id' => 7]))
+        $this->getJson(route('admin.users.show', ['user_id' => 7]))
             ->assertOk()
             ->assertJsonPath('user.id', 7)
             ->assertJsonPath('user.username', 'u7');
@@ -32,7 +32,7 @@ class AdminPointsGatewayUserTest extends TestCase
             'http://gw.test/api/users/99' => Http::response([], 404),
         ]);
 
-        $this->getJson(route('admin.points.gateway-users.show', ['id' => 99]))
+        $this->getJson(route('admin.users.show', ['user_id' => 99]))
             ->assertNotFound()
             ->assertJsonPath('message', 'User not found.');
     }

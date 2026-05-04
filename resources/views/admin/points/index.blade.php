@@ -46,7 +46,7 @@
                                             data-bs-toggle="modal"
                                             data-bs-target="#mallModalUserDetail"
                                             data-gateway-user-id="{{ $row->uid }}"
-                                            data-gateway-user-url="{{ route('admin.points.gateway-users.show', ['id' => $row->uid]) }}">
+                                            data-gateway-user-url="{{ route('admin.users.show', ['user_id' => $row->uid]) }}">
                                         {{ $row->uid }}
                                     </button>
                                 </td>
@@ -205,7 +205,7 @@
         </div>
     </div>
 
-    {{-- Gateway user (GET /api/users/:id via admin proxy) --}}
+    {{-- User JSON via GET /admin/users/{user_id} (proxies gateway /api/users/{id}) --}}
     <div class="modal fade" id="mallModalUserDetail" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
             <div class="modal-content">

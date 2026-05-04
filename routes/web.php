@@ -32,9 +32,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
     Route::patch('orders/{id}', [AdminOrderController::class, 'update'])->name('orders.update');
 
     Route::get('points', [AdminPointsController::class, 'index'])->name('points.index');
-    Route::get('points/gateway-users/{id}', [AdminPointsController::class, 'showGatewayUser'])
-        ->whereNumber('id')
-        ->name('points.gateway-users.show');
+    Route::get('users/{user_id}', [AdminPointsController::class, 'showUser'])
+        ->whereNumber('user_id')
+        ->name('users.show');
     Route::get('points/balances/{id}', [AdminPointsController::class, 'showBalance'])->name('points.balances.show');
     Route::delete('points/balances/{id}', [AdminPointsController::class, 'destroyBalance'])->name('points.balances.destroy');
     Route::get('points/flows/{id}', [AdminPointsController::class, 'showFlow'])->name('points.flows.show');
