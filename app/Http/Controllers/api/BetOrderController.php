@@ -5,83 +5,37 @@ declare(strict_types=1);
 namespace App\Http\Controllers\api;
 
 use App\Components\ApiResponse;
-use App\Enums\BetOrderStatus;
-use App\Enums\CheckoutPhase;
 use App\Exceptions\FoundationAuthRequiredException;
 use App\Http\Controllers\Controller;
 use App\Models\BetOrder;
 use App\Services\mall\FoundationUser;
-use App\Services\mall\OrderCommandService;
+use App\Services\MallDictionaryService;
 use App\Services\user\UserFoundationGateway;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use ValueError;
 
+/**
+ * Read-only order browsing for agents. Bet placement is exclusively done via
+ * {@see BetPlaceController}; there is no draft / cancel flow here anymore.
+ */
 class BetOrderController extends Controller
 {
     public function __construct(
         private readonly UserFoundationGateway $foundationGateway,
-        private readonly OrderCommandService $orders,
+        private readonly MallDictionaryService $dict,
     ) {}
-
-    public function store(Request $request): JsonResponse
-    {
-        $user = $this->requireAuthenticatedUser($request);
-
-        $request->validate([
-            'lines' => 'required|array|min:1|max:1',
-            'lines.0.kid' => 'required|integer|min:1',
-            'lines.0.stake_points' => 'required|integer|min:1',
-        ]);
-
-        /** @var list<array{kid: int, stake_points: int}> $lines */
-        $lines = [];
-        foreach ($request->input('lines', []) as $line) {
-            if (! is_array($line)) {
-                continue;
-            }
-            $lines[] = [
-                'kid' => (int) $line['kid'],
-                'stake_points' => (int) $line['stake_points'],
-            ];
-        }
-
-        $order = $this->orders->createDraftPendingOrder(FoundationUser::id($user), $lines);
-
-        $this->logHandledApiRequest($request, ['handler' => 'bet.orders.store', 'order_id' => $order->id]);
-
-        return response()->json(ApiResponse::ok($this->serializeOrder($order)), 201);
-    }
-
-    public function update(Request $request, int $id): JsonResponse
-    {
-        $user = $this->requireAuthenticatedUser($request);
-
-        $request->validate([
-            'status' => 'required',
-        ]);
-
-        $raw = $request->input('status');
-        if (! is_string($raw) && ! is_int($raw)) {
-            throw new ValueError('Invalid status.');
-        }
-
-        $next = BetOrderStatus::fromClient($raw);
-        $order = $this->orders->findForUser($id, FoundationUser::id($user));
-        $order = $this->orders->transitionStatus($order, $next);
-
-        $this->logHandledApiRequest($request, ['handler' => 'bet.orders.update', 'order_id' => $id]);
-
-        return response()->json(ApiResponse::ok($this->serializeOrder($order)));
-    }
 
     public function index(Request $request): JsonResponse
     {
         $user = $this->requireAuthenticatedUser($request);
-
         $perPage = min(50, max(1, (int) $request->query('per_page', 15)));
 
-        $paginator = $this->orders->paginateForUser(FoundationUser::id($user), $perPage);
+        $paginator = BetOrder::query()
+            ->where('uid', FoundationUser::id($user))
+            ->orderByDesc('id')
+            ->paginate($perPage);
+
         $items = [];
         foreach ($paginator->items() as $order) {
             $items[] = $this->serializeOrderSummary($order);
@@ -97,6 +51,7 @@ class BetOrderController extends Controller
                 'current_page' => $paginator->currentPage(),
                 'last_page' => $paginator->lastPage(),
             ],
+            '_dict' => $this->dict->resolve(['bet_order_status']),
         ]));
     }
 
@@ -104,11 +59,21 @@ class BetOrderController extends Controller
     {
         $user = $this->requireAuthenticatedUser($request);
 
-        $order = $this->orders->findForUser($id, FoundationUser::id($user));
+        $order = BetOrder::query()
+            ->where('id', $id)
+            ->where('uid', FoundationUser::id($user))
+            ->with('lines')
+            ->first();
+        if ($order === null) {
+            throw (new ModelNotFoundException)->setModel(BetOrder::class, [$id]);
+        }
 
         $this->logHandledApiRequest($request, ['handler' => 'bet.orders.show', 'order_id' => $id]);
 
-        return response()->json(ApiResponse::ok($this->serializeOrder($order)));
+        return response()->json(ApiResponse::ok([
+            'order' => $this->serializeOrder($order),
+            '_dict' => $this->dict->resolve(['bet_order_status']),
+        ]));
     }
 
     /**
@@ -156,9 +121,6 @@ class BetOrderController extends Controller
             'ct' => $order->ct,
             'ut' => $order->ut,
             'lines' => $lines,
-            'ext_inventory' => $order->ext_inventory,
-            'ext_id' => $order->ext_id,
-            'checkout_phase' => $order->checkout_phase?->value ?? CheckoutPhase::None->value,
         ];
     }
 

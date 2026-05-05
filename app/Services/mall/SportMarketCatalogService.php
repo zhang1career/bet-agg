@@ -4,103 +4,95 @@ declare(strict_types=1);
 
 namespace App\Services\mall;
 
+use App\Http\Controllers\api\BetGameController;
+use App\Http\Controllers\api\BetMarketController;
 use App\Models\SportGame;
 use App\Models\SportMarket;
 use App\Models\SportSelection;
-use App\Services\mall\serv_fd\CmsGameClient;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
-use Paganini\Aggregation\Exceptions\DownstreamServiceException;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
- * Catalog: CMS game metadata + local {@see SportGame} betting state; markets and selections local.
+ * Read-side catalog: local {@code biz_game} betting state plus
+ * {@code biz_market} / {@code biz_selection}.
+ *
+ * Game display fields (title, media, kickoff) are not stored on {@code biz_game};
+ * clients resolve them via CMS or a future dedicated path.
+ *
+ * Markets are returned with their selections inlined so agents can evaluate a
+ * full market in one round-trip; the standalone {@code /bet/selections} endpoint
+ * is gone.
  */
 final class SportMarketCatalogService
 {
-    public function __construct(
-        private readonly CmsGameClient $cms,
-    ) {}
-
     /**
+     * @param  GameListFilter  $filter  Validated filter inputs from {@see BetGameController}.
      * @return array{items: list<array<string, mixed>>, pagination: array<string, mixed>}
      */
-    public function listOpenGames(int $page, int $perPage): array
+    public function listGames(GameListFilter $filter, int $page, int $perPage): array
     {
-        $query = SportGame::query()
-            ->where('status', SportGame::STATUS_OPEN)
-            ->orderBy('id');
+        $query = SportGame::query();
+        $this->applyGameFilter($query, $filter);
+        $this->applyGameSort($query, $filter);
 
         /** @var LengthAwarePaginator<int, SportGame> $p */
         $p = $query->paginate($perPage, ['*'], 'page', $page);
 
         $items = [];
         foreach ($p->items() as $game) {
-            try {
-                $cms = $this->cms->find((int) $game->raw_id);
-            } catch (DownstreamServiceException) {
-                continue;
-            }
-            $items[] = $this->serializeGame($cms, $game);
+            $items[] = $this->serializeGame($game);
         }
 
         return [
             'items' => $items,
-            'pagination' => [
-                'total' => $p->total(),
-                'per_page' => $p->perPage(),
-                'current_page' => $p->currentPage(),
-                'last_page' => $p->lastPage(),
-            ],
+            'pagination' => $this->paginationPayload($p),
         ];
     }
 
     /**
-     * @param  int  $rawId  {@see SportGame::$raw_id} / CMS path segment
      * @return array<string, mixed>
      */
-    public function getGameDetail(int $rawId): array
+    public function getGameDetail(int $localId): array
     {
-        $cms = $this->cms->find($rawId);
-        $local = SportGame::query()->where('raw_id', $rawId)->first();
+        $game = SportGame::query()->whereKey($localId)->first();
+        if ($game === null) {
+            throw new NotFoundHttpException('Game not found.');
+        }
 
-        return $this->serializeGame($cms, $local);
+        return $this->serializeGame($game);
     }
 
     /**
-     * @param  int|null  $rawId  Filter by external/CMS game id (not local {@see SportGame::$id})
+     * @param  MarketListFilter  $filter  Validated filter inputs from {@see BetMarketController}.
      * @return array{items: list<array<string, mixed>>, pagination: array<string, mixed>}
      */
-    public function listOpenMarkets(int $page, int $perPage, ?int $rawId): array
+    public function listMarkets(MarketListFilter $filter, int $page, int $perPage): array
     {
-        $query = SportMarket::query()
-            ->with(['game'])
-            ->where('status', SportMarket::STATUS_OPEN)
-            ->whereHas('game', static function ($q): void {
-                $q->where('status', SportGame::STATUS_OPEN);
-            });
-        if ($rawId !== null) {
-            $query->whereHas('game', static function ($q) use ($rawId): void {
-                $q->where('raw_id', $rawId);
-            });
-        }
+        $query = SportMarket::query()->with(['game']);
+        $this->applyMarketFilter($query, $filter);
         $query->orderByDesc('id');
 
         /** @var LengthAwarePaginator<int, SportMarket> $p */
         $p = $query->paginate($perPage, ['*'], 'page', $page);
 
+        $marketsOnPage = $p->items();
+        $selectionsByMarket = $filter->includeSelections
+            ? $this->selectionsForMarkets(array_map(static fn (SportMarket $m): int => (int) $m->id, $marketsOnPage))
+            : [];
+
         $items = [];
-        foreach ($p->items() as $market) {
-            $items[] = $this->serializeMarket($market);
+        foreach ($marketsOnPage as $market) {
+            $items[] = $this->serializeMarket(
+                $market,
+                $filter->includeSelections ? ($selectionsByMarket[(int) $market->id] ?? []) : null,
+            );
         }
 
         return [
             'items' => $items,
-            'pagination' => [
-                'total' => $p->total(),
-                'per_page' => $p->perPage(),
-                'current_page' => $p->currentPage(),
-                'last_page' => $p->lastPage(),
-            ],
+            'pagination' => $this->paginationPayload($p),
         ];
     }
 
@@ -117,89 +109,120 @@ final class SportMarketCatalogService
             throw new NotFoundHttpException('Market not found.');
         }
 
-        return $this->serializeMarket($market);
+        $selections = $this->selectionsForMarkets([(int) $market->id])[(int) $market->id] ?? [];
+
+        return $this->serializeMarket($market, $selections);
     }
 
     /**
-     * @return array{items: list<array<string, mixed>>, pagination: array<string, mixed>}
+     * @param  Builder<SportGame>  $query
      */
-    public function listOpenSelections(int $page, int $perPage, ?int $marketId): array
+    private function applyGameFilter(Builder $query, GameListFilter $filter): void
     {
-        $query = SportSelection::query()
-            ->with(['market.game'])
-            ->where('status', SportSelection::STATUS_OPEN)
-            ->whereHas('market', static function ($q): void {
-                $q->where('status', SportMarket::STATUS_OPEN)
-                    ->whereHas('game', static function ($q2): void {
-                        $q2->where('status', SportGame::STATUS_OPEN);
-                    });
-            })
-            ->when($marketId !== null, static function ($q) use ($marketId): void {
-                $q->where('market_id', $marketId);
-            })
-            ->orderByDesc('id');
+        if ($filter->statuses !== []) {
+            $query->whereIn('status', $filter->statuses);
+        }
+        if ($filter->updatedAfterMillis !== null) {
+            $query->where('ut', '>=', $filter->updatedAfterMillis);
+        }
+    }
 
-        /** @var LengthAwarePaginator<int, SportSelection> $p */
-        $p = $query->paginate($perPage, ['*'], 'page', $page);
+    /**
+     * @param  Builder<SportGame>  $query
+     */
+    private function applyGameSort(Builder $query, GameListFilter $filter): void
+    {
+        // Default: newest first.
+        if ($filter->sort === null) {
+            $query->orderByDesc('id');
 
-        $items = [];
-        foreach ($p->items() as $sel) {
-            $items[] = $this->serializeSelection($sel);
+            return;
+        }
+        [$column, $direction] = $filter->sort;
+        $query->orderBy($column, $direction);
+    }
+
+    /**
+     * @param  Builder<SportMarket>  $query
+     */
+    private function applyMarketFilter(Builder $query, MarketListFilter $filter): void
+    {
+        if ($filter->statuses !== []) {
+            $query->whereIn('status', $filter->statuses);
+        }
+        if ($filter->localGameId !== null) {
+            $query->where('game_id', $filter->localGameId);
+        }
+        if ($filter->updatedAfterMillis !== null) {
+            $query->where('ut', '>=', $filter->updatedAfterMillis);
+        }
+        if ($filter->onlyMarketsUnderOpenGame) {
+            $query->whereHas('game', static function (Builder $q): void {
+                $q->where('status', SportGame::STATUS_OPEN);
+            });
+        }
+    }
+
+    /**
+     * @param  list<int>  $marketIds
+     * @return array<int, list<array<string, mixed>>>
+     */
+    private function selectionsForMarkets(array $marketIds): array
+    {
+        if ($marketIds === []) {
+            return [];
         }
 
-        return [
-            'items' => $items,
-            'pagination' => [
-                'total' => $p->total(),
-                'per_page' => $p->perPage(),
-                'current_page' => $p->currentPage(),
-                'last_page' => $p->lastPage(),
-            ],
-        ];
+        /** @var Collection<int, SportSelection> $rows */
+        $rows = SportSelection::query()
+            ->whereIn('market_id', $marketIds)
+            ->orderBy('id')
+            ->get();
+
+        $byMarket = [];
+        foreach ($rows as $sel) {
+            $byMarket[(int) $sel->market_id][] = $this->serializeSelection($sel);
+        }
+
+        return $byMarket;
     }
 
     /**
      * @return array<string, mixed>
      */
-    public function getSelectionDetail(int $id): array
+    private function serializeGame(SportGame $game): array
     {
-        $sel = SportSelection::query()
-            ->with(['market.game'])
-            ->whereKey($id)
-            ->first();
-        if ($sel === null) {
-            throw new NotFoundHttpException('Selection not found.');
-        }
-
-        return $this->serializeSelection($sel);
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function serializeGame(array $cms, ?SportGame $local): array
-    {
-        $id = (int) ($cms['id'] ?? 0);
-        $status = $local !== null ? (int) $local->status : SportGame::STATUS_CLOSED;
-
         return [
-            'id' => $id,
-            'name' => (string) ($cms['title'] ?? ''),
-            'main_media' => $this->cmsString($cms, 'main_media'),
-            'banner' => $this->cmsString($cms, 'banner'),
-            'starts_at' => (int) ($cms['starts_at'] ?? 0),
-            'status' => $status,
-            'winning_selection_ids' => $local !== null ? ($local->winning_selection_ids ?? []) : [],
+            'id' => (int) $game->id,
+            'cms_id' => (int) $game->raw_id,
+            'status' => (int) $game->status,
+            'winning_selection_ids' => $game->winning_selection_ids ?? [],
+            'ut' => (int) $game->ut,
         ];
     }
 
-    private function cmsString(array $cms, string $key): ?string
+    /**
+     * @param  list<array<string, mixed>>|null  $selections  null = caller did not request inline; key omitted from output.
+     * @return array<string, mixed>
+     */
+    private function serializeMarket(SportMarket $market, ?array $selections): array
     {
-        if (! array_key_exists($key, $cms) || $cms[$key] === null) {
-            return null;
+        $game = $market->game;
+
+        $row = [
+            'id' => (int) $market->id,
+            'game_id' => $game === null ? 0 : (int) $game->id,
+            'name' => (string) $market->name,
+            'status' => (int) $market->status,
+            'ut' => (int) $market->ut,
+            'game' => $game === null ? null : $this->serializeGameForNested($game),
+        ];
+
+        if ($selections !== null) {
+            $row['selections'] = $selections;
         }
 
-        return is_string($cms[$key]) ? $cms[$key] : null;
+        return $row;
     }
 
     /**
@@ -207,54 +230,38 @@ final class SportMarketCatalogService
      */
     private function serializeSelection(SportSelection $sel): array
     {
-        $market = $sel->market;
-        $game = $market?->game;
-
         return [
             'id' => (int) $sel->id,
-            'label' => $sel->label,
+            'market_id' => (int) $sel->market_id,
+            'label' => (string) $sel->label,
             'current_odds_millis' => (int) $sel->current_odds_millis,
             'status' => (int) $sel->status,
-            'market' => $market === null ? null : [
-                'id' => (int) $market->id,
-                'name' => $market->name,
-                'status' => (int) $market->status,
-            ],
-            'game' => $game === null ? null : $this->serializeGameForNested($game),
+            'ut' => (int) $sel->ut,
         ];
     }
 
     /**
      * @return array<string, mixed>
      */
-    private function serializeMarket(SportMarket $market): array
+    private function serializeGameForNested(SportGame $game): array
     {
-        $game = $market->game;
-
-        return [
-            'id' => (int) $market->id,
-            'game_id' => (int) ($game?->raw_id ?? 0),
-            'name' => $market->name,
-            'status' => (int) $market->status,
-            'game' => $game === null ? null : $this->serializeGameForNested($game),
-        ];
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function serializeGameForNested(SportGame $local): array
-    {
-        $cmsKey = (int) $local->raw_id;
-        try {
-            $cms = $this->cms->find($cmsKey);
-        } catch (DownstreamServiceException|NotFoundHttpException) {
-            $cms = ['id' => $cmsKey];
-        }
-
-        $merged = $this->serializeGame($cms, $local);
+        $merged = $this->serializeGame($game);
         unset($merged['winning_selection_ids']);
 
         return $merged;
+    }
+
+    /**
+     * @param  LengthAwarePaginator<int, mixed>  $p
+     * @return array<string, int>
+     */
+    private function paginationPayload(LengthAwarePaginator $p): array
+    {
+        return [
+            'total' => $p->total(),
+            'per_page' => $p->perPage(),
+            'current_page' => $p->currentPage(),
+            'last_page' => $p->lastPage(),
+        ];
     }
 }

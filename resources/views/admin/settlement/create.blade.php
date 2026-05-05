@@ -24,8 +24,15 @@
             </div>
             <div class="mb-3">
                 <label class="form-label" for="winning_selection_ids">Winning selection IDs (comma-separated)</label>
-                <input type="text" name="winning_selection_ids" id="winning_selection_ids" class="form-control" required
+                <input type="text" name="winning_selection_ids" id="winning_selection_ids" class="form-control"
                        placeholder="e.g. 1,2" value="{{ old('winning_selection_ids') }}">
+                <small class="form-text text-muted">Bets on these selections settle as Won.</small>
+            </div>
+            <div class="mb-3">
+                <label class="form-label" for="voided_selection_ids">Voided selection IDs (comma-separated)</label>
+                <input type="text" name="voided_selection_ids" id="voided_selection_ids" class="form-control"
+                       placeholder="e.g. 3" value="{{ old('voided_selection_ids') }}">
+                <small class="form-text text-muted">Bets on these selections refund the stake (Void).</small>
             </div>
             <button type="submit" class="btn btn-primary" @if($games->isEmpty()) disabled @endif>Settle</button>
         </form>

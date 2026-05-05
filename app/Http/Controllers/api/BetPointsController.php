@@ -8,7 +8,7 @@ use App\Components\ApiResponse;
 use App\Exceptions\FoundationAuthRequiredException;
 use App\Http\Controllers\Controller;
 use App\Services\mall\FoundationUser;
-use App\Services\mall\PointsTccService;
+use App\Services\mall\PointsAdminService;
 use App\Services\user\UserFoundationGateway;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -17,7 +17,7 @@ class BetPointsController extends Controller
 {
     public function __construct(
         private readonly UserFoundationGateway $foundationGateway,
-        private readonly PointsTccService $points,
+        private readonly PointsAdminService $points,
     ) {}
 
     /**

@@ -12,13 +12,7 @@ final class SportSeeder
 {
     public static function openSelection(int $oddsMillis = 2000): int
     {
-        $rawId = (int) (SportGame::query()->max('raw_id') ?? 0) + 1;
-
-        $game = new SportGame([
-            'raw_id' => $rawId,
-            'status' => SportGame::STATUS_OPEN,
-        ]);
-        $game->save();
+        $game = self::seedGame();
 
         $market = new SportMarket([
             'game_id' => $game->id,
@@ -43,13 +37,7 @@ final class SportSeeder
      */
     public static function duelSelections(int $aOddsMillis = 2000, int $bOddsMillis = 2000): array
     {
-        $rawId = (int) (SportGame::query()->max('raw_id') ?? 0) + 1;
-
-        $game = new SportGame([
-            'raw_id' => $rawId,
-            'status' => SportGame::STATUS_OPEN,
-        ]);
-        $game->save();
+        $game = self::seedGame();
 
         $market = new SportMarket([
             'game_id' => $game->id,
@@ -79,5 +67,18 @@ final class SportSeeder
             'selection_a_id' => (int) $a->id,
             'selection_b_id' => (int) $b->id,
         ];
+    }
+
+    public static function seedGame(): SportGame
+    {
+        $rawId = (int) (SportGame::query()->max('raw_id') ?? 0) + 1;
+
+        $game = new SportGame([
+            'raw_id' => $rawId,
+            'status' => SportGame::STATUS_OPEN,
+        ]);
+        $game->save();
+
+        return $game;
     }
 }

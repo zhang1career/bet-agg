@@ -1,11 +1,11 @@
 <?php
 
-use App\Http\Controllers\Admin\AdminGameController;
-use App\Http\Controllers\Admin\AdminMarketController;
-use App\Http\Controllers\Admin\AdminOrderController;
-use App\Http\Controllers\Admin\AdminPointsController;
-use App\Http\Controllers\Admin\AdminSettlementController;
-use App\Http\Controllers\Admin\AdminUploadController;
+use App\Http\Controllers\admin\AdminGameController;
+use App\Http\Controllers\admin\AdminMarketController;
+use App\Http\Controllers\admin\AdminOrderController;
+use App\Http\Controllers\admin\AdminPointsController;
+use App\Http\Controllers\admin\AdminSettlementController;
+use App\Http\Controllers\admin\AdminUploadController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', static function () {
@@ -29,7 +29,6 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
     Route::get('orders', [AdminOrderController::class, 'index'])->name('orders.index');
     Route::get('orders/{id}', [AdminOrderController::class, 'show'])->name('orders.show');
-    Route::patch('orders/{id}', [AdminOrderController::class, 'update'])->name('orders.update');
 
     Route::get('points', [AdminPointsController::class, 'index'])->name('points.index');
     Route::get('users', [AdminPointsController::class, 'indexUsers'])->name('users.index');

@@ -6,6 +6,12 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
+/**
+ * Test/dev bootstrap mirror of {@code docs/schema.sql}. Production schema is
+ * managed manually by ops (per project policy: schema.sql is source of truth);
+ * this migration only exists so the sqlite in-memory test runner has a usable
+ * database. Keep both files in lockstep when columns / indexes change.
+ */
 return new class extends Migration
 {
     public function up(): void
@@ -39,17 +45,16 @@ return new class extends Migration
             $table->unsignedBigInteger('ut')->default(0);
         });
 
-        Schema::create('order', function (Blueprint $table): void {
+        Schema::create('bet_order', function (Blueprint $table): void {
             $table->id();
             $table->unsignedBigInteger('uid')->default(0)->index('idx_bet_order_user');
+            $table->unsignedBigInteger('idem_key');
             $table->integer('total_price')->default(0);
             $table->unsignedTinyInteger('status')->default(0);
-            $table->unsignedSmallInteger('checkout_phase')->default(0);
-            $table->boolean('ext_inventory')->default(false);
-            $table->string('ext_id', 128)->default('');
             $table->integer('points_held')->default(0);
             $table->unsignedBigInteger('ct')->default(0);
             $table->unsignedBigInteger('ut')->default(0);
+            $table->unique(['uid', 'idem_key'], 'uni_bet_order_uid_idem_key');
         });
 
         Schema::create('order_item', function (Blueprint $table): void {
@@ -61,6 +66,20 @@ return new class extends Migration
             $table->unsignedInteger('decimal_odds_millis')->default(0);
             $table->unsignedBigInteger('potential_return_points')->default(0);
             $table->unsignedTinyInteger('result')->default(0);
+            $table->unsignedBigInteger('ct')->default(0);
+            $table->unsignedBigInteger('ut')->default(0);
+        });
+
+        Schema::create('settle_job', function (Blueprint $table): void {
+            $table->id();
+            $table->string('biz_key', 128)->unique('uni_settle_biz_key');
+            $table->text('payload')->nullable();
+            $table->unsignedInteger('total')->default(0);
+            $table->unsignedInteger('cursor_offset')->default(0);
+            $table->unsignedInteger('success_count')->default(0);
+            $table->unsignedInteger('failure_count')->default(0);
+            $table->unsignedTinyInteger('status')->default(0);
+            $table->text('last_error')->nullable();
             $table->unsignedBigInteger('ct')->default(0);
             $table->unsignedBigInteger('ut')->default(0);
         });
@@ -82,6 +101,7 @@ return new class extends Migration
             $table->unsignedBigInteger('ct')->default(0);
             $table->unsignedBigInteger('ut')->default(0);
             $table->index(['uid', 'oid'], 'idx_bet_points_flow_user_order');
+            $table->unique(['oid', 'state'], 'uni_bet_points_flow_oid_state');
         });
     }
 
@@ -89,8 +109,9 @@ return new class extends Migration
     {
         Schema::dropIfExists('points_flow');
         Schema::dropIfExists('points_balance');
+        Schema::dropIfExists('settle_job');
         Schema::dropIfExists('order_item');
-        Schema::dropIfExists('order');
+        Schema::dropIfExists('bet_order');
         Schema::dropIfExists('biz_selection');
         Schema::dropIfExists('biz_market');
         Schema::dropIfExists('biz_game');

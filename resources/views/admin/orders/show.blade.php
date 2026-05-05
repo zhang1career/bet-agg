@@ -35,15 +35,7 @@
         </tbody>
     </table>
 
-    <form method="post" action="{{ route('admin.orders.update', $order->id) }}" class="mt-4 bg-white shadow-sm p-4 rounded">
-        @csrf
-        @method('PATCH')
-        <label class="form-label">Change status</label>
-        <select name="status" class="form-select w-auto" required
-                data-mall-dict-options="bet_order_status"
-                data-mall-dict-selected="{{ $order->status->value }}"></select>
-        <button type="submit" class="btn btn-primary mt-2">Update status</button>
-    </form>
+    <p class="text-muted mt-3">Order status is driven by placement and settlement. Use admin/games to apply game results.</p>
 
     <a href="{{ route('admin.orders.index') }}" class="btn btn-link mt-3">Back to orders</a>
 @endsection

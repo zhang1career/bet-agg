@@ -18,7 +18,6 @@
                         <th>Status</th>
                         <th>Total (minor)</th>
                         <th>Created</th>
-                        <th class="text-end text-nowrap">Actions</th>
                     </tr>
                     </thead>
                     <tbody>
@@ -31,14 +30,6 @@
                             <td><span data-mall-dict-code="bet_order_status" data-mall-dict-value="{{ $order->status->value }}">{{ $order->status->value }}</span></td>
                             <td>{{ $order->total_price }}</td>
                             <td class="text-muted small">{{ \App\Support\MillisTimestampDisplay::format($order->ct) }}</td>
-                            <td class="text-end text-nowrap">
-                                <button type="button" class="mall-icon-btn d-inline-flex p-1 rounded" title="Edit status"
-                                        data-bs-toggle="modal" data-bs-target="#mallModalOrderEdit"
-                                        data-order-update-url="{{ route('admin.orders.update', $order->id) }}"
-                                        data-order-status-value="{{ $order->status->value }}">
-                                    @include('admin.partials.icon_pencil')
-                                </button>
-                            </td>
                         </tr>
                     @endforeach
                     </tbody>
@@ -48,56 +39,4 @@
     </div>
 
     {{ $orders->withQueryString()->links() }}
-
-    <div class="modal fade" id="mallModalOrderEdit" tabindex="-1" aria-labelledby="mallModalOrderEditLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <form method="post" id="mall-form-order-update">
-                    @csrf
-                    @method('PATCH')
-                    <input type="hidden" name="redirect_to" value="list">
-                    <div class="modal-header">
-                        <h2 class="modal-title h5" id="mallModalOrderEditLabel">Edit order status</h2>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        <label class="form-label" for="order-status-select">Status</label>
-                        <select name="status" id="order-status-select" class="form-select" required
-                                data-mall-dict-options="bet_order_status"></select>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-primary">Save</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
 @endsection
-
-@push('scripts')
-    <script>
-        (function () {
-            var form = document.getElementById('mall-form-order-update');
-            var modalEl = document.getElementById('mallModalOrderEdit');
-            var sel = document.getElementById('order-status-select');
-            if (!form || !modalEl || !sel) {
-                return;
-            }
-            modalEl.addEventListener('show.bs.modal', function (e) {
-                var btn = e.relatedTarget;
-                if (!btn || !form) {
-                    return;
-                }
-                var url = btn.getAttribute('data-order-update-url');
-                var st = btn.getAttribute('data-order-status-value');
-                if (url) {
-                    form.action = url;
-                }
-                if (st !== null && st !== '') {
-                    sel.value = st;
-                }
-            });
-        })();
-    </script>
-@endpush

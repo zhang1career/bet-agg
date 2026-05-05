@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use App\Models\Concerns\HasMillisTimestamps;
+use App\Models\concerns\HasMillisTimestamps;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * Local betting state linked to CMS {@code GET /api/cms/game/{raw_id}} via {@see $raw_id}.
- * Banner / main image are CMS fields {@code banner} and {@code main_media}, not stored here.
+ * Local betting aggregate for a CMS game: {@code raw_id} is the external game id;
+ * title, media, and kickoff time are owned by CMS (not stored here).
  *
  * @property int $id Local surrogate primary key
  * @property int $raw_id External/CMS game identifier (unique)

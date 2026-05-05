@@ -4,123 +4,140 @@ declare(strict_types=1);
 
 namespace App\Services\mall;
 
-use App\Enums\BetLineResult;
 use App\Enums\BetOrderStatus;
 use App\Models\BetOrder;
-use App\Models\BetOrderLine;
 use App\Models\SportGame;
-use App\Models\SportMarket;
-use App\Models\SportSelection;
+use App\Services\mall\settlement\SettlementBatchItemHandler;
+use App\Services\mall\settlement\SettlementBatchPlanProvider;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Paganini\Batch\DTO\BatchRunResult;
+use Paganini\Batch\Execution\BatchExecutor;
 use RuntimeException;
 
 /**
- * Applies internally-entered results and settles accepted bets (points payouts/refunds).
+ * Big-task / small-task settlement orchestrator.
+ *
+ * Outer transaction (one per game):
+ *   - lock biz_game and mark it + its markets + selections as SETTLED,
+ *   - persist {@code winning_selection_ids},
+ *   - emit the list of accepted-state orders that need money movement.
+ * The outer transaction commits BEFORE any per-order work runs, so a crash
+ * mid-settlement leaves the game irreversibly settled and the per-order
+ * inner transactions can be retried independently (paganini\batch tracks
+ * per-order outcomes on {@code settle_job}).
+ *
+ * Inner transactions (one per order):
+ *   - delegated to {@see SettlementBatchItemHandler}, each is independent.
+ *   - on rollback the order stays {@code Accepted} on the first attempt; this
+ *     orchestrator then marks it {@code SettlementFailed} in a separate
+ *     transaction so it surfaces to operators.
+ *
+ * @see SettlementBatchPlanProvider
+ * @see SettlementBatchItemHandler
  */
 final readonly class BetSettlementService
 {
     public function __construct(
-        private PointsAdminService $pointsAdmin,
+        private BatchExecutor $batchExecutor,
+        private SettlementBatchItemHandler $itemHandler,
     ) {}
 
     /**
      * @param  list<int>  $winningSelectionIds
+     * @param  list<int>  $voidedSelectionIds  Selections whose bets refund the stake (e.g. match abandoned, market settled void).
      */
-    public function applyGameResult(int $gameId, array $winningSelectionIds): SportGame
-    {
+    public function applyGameResult(
+        int $gameId,
+        array $winningSelectionIds,
+        array $voidedSelectionIds = [],
+    ): BatchRunResult {
         if ($gameId < 1) {
             throw new RuntimeException('Invalid game_id.');
         }
-        $winners = array_values(array_unique(array_filter(
-            array_map(static fn (mixed $v): int => (int) $v, $winningSelectionIds),
-            static fn (int $id) => $id > 0
-        )));
+        $winners = $this->normalizeIds($winningSelectionIds);
+        $voids = $this->normalizeIds($voidedSelectionIds);
 
-        return DB::transaction(function () use ($gameId, $winners): SportGame {
-            $game = SportGame::query()->whereKey($gameId)->lockForUpdate()->first();
-            if ($game === null) {
-                throw new RuntimeException('Game not found.');
-            }
-            if ($game->status === SportGame::STATUS_SETTLED) {
-                throw new RuntimeException('Game already settled.');
-            }
+        $overlap = array_intersect($winners, $voids);
+        if ($overlap !== []) {
+            throw new RuntimeException(sprintf(
+                'Selection ids cannot appear in both winners and voids: %s',
+                implode(',', $overlap),
+            ));
+        }
 
-            $now = SportGame::nowMillis();
-            SportMarket::query()
-                ->where('game_id', $gameId)
-                ->update(['status' => SportMarket::STATUS_SETTLED, 'ut' => $now]);
+        // One settle_job row per attempt: we suffix the millis-precision attempt timestamp
+        // so retries (e.g. after topping up bookmaker liquidity for SettlementFailed orders) get
+        // their own audit row. Once paganini\batch grows native resume support (project todo 9)
+        // this can collapse back to a per-game bizKey that the executor resumes by cursor.
+        $bizKey = self::bizKeyForGame($gameId).':'.SportGame::nowMillis();
+        $plan = new SettlementBatchPlanProvider($gameId, $winners, $voids);
 
-            SportSelection::query()
-                ->whereIn('market_id', SportMarket::query()->where('game_id', $gameId)->select('id'))
-                ->update(['status' => SportSelection::STATUS_SETTLED, 'ut' => $now]);
+        $result = $this->batchExecutor->execute($bizKey, $plan, $this->itemHandler);
 
-            $game->status = SportGame::STATUS_SETTLED;
-            $game->winning_selection_ids = $winners;
-            $game->save();
+        if ($result->failureCount > 0) {
+            $this->parkFailedOrdersAsSettlementFailed($result, $gameId);
+        }
 
-            $selectionIdsForGame = SportSelection::query()
-                ->whereIn('market_id', SportMarket::query()->where('game_id', $gameId)->select('id'))
-                ->pluck('id')
-                ->all();
+        return $result;
+    }
 
-            $winnerSet = array_fill_keys($winners, true);
-
-            $orders = BetOrder::query()
-                ->where('status', BetOrderStatus::Accepted)
-                ->whereHas('lines', static function ($q) use ($selectionIdsForGame): void {
-                    $q->whereIn('kid', $selectionIdsForGame);
-                })
-                ->with('lines')
-                ->lockForUpdate()
-                ->get();
-
-            foreach ($orders as $order) {
-                $this->settleOrderAgainstResult($order, $winnerSet);
-            }
-
-            return $game->fresh() ?? $game;
-        });
+    public static function bizKeyForGame(int $gameId): string
+    {
+        return 'settle:game:'.$gameId;
     }
 
     /**
-     * @param  array<int, true>  $winnerSet
+     * @param  list<int|string>  $rawIds
+     * @return list<int>
      */
-    private function settleOrderAgainstResult(BetOrder $order, array $winnerSet): void
+    private function normalizeIds(array $rawIds): array
     {
-        $order->load('lines');
-        if ($order->lines->count() !== 1) {
-            throw new RuntimeException('Settlement currently supports single-line bets only (order '.$order->id.').');
+        $ids = array_map(static fn (mixed $v): int => (int) $v, $rawIds);
+        $ids = array_filter($ids, static fn (int $v): bool => $v > 0);
+
+        return array_values(array_unique($ids));
+    }
+
+    private function parkFailedOrdersAsSettlementFailed(BatchRunResult $result, int $gameId): void
+    {
+        foreach ($result->failures as $failure) {
+            $orderId = (int) $failure->ref;
+            if ($orderId < 1) {
+                continue;
+            }
+
+            try {
+                DB::transaction(function () use ($orderId): void {
+                    /** @var BetOrder|null $order */
+                    $order = BetOrder::query()->whereKey($orderId)->lockForUpdate()->first();
+                    if ($order === null) {
+                        return;
+                    }
+                    if ($order->status !== BetOrderStatus::Accepted) {
+                        // Already terminal (Won/Lost/Void) or already SettlementFailed — leave as-is.
+                        return;
+                    }
+                    $order->status = BetOrderStatus::SettlementFailed;
+                    $order->save();
+                });
+            } catch (\Throwable $e) {
+                Log::error('[bet-settle] failed to park order in SettlementFailed', [
+                    'game_id' => $gameId,
+                    'order_id' => $orderId,
+                    'error' => $e->getMessage(),
+                ]);
+            }
         }
+    }
 
-        /** @var BetOrderLine $line */
-        $line = $order->lines->first();
-        $kid = (int) $line->kid;
-
-        if (! isset($winnerSet[$kid])) {
-            $line->result = BetLineResult::Lose;
-            $line->save();
-            $order->status = BetOrderStatus::Lost;
-            $order->save();
-
-            return;
-        }
-
-        $line->result = BetLineResult::Win;
-        $line->save();
-
-        $payout = (int) $line->potential_return_points;
-        $bookmakerUid = (int) config('bet_agg.points.bookmaker_uid');
-        if ($bookmakerUid < 1) {
-            throw new RuntimeException('Bookmaker account is not configured (bet_agg.points.bookmaker_uid).');
-        }
-        $this->pointsAdmin->payoutBetWinFromBookmaker(
-            $bookmakerUid,
-            (int) $order->uid,
-            $payout,
-            (int) $order->id
-        );
-
-        $order->status = BetOrderStatus::Won;
-        $order->save();
+    /**
+     * Convenience accessor used by call sites that previously expected a {@see SportGame}
+     * back from {@code applyGameResult}. Returns the freshly-settled row (or {@code null}
+     * if the game was deleted in the meantime, which should not happen).
+     */
+    public function loadGame(int $gameId): ?SportGame
+    {
+        return SportGame::query()->whereKey($gameId)->first();
     }
 }

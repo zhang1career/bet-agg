@@ -104,6 +104,70 @@ final readonly class CmsGameClient
     }
 
     /**
+     * Batch detail: {@code GET .../{game_route}/batch-detail?ids=1,2,3}.
+     *
+     * @param  list<int>  $ids  Positive integers; duplicates are sent once (server-defined order of results).
+     * @return array<int, array<string, mixed>> Map of CMS record id → detail payload (same shape as {@see find}).
+     *
+     * @throws ConnectionException
+     */
+    public function findManyById(array $ids): array
+    {
+        $normalized = [];
+        foreach ($ids as $x) {
+            if (! is_int($x) || $x < 1) {
+                continue;
+            }
+            $normalized[$x] = true;
+        }
+        $unique = array_keys($normalized);
+        if ($unique === []) {
+            return [];
+        }
+
+        $response = Http::timeout($this->timeoutSeconds)
+            ->acceptJson()
+            ->get($this->batchDetailUrl(), [
+                'ids' => implode(',', array_map(static fn (int $i): string => (string) $i, $unique)),
+            ]);
+
+        if ($response->status() === 404) {
+            throw new NotFoundHttpException('CMS game route not found: '.$this->contentRoute);
+        }
+
+        if (! $response->successful()) {
+            throw new DownstreamServiceException(
+                sprintf('CMS game batch detail failed with HTTP %d.', $response->status())
+            );
+        }
+
+        $json = $response->json();
+        if (! is_array($json)) {
+            throw new DownstreamServiceException('Invalid CMS game batch detail JSON.');
+        }
+        if ((int) ($json['errorCode'] ?? -1) === 100) {
+            $message = (string) ($json['message'] ?? 'validation failed');
+
+            throw new DownstreamServiceException('CMS game batch detail: '.$message);
+        }
+
+        $data = DownstreamPayload::extractData($json, 'cms game batch detail');
+        if (! isset($data['items']) || ! is_array($data['items'])) {
+            throw new DownstreamServiceException('Invalid CMS game batch detail payload: missing items.');
+        }
+
+        $out = [];
+        foreach ($data['items'] as $row) {
+            if (! is_array($row) || ! isset($row['id'])) {
+                continue;
+            }
+            $out[(int) $row['id']] = $row;
+        }
+
+        return $out;
+    }
+
+    /**
      * @param  array<string, mixed>  $fields  Keys must match CMS game columns (e.g. title, starts_at, banner, main_media).
      * @return array<string, mixed>
      *
@@ -173,6 +237,11 @@ final readonly class CmsGameClient
     private function itemUrl(int $id): string
     {
         return $this->baseUrl.$this->contentRoute.'/'.$id;
+    }
+
+    private function batchDetailUrl(): string
+    {
+        return $this->baseUrl.$this->contentRoute.'/batch-detail';
     }
 
     /**

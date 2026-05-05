@@ -6,7 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Components\XxlResponse;
 use App\Queues\XxlJobExecutor;
-use App\Services\Adapters\XxlJobStorageFileLockAdapter;
+use App\Services\adapters\XxlJobStorageFileLockAdapter;
 use App\Services\XxlJobRegistry;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;

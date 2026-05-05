@@ -16,6 +16,34 @@ abstract class TestCase extends BaseTestCase
     {
         /** @var callable(Request): Response $handler */
         $handler = function (Request $request) {
+            if (str_contains($request->url(), '/api/cms/game/batch-detail') && $request->method() === 'GET') {
+                $q = parse_url($request->url(), PHP_URL_QUERY);
+                parse_str(is_string($q) ? $q : '', $params);
+                $idsRaw = $params['ids'] ?? '';
+                $items = [];
+                foreach (array_filter(array_map('trim', explode(',', is_string($idsRaw) ? $idsRaw : ''))) as $token) {
+                    if (! ctype_digit($token)) {
+                        continue;
+                    }
+                    $id = (int) $token;
+                    if ($id === 9_999_991 || $id < 1) {
+                        continue;
+                    }
+                    $items[] = [
+                        'id' => $id,
+                        'title' => 'CMS game '.$id,
+                        'banner' => 'cms/banner.png',
+                        'main_media' => 'cms/cover.png',
+                        'starts_at' => 1_700_000_000_000,
+                    ];
+                }
+
+                return Http::response([
+                    'errorCode' => 0,
+                    'message' => '',
+                    'data' => ['items' => $items],
+                ], 200);
+            }
             if (preg_match('#/api/cms/game/(\\d+)$#', $request->url(), $m)) {
                 $id = (int) $m[1];
                 if ($id === 9_999_991) {

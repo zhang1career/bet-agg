@@ -2,8 +2,8 @@
   "openapi": "3.0.3",
   "info": {
     "title": "bet-agg HTTP API",
-    "description": "Laravel bet aggregation service: public `/api/*` JSON APIs and health check. User profile is **not** served here—call the Foundation (or API gateway) user API; bet-agg only **outbounds** to that service to resolve `X-User-Access-Token`. Most JSON responses use the `ApiResponse` envelope (`data`, `errorCode`, `message`, `_req_id`). XXL-Job executor endpoints use a different envelope (`code`, `msg`, `data`). Local catalog state is in `biz_game` (betting status only; titles/images from CMS `/api/cms/game/`), `biz_market`, and `biz_selection`; order lines reference a selection via `kid`.\n\n**Examples:** Reusable request/response samples are under `components.examples` and referenced from operations. **Contract tests:** `Tests\\Feature\\OpenApiRoutesContractTest` asserts every path/method in this file is registered in the app.",
-    "version": "1.2.0"
+    "description": "Laravel bet aggregation service: public `/api/*` JSON APIs and health check. User profile is **not** served here—call the Foundation (or API gateway) user API; bet-agg only **outbounds** to that service to resolve `X-User-Access-Token`. JSON responses use the `ApiResponse` envelope (`data`, `errorCode`, `message`, `_req_id`). Local catalog betting state is in `biz_game` (status + settlement payload), `biz_market`, and `biz_selection`; game title/media/kickoff come from CMS or separate integrations—not duplicated in `biz_game`. Bet order lines reference a selection via `kid`.\n\n**Internal infrastructure** (XXL-Job HTTP callbacks) lives under `/internal/*` and is intentionally NOT documented here.\n\n**Examples:** Reusable request/response samples are under `components.examples` and referenced from operations. **Contract tests:** `Tests\\Feature\\OpenApiRoutesContractTest` asserts every path/method in this file is registered in the app.",
+    "version": "1.4.0"
   },
   "servers": [
     {
@@ -14,11 +14,11 @@
   "tags": [
     {
       "name": "Bet",
-      "description": "Betting catalog, orders, points, checkout"
+      "description": "Betting catalog, orders, points, atomic placement"
     },
     {
-      "name": "Jobs",
-      "description": "XXL-Job executor HTTP surface"
+      "name": "Meta",
+      "description": "Self-describing endpoints (OpenAPI, dictionaries)"
     },
     {
       "name": "Health",
@@ -32,12 +32,6 @@
         "in": "header",
         "name": "X-User-Access-Token",
         "description": "Raw JWT from the Foundation (or BFF) auth service; not issued by bet-agg. Send on bet APIs that require a logged-in user."
-      },
-      "XxlJobAccessToken": {
-        "type": "apiKey",
-        "in": "header",
-        "name": "XXL-JOB-ACCESS-TOKEN",
-        "description": "Must match `xxl.token` configuration."
       }
     },
     "schemas": {
@@ -59,26 +53,6 @@
             "type": "string"
           },
           "_req_id": {
-            "type": "string"
-          }
-        }
-      },
-      "XxlEnvelope": {
-        "type": "object",
-        "required": [
-          "data",
-          "code",
-          "msg"
-        ],
-        "properties": {
-          "data": {
-            "nullable": true
-          },
-          "code": {
-            "type": "integer",
-            "description": "200 = success for XXL-Job"
-          },
-          "msg": {
             "type": "string"
           }
         }
@@ -137,12 +111,6 @@
             "items": {
               "$ref": "#/components/schemas/BetOrderLine"
             }
-          },
-          "ext_inventory": {},
-          "ext_id": {},
-          "checkout_phase": {
-            "type": "integer",
-            "description": "CheckoutPhase: 0 draft (none), 50 await payment (reserved), 60 completed. API serializes numeric value."
           }
         }
       },
@@ -188,27 +156,15 @@
       },
       "SportGame": {
         "type": "object",
-        "description": "CMS game fields merged with local `biz_game` betting state. `id` in responses is the external/CMS game id; persistence uses local `biz_game.id` + unique `raw_id`.",
+        "description": "Local `biz_game` betting row. `id` is the local surrogate key; `cms_id` is the external/CMS game id (`raw_id`). Title, banner, main image, and kickoff time are not returned here—use CMS or a future read model.",
         "properties": {
           "id": {
-            "type": "integer"
-          },
-          "name": {
-            "type": "string"
-          },
-          "main_media": {
-            "type": "string",
-            "nullable": true,
-            "description": "CMS `main_media` OSS key"
-          },
-          "banner": {
-            "type": "string",
-            "nullable": true,
-            "description": "CMS `banner` OSS key"
-          },
-          "starts_at": {
             "type": "integer",
-            "description": "Unix time in milliseconds"
+            "description": "Local `biz_game.id`"
+          },
+          "cms_id": {
+            "type": "integer",
+            "description": "CMS / external game id (`biz_game.raw_id`)"
           },
           "status": {
             "type": "integer",
@@ -220,19 +176,23 @@
               "type": "integer"
             },
             "description": "Set when status is settled; empty array otherwise"
+          },
+          "ut": {
+            "type": "integer",
+            "description": "Last update time (milliseconds)"
           }
         }
       },
       "SportMarket": {
         "type": "object",
-        "description": "Public `biz_market` row with nested game summary (CMS + local state). List endpoint returns open markets on open games only.",
+        "description": "Public `biz_market` row with nested local game summary. List endpoint returns open markets on open games only.",
         "properties": {
           "id": {
             "type": "integer"
           },
           "game_id": {
             "type": "integer",
-            "description": "CMS game id (same as catalog game `id`), not local `biz_game.id`"
+            "description": "Local `biz_game.id`"
           },
           "name": {
             "type": "string",
@@ -246,25 +206,16 @@
             "nullable": true,
             "properties": {
               "id": {
-                "type": "integer"
+                "type": "integer",
+                "description": "Local `biz_game.id`"
               },
-              "name": {
-                "type": "string"
-              },
-              "main_media": {
-                "type": "string",
-                "nullable": true,
-                "description": "CMS `main_media` OSS key"
-              },
-              "banner": {
-                "type": "string",
-                "nullable": true,
-                "description": "CMS `banner` OSS key"
-              },
-              "starts_at": {
+              "cms_id": {
                 "type": "integer"
               },
               "status": {
+                "type": "integer"
+              },
+              "ut": {
                 "type": "integer"
               }
             }
@@ -307,25 +258,16 @@
             "nullable": true,
             "properties": {
               "id": {
-                "type": "integer"
+                "type": "integer",
+                "description": "Local `biz_game.id`"
               },
-              "name": {
-                "type": "string"
-              },
-              "main_media": {
-                "type": "string",
-                "nullable": true,
-                "description": "CMS `main_media` OSS key"
-              },
-              "banner": {
-                "type": "string",
-                "nullable": true,
-                "description": "CMS `banner` OSS key"
-              },
-              "starts_at": {
+              "cms_id": {
                 "type": "integer"
               },
               "status": {
+                "type": "integer"
+              },
+              "ut": {
                 "type": "integer"
               }
             }
@@ -381,46 +323,17 @@
       }
     },
     "examples": {
-      "BetOrderCreateBody": {
-        "summary": "Draft order with one line",
-        "description": "See `Tests\\Feature\\BetOrderControllerTest::test_create_order_persists_draft_bet_line`. Replace `kid` with an open `biz_selection.id` from GET `/api/bet/selections`.",
+      "BetPlaceBody": {
+        "summary": "Atomic bet placement (one line)",
+        "description": "Send the same `Idempotency-Key` for retries; the server returns the original order with `is_replay=true`.",
         "value": {
           "lines": [
             {
               "kid": 1,
-              "stake_points": 100
+              "stake_points": 100,
+              "expected_odds_millis": 2000
             }
           ]
-        }
-      },
-      "BetCheckoutBody": {
-        "summary": "Checkout",
-        "description": "Debit full stake in points.",
-        "value": {
-          "order_id": 1
-        }
-      },
-      "BetOrderPatchBody": {
-        "summary": "Transition order status",
-        "value": {
-          "status": "cancelled"
-        }
-      },
-      "XxlJobRunBody": {
-        "summary": "Executor run payload (flat JSON)",
-        "description": "See `Tests\\Feature\\XxlJobControllerTest::test_run_dispatches_close_expired_orders_and_cancels_pending`.",
-        "value": {
-          "jobId": 9001,
-          "executorHandler": "closeExpiredOrders",
-          "executorParams": "",
-          "logId": 55001,
-          "logDateTime": 1700000000000
-        }
-      },
-      "XxlJobKillBody": {
-        "summary": "Kill job lock by id",
-        "value": {
-          "jobId": "777"
         }
       },
       "ApiEnvelopeSuccess": {
@@ -493,7 +406,7 @@
         "tags": [
           "Bet"
         ],
-        "summary": "Paginated open games (local biz_game + CMS)",
+        "summary": "Paginated games (local betting state)",
         "parameters": [
           {
             "name": "page",
@@ -557,7 +470,7 @@
         "tags": [
           "Bet"
         ],
-        "summary": "Single game detail (CMS + local state)",
+        "summary": "Single game (local betting state)",
         "parameters": [
           {
             "name": "game_id",
@@ -741,143 +654,6 @@
         }
       }
     },
-    "/api/bet/selections": {
-      "get": {
-        "tags": [
-          "Bet"
-        ],
-        "summary": "Paginated open selections (biz_selection)",
-        "parameters": [
-          {
-            "name": "market_id",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "minimum": 1
-            },
-            "description": "When set, only selections for this market"
-          },
-          {
-            "name": "page",
-            "in": "query",
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "default": 1
-            }
-          },
-          {
-            "name": "per_page",
-            "in": "query",
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 50,
-              "default": 15
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Items and pagination",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/ApiEnvelope"
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "data": {
-                          "type": "object",
-                          "properties": {
-                            "items": {
-                              "type": "array",
-                              "items": {
-                                "$ref": "#/components/schemas/SportSelection"
-                              }
-                            },
-                            "pagination": {
-                              "$ref": "#/components/schemas/ListPagination"
-                            }
-                          }
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiEnvelope"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/bet/selections/{id}": {
-      "get": {
-        "tags": [
-          "Bet"
-        ],
-        "summary": "Single selection detail",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "minimum": 1
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Selection",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/ApiEnvelope"
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "data": {
-                          "$ref": "#/components/schemas/SportSelection"
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiEnvelope"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/bet/orders": {
       "get": {
         "tags": [
@@ -937,103 +713,6 @@
           },
           "401": {
             "description": "Unauthorized",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiEnvelope"
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "Bet"
-        ],
-        "summary": "Create draft pending order (exactly one line)",
-        "security": [
-          {
-            "UserAccessToken": []
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "lines"
-                ],
-                "properties": {
-                  "lines": {
-                    "type": "array",
-                    "minItems": 1,
-                    "maxItems": 1,
-                    "items": {
-                      "type": "object",
-                      "required": [
-                        "kid",
-                        "stake_points"
-                      ],
-                      "properties": {
-                        "kid": {
-                          "type": "integer",
-                          "minimum": 1
-                        },
-                        "stake_points": {
-                          "type": "integer",
-                          "minimum": 1
-                        }
-                      }
-                    }
-                  }
-                }
-              },
-              "examples": {
-                "oneLineDraft": {
-                  "$ref": "#/components/examples/BetOrderCreateBody"
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Created",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/ApiEnvelope"
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "data": {
-                          "$ref": "#/components/schemas/BetOrderFull"
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiEnvelope"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation or business rule failure",
             "content": {
               "application/json": {
                 "schema": {
@@ -1111,113 +790,6 @@
             }
           }
         }
-      },
-      "patch": {
-        "tags": [
-          "Bet"
-        ],
-        "summary": "Transition order status",
-        "description": "`status` accepts the int enum or strings: `pending`, `init` (pending), `accepted` or `paid` (same meaning), `cancel`/`cancelled`, `won`, `lost`, `void`. Typical user flow: draft order with POST `/api/bet/orders`, then POST `/api/bet/checkout` to accept; PATCH is for allowed status transitions (not a payment callback).",
-        "security": [
-          {
-            "UserAccessToken": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "minimum": 1
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "status"
-                ],
-                "properties": {
-                  "status": {
-                    "oneOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "integer"
-                      }
-                    ]
-                  }
-                }
-              },
-              "examples": {
-                "cancel": {
-                  "$ref": "#/components/examples/BetOrderPatchBody"
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Updated order",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/ApiEnvelope"
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "data": {
-                          "$ref": "#/components/schemas/BetOrderFull"
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiEnvelope"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Order not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiEnvelope"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Invalid transition or payload",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiEnvelope"
-                }
-              }
-            }
-          }
-        }
       }
     },
     "/api/bet/points": {
@@ -1277,13 +849,13 @@
         }
       }
     },
-    "/api/bet/checkout": {
+    "/api/bet/place": {
       "post": {
         "tags": [
           "Bet"
         ],
-        "summary": "Checkout a pending order",
-        "description": "In one step: re-validates selections, debits the full stake from the user's points wallet, and transitions the order to accepted. Response `data` contains only the updated `order` (no separate payment payload).",
+        "summary": "Place a bet atomically (validate odds, debit stake, accept).",
+        "description": "Idempotent on `Idempotency-Key`. Replays of the same key return the original order with `data.is_replay=true` (status 200); first acceptance returns 201.",
         "security": [
           {
             "UserAccessToken": []
@@ -1291,13 +863,13 @@
         ],
         "parameters": [
           {
-            "name": "X-Request-Id",
+            "name": "Idempotency-Key",
             "in": "header",
-            "description": "Idempotency / trace; empty string is normalized to `\"0\"`.",
+            "required": true,
             "schema": {
               "type": "string"
             },
-            "required": false
+            "description": "Snowflake integer obtained from POST /api/snowflake/id."
           }
         ],
         "requestBody": {
@@ -1307,18 +879,37 @@
               "schema": {
                 "type": "object",
                 "required": [
-                  "order_id"
+                  "lines"
                 ],
                 "properties": {
-                  "order_id": {
-                    "type": "integer",
-                    "minimum": 1
+                  "lines": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 1,
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "kid",
+                        "stake_points",
+                        "expected_odds_millis"
+                      ],
+                      "properties": {
+                        "kid": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "stake_points": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "expected_odds_millis": {
+                          "type": "integer",
+                          "minimum": 1000,
+                          "description": "Quoted odds × 1000; must match server-side current_odds_millis at place-time."
+                        }
+                      }
+                    }
                   }
-                }
-              },
-              "examples": {
-                "fullStake": {
-                  "$ref": "#/components/examples/BetCheckoutBody"
                 }
               }
             }
@@ -1326,31 +917,31 @@
         },
         "responses": {
           "201": {
-            "description": "Success: order accepted; stake debited (see `data.order.status` and `checkout_phase`)",
+            "description": "Bet accepted; stake debited.",
             "content": {
               "application/json": {
                 "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/ApiEnvelope"
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "data": {
-                          "type": "object",
-                          "properties": {
-                            "order": {
-                              "$ref": "#/components/schemas/BetOrderFull"
-                            }
-                          },
-                          "required": [
-                            "order"
-                          ]
-                        }
-                      }
-                    }
-                  ]
+                  "$ref": "#/components/schemas/ApiEnvelope"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Idempotent replay; previous order returned.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Idempotency-Key missing or malformed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
                 }
               }
             }
@@ -1365,8 +956,8 @@
               }
             }
           },
-          "404": {
-            "description": "Order not found",
+          "409": {
+            "description": "Odds moved or selection not accepting.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1376,7 +967,7 @@
             }
           },
           "422": {
-            "description": "Validation or orchestration error",
+            "description": "Validation error or insufficient points.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1388,126 +979,21 @@
         }
       }
     },
-    "/api/xxl-job/beat": {
+    "/api/openapi.json": {
       "get": {
         "tags": [
-          "Jobs"
+          "Meta"
         ],
-        "summary": "XXL-Job heartbeat",
-        "security": [
-          {
-            "XxlJobAccessToken": []
-          }
-        ],
+        "summary": "Public OpenAPI document",
+        "description": "Returns this document. Convenient for agents that want to discover the surface programmatically without HTTP-fetching repository sources. Internal infrastructure routes (XXL-Job callbacks under /internal/*) are deliberately excluded.",
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "OpenAPI 3 document",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/XxlEnvelope"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/xxl-job/run": {
-      "post": {
-        "tags": [
-          "Jobs"
-        ],
-        "summary": "Execute job (logDateTime required in body)",
-        "security": [
-          {
-            "XxlJobAccessToken": []
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "logDateTime": {
-                    "type": "integer",
-                    "description": "Must be > 0"
-                  },
-                  "executorHandler": {
-                    "type": "string"
-                  },
-                  "executorParams": {
-                    "type": "string"
-                  },
-                  "jobId": {
-                    "type": "integer"
-                  },
-                  "logId": {
-                    "type": "integer"
-                  }
-                },
-                "additionalProperties": true
-              },
-              "examples": {
-                "closeExpired": {
-                  "$ref": "#/components/examples/XxlJobRunBody"
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Accepted or failure in body (`code` 500)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/XxlEnvelope"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/xxl-job/kill": {
-      "post": {
-        "tags": [
-          "Jobs"
-        ],
-        "summary": "Kill job by id (file lock)",
-        "security": [
-          {
-            "XxlJobAccessToken": []
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "jobId": {
-                    "type": "string"
-                  }
-                }
-              },
-              "examples": {
-                "byId": {
-                  "$ref": "#/components/examples/XxlJobKillBody"
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Result",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/XxlEnvelope"
+                  "type": "object",
+                  "additionalProperties": true
                 }
               }
             }

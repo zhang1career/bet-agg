@@ -20,6 +20,7 @@
                         <th>raw id</th>
                         <th>Status</th>
                         <th class="text-end">Markets</th>
+                        <th>CMS title</th>
                         <th class="text-end text-nowrap">Actions</th>
                     </tr>
                     </thead>
@@ -35,6 +36,7 @@
                                 <span class="text-muted">({{ $game->status }})</span>
                             </td>
                             <td class="text-end font-monospace">{{ $game->markets_count }}</td>
+                            <td class="small">{{ ($cmsByRawId[(int) $game->raw_id] ?? [])['title'] ?? '—' }}</td>
                             <td class="text-end text-nowrap">
                                 <a href="{{ route('admin.games.edit', $game) }}" class="mall-icon-btn d-inline-flex p-1 rounded text-decoration-none"
                                    title="Edit" aria-label="Edit">

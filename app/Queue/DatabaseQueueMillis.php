@@ -2,7 +2,7 @@
 
 namespace App\Queue;
 
-use App\Queue\Jobs\DatabaseJobRecordMillis;
+use App\Queue\jobs\DatabaseJobRecordMillis;
 use Carbon\Carbon;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Queue\DatabaseQueue;

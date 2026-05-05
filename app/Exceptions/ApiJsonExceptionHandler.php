@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Exceptions;
 
 use App\Components\ApiResponse;
+use App\Exceptions\bet\BetDomainException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -48,6 +49,13 @@ final class ApiJsonExceptionHandler
             return self::httpExceptionResponse($exception, $reqId);
         }
 
+        if ($exception instanceof BetDomainException) {
+            return response()->json(
+                ApiResponse::error($exception->errorCode(), $exception->getMessage(), $reqId),
+                $exception->httpStatus()
+            );
+        }
+
         if ($exception instanceof FoundationAuthRequiredException) {
             return response()->json(
                 ApiResponse::error(
@@ -81,9 +89,7 @@ final class ApiJsonExceptionHandler
 
         if ($exception instanceof ValueError) {
             $message = $exception->getMessage();
-            if ($request->isMethod('PATCH') && str_starts_with($request->path(), 'api/bet/orders/')) {
-                $message = 'Invalid status.';
-            } elseif ($message === '') {
+            if ($message === '') {
                 $message = 'Invalid parameter value.';
             }
 
@@ -168,9 +174,7 @@ final class ApiJsonExceptionHandler
 
     private static function modelNotFoundMessage(Request $request): string
     {
-        if ($request->is('api/bet/checkout')
-            || $request->is('api/bet/orders')
-            || $request->is('api/bet/orders/*')) {
+        if ($request->is('api/bet/orders') || $request->is('api/bet/orders/*')) {
             return 'Order not found.';
         }
 
