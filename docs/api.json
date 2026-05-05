@@ -185,7 +185,7 @@
       },
       "SportMarket": {
         "type": "object",
-        "description": "Public `biz_market` row with nested local game summary. List endpoint returns open markets on open games only.",
+        "description": "Public `biz_market` row with nested local game summary. GET /api/bet/markets/{market_id} always embeds `selections`. GET /api/bet/markets list includes `selections` when `include_selections` is true (default); when false the key is omitted.",
         "properties": {
           "id": {
             "type": "integer"
@@ -200,6 +200,17 @@
           },
           "status": {
             "type": "integer"
+          },
+          "ut": {
+            "type": "integer",
+            "description": "Last update time (milliseconds)"
+          },
+          "selections": {
+            "type": "array",
+            "description": "Options under this market (`biz_selection` rows), ordered by id. Omitted on list when `include_selections=0`.",
+            "items": {
+              "$ref": "#/components/schemas/SportSelection"
+            }
           },
           "game": {
             "type": "object",
@@ -224,53 +235,28 @@
       },
       "SportSelection": {
         "type": "object",
-        "description": "Public catalog row; persisted in `biz_selection` with market/game from `biz_market` / `biz_game`.",
+        "description": "Selection row as embedded in a market payload (`GET /api/bet/markets`, `GET /api/bet/markets/{id}`). No nested market/game objects — parent market carries `game`.",
         "properties": {
           "id": {
             "type": "integer"
+          },
+          "market_id": {
+            "type": "integer",
+            "description": "Local `biz_market.id`"
           },
           "label": {
             "type": "string"
           },
           "current_odds_millis": {
-            "type": "integer"
+            "type": "integer",
+            "description": "Decimal odds × 1000 (e.g. 2000 = 2.00)"
           },
           "status": {
             "type": "integer"
           },
-          "market": {
-            "type": "object",
-            "nullable": true,
-            "properties": {
-              "id": {
-                "type": "integer"
-              },
-              "name": {
-                "type": "string"
-              },
-              "status": {
-                "type": "integer"
-              }
-            }
-          },
-          "game": {
-            "type": "object",
-            "nullable": true,
-            "properties": {
-              "id": {
-                "type": "integer",
-                "description": "Local `biz_game.id`"
-              },
-              "cms_id": {
-                "type": "integer"
-              },
-              "status": {
-                "type": "integer"
-              },
-              "ut": {
-                "type": "integer"
-              }
-            }
+          "ut": {
+            "type": "integer",
+            "description": "Last update time (milliseconds)"
           }
         }
       },

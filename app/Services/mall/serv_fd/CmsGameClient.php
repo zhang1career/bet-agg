@@ -104,7 +104,7 @@ final readonly class CmsGameClient
     }
 
     /**
-     * Batch detail: {@code GET .../{game_route}/batch-detail?ids=1,2,3}.
+     * Batch detail via {@code GET .../{game_route}?ids=1,2,3} (list path; query {@code ids} enables batch mode).
      *
      * @param  list<int>  $ids  Positive integers; duplicates are sent once (server-defined order of results).
      * @return array<int, array<string, mixed>> Map of CMS record id → detail payload (same shape as {@see find}).
@@ -127,7 +127,7 @@ final readonly class CmsGameClient
 
         $response = Http::timeout($this->timeoutSeconds)
             ->acceptJson()
-            ->get($this->batchDetailUrl(), [
+            ->get($this->listUrl(), [
                 'ids' => implode(',', array_map(static fn (int $i): string => (string) $i, $unique)),
             ]);
 
@@ -237,11 +237,6 @@ final readonly class CmsGameClient
     private function itemUrl(int $id): string
     {
         return $this->baseUrl.$this->contentRoute.'/'.$id;
-    }
-
-    private function batchDetailUrl(): string
-    {
-        return $this->baseUrl.$this->contentRoute.'/batch-detail';
     }
 
     /**
