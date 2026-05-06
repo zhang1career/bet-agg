@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\api;
 
 use App\Components\ApiResponse;
-use App\Exceptions\bet\IdempotencyKeyMissingException;
+use App\Exceptions\bet\BetPlaceRequestIdException;
 use App\Exceptions\FoundationAuthRequiredException;
 use App\Http\Controllers\Controller;
 use App\Models\BetOrder;
@@ -18,24 +18,21 @@ use Illuminate\Http\Request;
 
 class BetPlaceController extends Controller
 {
+    private const REQUEST_ID_HEADER = 'X-Request-Id';
+
     public function __construct(
         private readonly UserFoundationGateway $foundationGateway,
         private readonly BetPlaceService $betPlace,
         private readonly MallDictionaryService $dict,
     ) {}
 
-    /**
-     * Atomic bet placement: validate selection + odds, debit stake, accept order
-     * — all in one DB transaction. The {@code Idempotency-Key} HTTP header is
-     * mandatory so retries collapse to one order; agents obtain a fresh
-     * snowflake id from {@code POST /api/snowflake/id} on foundation.
-     */
+    /** Validates odds, debits stake, accepts order in one DB transaction; same {@code X-Request-Id} retries return the existing order. */
     public function store(Request $request): JsonResponse
     {
         $user = $this->requireAuthenticatedUser($request);
         $uid = FoundationUser::id($user);
 
-        $idemKey = $this->requireIdempotencyKey($request);
+        $idemKey = $this->requirePlaceRequestId($request);
 
         $request->validate([
             'lines' => 'required|array|min:1|max:1',
@@ -94,25 +91,17 @@ class BetPlaceController extends Controller
         return $this->foundationGateway->fetchCurrentUser($request);
     }
 
-    private function requireIdempotencyKey(Request $request): int
+    private function requirePlaceRequestId(Request $request): int
     {
-        $raw = trim((string) $request->header('Idempotency-Key', ''));
+        $raw = trim((string) $request->header(self::REQUEST_ID_HEADER, ''));
         if ($raw === '') {
-            throw new IdempotencyKeyMissingException;
+            throw new BetPlaceRequestIdException;
         }
-        if (! ctype_digit($raw)) {
-            throw new IdempotencyKeyMissingException(
-                'Idempotency-Key must be a positive decimal integer (snowflake id).'
-            );
-        }
-        $value = (int) $raw;
-        if ($value < 1) {
-            throw new IdempotencyKeyMissingException(
-                'Idempotency-Key must be greater than zero.'
-            );
+        if (! ctype_digit($raw) || (int) $raw < 1) {
+            throw new BetPlaceRequestIdException('X-Request-Id must be a positive decimal snowflake id.');
         }
 
-        return $value;
+        return (int) $raw;
     }
 
     /**

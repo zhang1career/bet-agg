@@ -20,6 +20,25 @@ CREATE TABLE IF NOT EXISTS `biz_game` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='游戏盘口聚合根；仅本地博彩状态';
 
 -- =============================================================================
+-- biz_game_group / biz_x（赛事业务分组 ↔ 多场 cms game，多对多 pivot）
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS `biz_game_group` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `code` varchar(192) NOT NULL COMMENT '对外稳定代号，如 fifa-2026-group',
+  `ct` bigint unsigned NOT NULL DEFAULT '0',
+  `ut` bigint unsigned NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uni_biz_game_group_code` (`code`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='赛事分组';
+
+CREATE TABLE IF NOT EXISTS `biz_x` (
+  `group_id` bigint unsigned NOT NULL COMMENT 'biz_game_group.id',
+  `gid` bigint unsigned NOT NULL COMMENT 'biz_game.id',
+  PRIMARY KEY (`group_id`,`gid`),
+  KEY `idx_biz_x_gid` (`gid`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='赛事与分组关联（pivot）';
+
+-- =============================================================================
 -- biz_market / biz_selection（结构未变；仅 schema 注释保持一致）
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS `biz_market` (

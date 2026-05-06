@@ -59,14 +59,20 @@ final class CatalogService
      */
     public function getGameDetail(int $localId): array
     {
-        $game = Game::query()->whereKey($localId)->first();
+        $game = Game::query()->whereKey($localId)->with(['groups'])->first();
         if ($game === null) {
             throw new NotFoundHttpException('Game not found.');
         }
 
         $cmsByRawId = $this->cmsGamesByRawIds([(int) $game->raw_id]);
 
-        return $this->serializeGameRow($game, $cmsByRawId[(int) $game->raw_id] ?? null, true);
+        /** @var list<array{id: int, code: string}> $groupRows */
+        $groupRows = [];
+        foreach ($game->groups->sortBy('id')->values()->all() as $gr) {
+            $groupRows[] = ['id' => (int) $gr->id, 'code' => (string) $gr->code];
+        }
+
+        return $this->serializeGameRow($game, $cmsByRawId[(int) $game->raw_id] ?? null, true, $groupRows);
     }
 
     /**
@@ -136,6 +142,11 @@ final class CatalogService
         if ($filter->updatedAfterMillis !== null) {
             $query->where('ut', '>=', $filter->updatedAfterMillis);
         }
+        if ($filter->groupCode !== null) {
+            $query->whereHas('groups', static function (Builder $q) use ($filter): void {
+                $q->where('biz_game_group.code', $filter->groupCode);
+            });
+        }
     }
 
     /**
@@ -199,9 +210,10 @@ final class CatalogService
 
     /**
      * @param  array<string, mixed>|null  $cmsRow  CMS batch/detail row keyed like API columns.
+     * @param  list<array{id: int, code: string}>|null  $groups  Embedded on detail responses only; omit on list paths.
      * @return array<string, mixed>
      */
-    private function serializeGameRow(Game $game, ?array $cmsRow, bool $detail): array
+    private function serializeGameRow(Game $game, ?array $cmsRow, bool $detail, ?array $groups = null): array
     {
         $row = [
             'id' => (int) $game->id,
@@ -218,6 +230,7 @@ final class CatalogService
         if ($detail) {
             $row['main_media'] = $cmsRow !== null ? $this->cmsStringOrNull($cmsRow['main_media'] ?? null) : null;
             $row['start_at'] = $cmsRow !== null ? $this->cmsStartsAtMillisOrNull($cmsRow['starts_at'] ?? null) : null;
+            $row['groups'] = $groups ?? [];
         }
 
         return $row;

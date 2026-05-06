@@ -46,6 +46,17 @@
                     </a>
                 </li>
                 <li>
+                    <a href="{{ route('admin.game-groups.index') }}"
+                       class="flex items-center px-4 py-3 rounded-lg hover:bg-gray-700 transition-colors sidebar-link {{ request()->routeIs('admin.game-groups.*') ? 'bg-gray-700' : '' }}"
+                       title="Game groups">
+                        <svg class="w-5 h-5 flex-shrink-0 sidebar-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                        </svg>
+                        <span class="sidebar-text ml-3 whitespace-nowrap">Game groups</span>
+                    </a>
+                </li>
+                <li>
                     <a href="{{ route('admin.markets.index') }}"
                        class="flex items-center px-4 py-3 rounded-lg hover:bg-gray-700 transition-colors sidebar-link {{ request()->routeIs('admin.markets.*') ? 'bg-gray-700' : '' }}"
                        title="Markets">

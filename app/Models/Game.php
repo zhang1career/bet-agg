@@ -6,6 +6,7 @@ namespace App\Models;
 
 use App\Models\concerns\HasMillisTimestamps;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
@@ -56,5 +57,13 @@ class Game extends Model
     public function markets(): HasMany
     {
         return $this->hasMany(Market::class, 'game_id');
+    }
+
+    /**
+     * @return BelongsToMany<GameGroup, $this>
+     */
+    public function groups(): BelongsToMany
+    {
+        return $this->belongsToMany(GameGroup::class, 'biz_x', 'gid', 'group_id');
     }
 }

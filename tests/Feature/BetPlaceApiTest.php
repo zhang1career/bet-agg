@@ -7,10 +7,10 @@ namespace Tests\Feature;
 use App\Enums\BetOrderStatus;
 use App\Enums\PointsHoldState;
 use App\Models\BetOrder;
-use App\Models\PointsBalance;
-use App\Models\PointsFlow;
 use App\Models\Game;
 use App\Models\Market;
+use App\Models\PointsBalance;
+use App\Models\PointsFlow;
 use App\Models\Selection;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -69,7 +69,7 @@ final class BetPlaceApiTest extends TestCase
             ->assertJsonPath('errorCode', ResponseConstant::RET_UNAUTHORIZED);
     }
 
-    public function test_requires_idempotency_key_header(): void
+    public function test_requires_x_request_id_header(): void
     {
         $this->fakeUserMe(42);
         $sid = CatalogSeeder::openSelection(2000);
@@ -82,14 +82,14 @@ final class BetPlaceApiTest extends TestCase
             ->assertJsonPath('errorCode', ResponseConstant::RET_MISSING_PARAM);
     }
 
-    public function test_rejects_non_numeric_idempotency_key(): void
+    public function test_rejects_non_numeric_x_request_id(): void
     {
         $this->fakeUserMe(42);
         $sid = CatalogSeeder::openSelection(2000);
 
         $this->place(
             ['lines' => [['kid' => $sid, 'stake_points' => 100, 'expected_odds_millis' => 2000]]],
-            ['X-User-Access-Token' => 'tok', 'Idempotency-Key' => 'not-a-number'],
+            ['X-User-Access-Token' => 'tok', 'X-Request-Id' => 'not-a-number'],
         )
             ->assertStatus(400)
             ->assertJsonPath('errorCode', ResponseConstant::RET_MISSING_PARAM);
@@ -102,7 +102,7 @@ final class BetPlaceApiTest extends TestCase
 
         $this->place(
             ['lines' => [['kid' => $sid, 'stake_points' => 100]]],
-            ['X-User-Access-Token' => 'tok', 'Idempotency-Key' => (string) self::SNOWFLAKE_BASE],
+            ['X-User-Access-Token' => 'tok', 'X-Request-Id' => (string) self::SNOWFLAKE_BASE],
         )
             ->assertStatus(422)
             ->assertJsonPath('errorCode', ResponseConstant::RET_INVALID_PARAM);
@@ -118,7 +118,7 @@ final class BetPlaceApiTest extends TestCase
 
         $res = $this->place(
             ['lines' => [['kid' => $sid, 'stake_points' => 100, 'expected_odds_millis' => 2000]]],
-            ['X-User-Access-Token' => 'tok', 'Idempotency-Key' => (string) $idem],
+            ['X-User-Access-Token' => 'tok', 'X-Request-Id' => (string) $idem],
         );
 
         $res->assertCreated()
@@ -159,14 +159,14 @@ final class BetPlaceApiTest extends TestCase
 
         $first = $this->place(
             ['lines' => [['kid' => $sid, 'stake_points' => 100, 'expected_odds_millis' => 2000]]],
-            ['X-User-Access-Token' => 'tok', 'Idempotency-Key' => (string) $idem],
+            ['X-User-Access-Token' => 'tok', 'X-Request-Id' => (string) $idem],
         )->assertCreated();
 
         $orderId = (int) $first->json('data.order.id');
 
         $second = $this->place(
             ['lines' => [['kid' => $sid, 'stake_points' => 100, 'expected_odds_millis' => 2000]]],
-            ['X-User-Access-Token' => 'tok', 'Idempotency-Key' => (string) $idem],
+            ['X-User-Access-Token' => 'tok', 'X-Request-Id' => (string) $idem],
         );
         $second->assertOk()
             ->assertJsonPath('data.is_replay', true)
@@ -190,12 +190,12 @@ final class BetPlaceApiTest extends TestCase
 
         $this->place(
             ['lines' => [['kid' => $sid, 'stake_points' => 50, 'expected_odds_millis' => 2000]]],
-            ['X-User-Access-Token' => 'tok', 'Idempotency-Key' => (string) $idemA],
+            ['X-User-Access-Token' => 'tok', 'X-Request-Id' => (string) $idemA],
         )->assertCreated();
 
         $this->place(
             ['lines' => [['kid' => $sid, 'stake_points' => 70, 'expected_odds_millis' => 2000]]],
-            ['X-User-Access-Token' => 'tok', 'Idempotency-Key' => (string) $idemB],
+            ['X-User-Access-Token' => 'tok', 'X-Request-Id' => (string) $idemB],
         )->assertCreated();
 
         $this->assertSame(2, BetOrder::query()->where('uid', 42)->count());
@@ -215,7 +215,7 @@ final class BetPlaceApiTest extends TestCase
 
         $res = $this->place(
             ['lines' => [['kid' => $sid, 'stake_points' => 100, 'expected_odds_millis' => 1900]]],
-            ['X-User-Access-Token' => 'tok', 'Idempotency-Key' => (string) (self::SNOWFLAKE_BASE + 200)],
+            ['X-User-Access-Token' => 'tok', 'X-Request-Id' => (string) (self::SNOWFLAKE_BASE + 200)],
         );
         $res->assertStatus(409)
             ->assertJsonPath('errorCode', ResponseConstant::RET_INVALID_STATE);
@@ -236,7 +236,7 @@ final class BetPlaceApiTest extends TestCase
 
         $res = $this->place(
             ['lines' => [['kid' => $sid, 'stake_points' => 100, 'expected_odds_millis' => 2000]]],
-            ['X-User-Access-Token' => 'tok', 'Idempotency-Key' => (string) (self::SNOWFLAKE_BASE + 300)],
+            ['X-User-Access-Token' => 'tok', 'X-Request-Id' => (string) (self::SNOWFLAKE_BASE + 300)],
         );
         $res->assertStatus(409)
             ->assertJsonPath('errorCode', ResponseConstant::RET_INVALID_STATE);
@@ -255,7 +255,7 @@ final class BetPlaceApiTest extends TestCase
 
         $res = $this->place(
             ['lines' => [['kid' => $sid, 'stake_points' => 100, 'expected_odds_millis' => 2000]]],
-            ['X-User-Access-Token' => 'tok', 'Idempotency-Key' => (string) (self::SNOWFLAKE_BASE + 301)],
+            ['X-User-Access-Token' => 'tok', 'X-Request-Id' => (string) (self::SNOWFLAKE_BASE + 301)],
         );
         $res->assertStatus(409);
         $this->assertSame(0, BetOrder::query()->count());
@@ -270,7 +270,7 @@ final class BetPlaceApiTest extends TestCase
 
         $res = $this->place(
             ['lines' => [['kid' => $sid, 'stake_points' => 100, 'expected_odds_millis' => 2000]]],
-            ['X-User-Access-Token' => 'tok', 'Idempotency-Key' => (string) (self::SNOWFLAKE_BASE + 400)],
+            ['X-User-Access-Token' => 'tok', 'X-Request-Id' => (string) (self::SNOWFLAKE_BASE + 400)],
         );
         $res->assertStatus(422)
             ->assertJsonPath('errorCode', ResponseConstant::RET_BUSINESS_ERROR);
@@ -288,7 +288,7 @@ final class BetPlaceApiTest extends TestCase
 
         $this->place(
             ['lines' => [['kid' => $sid, 'stake_points' => 100, 'expected_odds_millis' => 2000]]],
-            ['X-User-Access-Token' => 'tok', 'Idempotency-Key' => (string) (self::SNOWFLAKE_BASE + 500)],
+            ['X-User-Access-Token' => 'tok', 'X-Request-Id' => (string) (self::SNOWFLAKE_BASE + 500)],
         )->assertCreated();
 
         $list = $this->withHeader('X-User-Access-Token', 'tok')->getJson('/api/bet/orders');

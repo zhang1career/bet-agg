@@ -6,10 +6,11 @@ namespace App\Exceptions\bet;
 
 use Paganini\Constants\ResponseConstant;
 
-final class IdempotencyKeyMissingException extends BetDomainException
+final class BetPlaceRequestIdException extends BetDomainException
 {
-    public function __construct(string $message = 'Idempotency-Key header is required (snowflake integer from POST /api/snowflake/id).')
-    {
+    public function __construct(
+        string $message = 'X-Request-Id required (snowflake from POST /api/snowflake/id).',
+    ) {
         parent::__construct($message);
     }
 

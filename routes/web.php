@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\admin\AdminGameController;
+use App\Http\Controllers\admin\AdminGameGroupController;
 use App\Http\Controllers\admin\AdminMarketController;
 use App\Http\Controllers\admin\AdminOrderController;
 use App\Http\Controllers\admin\AdminPointsController;
@@ -16,6 +17,13 @@ Route::prefix('admin')->name('admin.')->group(function () {
     Route::post('uploads', [AdminUploadController::class, 'store'])->name('uploads.store');
 
     Route::resource('games', AdminGameController::class);
+
+    Route::post('game-groups/{game_group}/games', [AdminGameGroupController::class, 'storeGame'])
+        ->name('game-groups.games.store');
+    Route::delete('game-groups/{game_group}/games/{game}', [AdminGameGroupController::class, 'destroyGame'])
+        ->name('game-groups.games.destroy');
+    Route::resource('game-groups', AdminGameGroupController::class);
+
     Route::post('markets/{market}/selections', [AdminMarketController::class, 'storeSelection'])
         ->name('markets.selections.store');
     Route::put('markets/{market}/selections/{selection}', [AdminMarketController::class, 'updateSelection'])

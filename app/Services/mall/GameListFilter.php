@@ -17,10 +17,12 @@ final readonly class GameListFilter
     /**
      * @param  list<int>  $statuses  Empty = no status filter.
      * @param  array{0: string, 1: string}|null  $sort  [column, direction]; null = default newest-first.
+     * @param  string|null  $groupCode  Non-empty = restrict to games in that {@code biz_game_group.code}.
      */
     public function __construct(
         public array $statuses,
         public ?int $updatedAfterMillis,
         public ?array $sort,
+        public ?string $groupCode,
     ) {}
 }

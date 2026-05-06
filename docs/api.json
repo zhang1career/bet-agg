@@ -2,8 +2,8 @@
   "openapi": "3.0.3",
   "info": {
     "title": "bet-agg HTTP API",
-    "description": "Laravel bet aggregation service: public `/api/*` JSON APIs and health check. User profile is **not** served here—call the Foundation (or API gateway) user API; bet-agg only **outbounds** to that service to resolve `X-User-Access-Token`. JSON responses use the `ApiResponse` envelope (`data`, `errorCode`, `message`, `_req_id`). Local catalog betting state is in `biz_game` (status + settlement payload), `biz_market`, and `biz_selection`; game copy/media/kickoff are merged from CMS (`GET /api/cms/game?ids=…`) using `biz_game.raw_id` as the CMS id—not duplicated in `biz_game`. Bet order lines reference a selection via `kid`.\n\n**Internal infrastructure** (XXL-Job HTTP callbacks) lives under `/internal/*` and is intentionally NOT documented here.\n\n**Examples:** Reusable request/response samples are under `components.examples` and referenced from operations. **Contract tests:** `Tests\\Feature\\OpenApiRoutesContractTest` asserts every path/method in this file is registered in the app.",
-    "version": "1.7.0"
+    "description": "Laravel bet aggregation service: public `/api/*` JSON APIs and health check. User profile is **not** served here—call the Foundation (or API gateway) user API; bet-agg only **outbounds** to that service to resolve `X-User-Access-Token`. JSON responses use the `ApiResponse` envelope (`data`, `errorCode`, `message`, `_req_id`). Local catalog betting state is in `biz_game` (status + settlement payload), optional many-to-many links to `biz_game_group` (`code` is a stable grouping key), `biz_market`, and `biz_selection`; game copy/media/kickoff are merged from CMS (`GET /api/cms/game?ids=…`) using `biz_game.raw_id` as the CMS id—not duplicated in `biz_game`. Bet order lines reference a selection via `kid`.\n\n**Internal infrastructure** (XXL-Job HTTP callbacks) lives under `/internal/*` and is intentionally NOT documented here.\n\n**Examples:** Reusable request/response samples are under `components.examples` and referenced from operations. **Contract tests:** `Tests\\Feature\\OpenApiRoutesContractTest` asserts every path/method in this file is registered in the app.",
+    "version": "1.8.0"
   },
   "servers": [
     {
@@ -154,9 +154,27 @@
           }
         }
       },
+      "GameGroup": {
+        "type": "object",
+        "description": "Local `biz_game_group` row referenced from a game detail payload.",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Local `biz_game_group.id`"
+          },
+          "code": {
+            "type": "string",
+            "description": "Unique business code (e.g. fifa-2026-group)"
+          }
+        },
+        "required": [
+          "id",
+          "code"
+        ]
+      },
       "Game": {
         "type": "object",
-        "description": "Local `biz_game` betting row with CMS overlay. `id` is the local surrogate key; `cms_id` is the CMS primary key (`raw_id`). `GET /api/bet/games` merges `title`, `description`, and `banner` from CMS; `GET /api/bet/games/{game_id}` also adds `main_media` and `start_at` (epoch millis from CMS `starts_at`). CMS failures surface as HTTP errors from bet-agg.",
+        "description": "Local `biz_game` betting row with CMS overlay. `id` is the local surrogate key; `cms_id` is the CMS primary key (`raw_id`). `GET /api/bet/games` merges `title`, `description`, and `banner` from CMS; `GET /api/bet/games/{game_id}` also adds `main_media`, `start_at` (epoch millis from CMS `starts_at`), and `groups` (many-to-many `biz_game_group`). CMS failures surface as HTTP errors from bet-agg.",
         "properties": {
           "id": {
             "type": "integer",
@@ -205,6 +223,13 @@
             "type": "integer",
             "nullable": true,
             "description": "Unix epoch milliseconds from CMS `starts_at`; only on `GET /api/bet/games/{game_id}`"
+          },
+          "groups": {
+            "type": "array",
+            "description": "Linked `biz_game_group` rows ordered by id; only on `GET /api/bet/games/{game_id}`",
+            "items": {
+              "$ref": "#/components/schemas/GameGroup"
+            }
           }
         }
       },
@@ -349,7 +374,7 @@
     "examples": {
       "BetPlaceBody": {
         "summary": "Atomic bet placement (one line)",
-        "description": "Send the same `Idempotency-Key` for retries; the server returns the original order with `is_replay=true`.",
+        "description": "Retry with the same `X-Request-Id` returns the prior order (`is_replay=true`).",
         "value": {
           "lines": [
             {
@@ -450,6 +475,16 @@
               "maximum": 50,
               "default": 15
             }
+          },
+          {
+            "name": "group_code",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 192
+            },
+            "description": "When set, returns only games linked to `biz_game_group` with this `code` (exact match)."
           }
         ],
         "responses": {
@@ -879,7 +914,7 @@
           "Bet"
         ],
         "summary": "Place a bet atomically (validate odds, debit stake, accept).",
-        "description": "Idempotent on `Idempotency-Key`. Replays of the same key return the original order with `data.is_replay=true` (status 200); first acceptance returns 201.",
+        "description": "Idempotent on `X-Request-Id` (decimal snowflake). Replay → 200 + `is_replay=true`; first accept → 201.",
         "security": [
           {
             "UserAccessToken": []
@@ -887,13 +922,13 @@
         ],
         "parameters": [
           {
-            "name": "Idempotency-Key",
+            "name": "X-Request-Id",
             "in": "header",
             "required": true,
             "schema": {
               "type": "string"
             },
-            "description": "Snowflake integer obtained from POST /api/snowflake/id."
+            "description": "Snowflake from POST /api/snowflake/id (digits only)."
           }
         ],
         "requestBody": {
@@ -961,7 +996,7 @@
             }
           },
           "400": {
-            "description": "Idempotency-Key missing or malformed.",
+            "description": "X-Request-Id missing or malformed.",
             "content": {
               "application/json": {
                 "schema": {

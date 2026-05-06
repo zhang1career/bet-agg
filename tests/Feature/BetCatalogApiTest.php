@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Models\Game;
+use App\Models\GameGroup;
 use App\Models\Market;
 use App\Models\Selection;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -65,6 +66,58 @@ final class BetCatalogApiTest extends TestCase
         $this->assertSame(1_700_000_000_000, $res->json('data.start_at'));
         $this->assertArrayNotHasKey('name', $res->json('data'));
         $this->assertSame([], $res->json('data.winning_selection_ids'));
+        $this->assertSame([], $res->json('data.groups'));
+    }
+
+    public function test_games_list_filters_by_group_code(): void
+    {
+        $inGroup = new Game([
+            'raw_id' => 401,
+            'status' => Game::STATUS_OPEN,
+        ]);
+        $inGroup->save();
+        $outGroup = new Game([
+            'raw_id' => 402,
+            'status' => Game::STATUS_OPEN,
+        ]);
+        $outGroup->save();
+
+        $group = new GameGroup(['code' => 'fifa-2026-group']);
+        $group->save();
+        $inGroup->groups()->attach((int) $group->id);
+
+        $res = $this->getJson('/api/bet/games?status=1&group_code=fifa-2026-group&per_page=50');
+        $res->assertOk();
+        $items = $res->json('data.items');
+        $this->assertCount(1, $items);
+        $this->assertSame((int) $inGroup->id, $items[0]['id']);
+        $this->assertArrayNotHasKey('groups', $items[0]);
+    }
+
+    public function test_games_show_includes_groups_ordered_by_local_group_id(): void
+    {
+        $g = new Game([
+            'raw_id' => 501,
+            'status' => Game::STATUS_OPEN,
+        ]);
+        $g->save();
+
+        $earlyGrp = new GameGroup(['code' => 'early-group']);
+        $earlyGrp->save();
+        $laterGrp = new GameGroup(['code' => 'later-group']);
+        $laterGrp->save();
+
+        // Attach pivot in reverse id order — response must still sort by group id ascending.
+        $g->groups()->attach([(int) $laterGrp->id, (int) $earlyGrp->id]);
+
+        $res = $this->getJson('/api/bet/games/'.$g->id);
+        $res->assertOk();
+        $groups = $res->json('data.groups');
+        $this->assertCount(2, $groups);
+        $this->assertSame((int) $earlyGrp->id, $groups[0]['id']);
+        $this->assertSame('early-group', $groups[0]['code']);
+        $this->assertSame((int) $laterGrp->id, $groups[1]['id']);
+        $this->assertSame('later-group', $groups[1]['code']);
     }
 
     public function test_games_show_returns_404_when_local_id_unknown(): void

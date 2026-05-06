@@ -7,8 +7,8 @@ namespace App\Http\Controllers\api;
 use App\Components\ApiResponse;
 use App\Enums\GameStatus;
 use App\Http\Controllers\Controller;
-use App\Services\mall\GameListFilter;
 use App\Services\mall\CatalogService;
+use App\Services\mall\GameListFilter;
 use App\Services\MallDictionaryService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -37,6 +37,7 @@ class BetGameController extends Controller
             'status' => 'sometimes|string|max:64',
             'updated_after' => 'sometimes|integer|min:0',
             'sort' => 'sometimes|string|in:id,-id',
+            'group_code' => 'sometimes|string|max:192',
         ]);
 
         $page = max(1, (int) $request->query('page', 1));
@@ -46,6 +47,7 @@ class BetGameController extends Controller
             statuses: $this->parseStatusList($request->query('status')),
             updatedAfterMillis: $this->intOrNull($request->query('updated_after')),
             sort: $this->mapSort($request->query('sort')),
+            groupCode: $this->trimmedNonEmptyStringOrNull($request->query('group_code')),
         );
 
         $pack = $this->catalog->listGames($filter, $page, $perPage);
@@ -116,5 +118,15 @@ class BetGameController extends Controller
         }
 
         return self::SORT_MAP[$raw] ?? null;
+    }
+
+    private function trimmedNonEmptyStringOrNull(mixed $raw): ?string
+    {
+        if (! is_string($raw)) {
+            return null;
+        }
+        $trimmed = trim($raw);
+
+        return $trimmed === '' ? null : $trimmed;
     }
 }
