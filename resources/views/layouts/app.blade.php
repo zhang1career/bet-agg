@@ -35,17 +35,6 @@
         <nav class="flex-1 overflow-y-auto py-4 overflow-x-hidden">
             <ul class="space-y-1 px-3">
                 <li>
-                    <a href="{{ route('admin.games.index') }}"
-                       class="flex items-center px-4 py-3 rounded-lg hover:bg-gray-700 transition-colors sidebar-link {{ request()->routeIs('admin.games.*') ? 'bg-gray-700' : '' }}"
-                       title="Games">
-                        <svg class="w-5 h-5 flex-shrink-0 sidebar-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                        </svg>
-                        <span class="sidebar-text ml-3 whitespace-nowrap">Games</span>
-                    </a>
-                </li>
-                <li>
                     <a href="{{ route('admin.game-groups.index') }}"
                        class="flex items-center px-4 py-3 rounded-lg hover:bg-gray-700 transition-colors sidebar-link {{ request()->routeIs('admin.game-groups.*') ? 'bg-gray-700' : '' }}"
                        title="Game groups">
@@ -54,6 +43,17 @@
                                   d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
                         </svg>
                         <span class="sidebar-text ml-3 whitespace-nowrap">Game groups</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ route('admin.games.index') }}"
+                       class="flex items-center px-4 py-3 rounded-lg hover:bg-gray-700 transition-colors sidebar-link {{ request()->routeIs('admin.games.*') ? 'bg-gray-700' : '' }}"
+                       title="Games">
+                        <svg class="w-5 h-5 flex-shrink-0 sidebar-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                        </svg>
+                        <span class="sidebar-text ml-3 whitespace-nowrap">Games</span>
                     </a>
                 </li>
                 <li>
