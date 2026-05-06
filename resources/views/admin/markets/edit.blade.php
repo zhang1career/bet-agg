@@ -31,7 +31,7 @@
         <div class="mb-3">
             <label class="form-label" for="status">Market status</label>
             <select name="status" id="status" class="form-select" required
-                    data-mall-dict-options="sport_market_status"
+                    data-mall-dict-options="market_status"
                     data-mall-dict-selected="{{ (int) old('status', $market->status) }}"></select>
         </div>
         <button type="submit" class="btn btn-primary">Save market</button>

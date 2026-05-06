@@ -6,7 +6,7 @@ namespace App\Enums;
 
 use App\Contracts\HasDictionaryLabel;
 
-enum SportGameStatus: int implements HasDictionaryLabel
+enum GameStatus: int implements HasDictionaryLabel
 {
     /** Betting allowed on open markets under this game. */
     case Open = 1;

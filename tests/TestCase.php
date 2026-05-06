@@ -27,6 +27,7 @@ abstract class TestCase extends BaseTestCase
                     'data' => [
                         'id' => $id,
                         'title' => 'CMS game '.$id,
+                        'description' => 'CMS description '.$id,
                         'banner' => 'cms/banner.png',
                         'main_media' => 'cms/cover.png',
                         'starts_at' => 1_700_000_000_000,
@@ -63,6 +64,7 @@ abstract class TestCase extends BaseTestCase
                 $items[] = [
                     'id' => $id,
                     'title' => 'CMS game '.$id,
+                    'description' => 'CMS description '.$id,
                     'banner' => 'cms/banner.png',
                     'main_media' => 'cms/cover.png',
                     'starts_at' => 1_700_000_000_000,

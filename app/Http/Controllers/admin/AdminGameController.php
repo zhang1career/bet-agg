@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\admin;
 
-use App\Enums\SportGameStatus;
+use App\Enums\GameStatus;
 use App\Http\Controllers\Controller;
-use App\Models\SportGame;
+use App\Models\Game;
 use App\Services\mall\serv_fd\CmsGameClient;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -24,7 +24,7 @@ class AdminGameController extends Controller
     public function index(Request $request): View
     {
         $perPage = min(50, max(1, (int) $request->query('per_page', 20)));
-        $games = SportGame::query()
+        $games = Game::query()
             ->withCount('markets')
             ->orderByDesc('id')
             ->paginate($perPage)
@@ -33,7 +33,7 @@ class AdminGameController extends Controller
         $cmsByRawId = [];
         try {
             $rawIds = $games->getCollection()
-                ->map(static fn (SportGame $g): int => (int) $g->raw_id)
+                ->map(static fn (Game $g): int => (int) $g->raw_id)
                 ->unique()
                 ->values()
                 ->all();
@@ -61,7 +61,7 @@ class AdminGameController extends Controller
             'starts_at' => 'nullable|integer|min:0',
             'banner_path' => 'nullable|string|max:2000',
             'main_image_path' => 'nullable|string|max:2000',
-            'status' => ['required', 'integer', Rule::enum(SportGameStatus::class)],
+            'status' => ['required', 'integer', Rule::enum(GameStatus::class)],
         ]);
 
         $cmsPayload = $this->cmsPayloadFromValidatedGameForm($v);
@@ -77,13 +77,13 @@ class AdminGameController extends Controller
             return back()->withInput()->withErrors(['cms' => 'Invalid create response.']);
         }
 
-        if (SportGame::query()->where('raw_id', $rawId)->exists()) {
+        if (Game::query()->where('raw_id', $rawId)->exists()) {
             return back()->withInput()->withErrors([
                 'cms' => 'Local game already exists for CMS id '.$rawId.'.',
             ]);
         }
 
-        $game = new SportGame([
+        $game = new Game([
             'raw_id' => $rawId,
             'status' => (int) $v['status'],
         ]);
@@ -92,7 +92,7 @@ class AdminGameController extends Controller
         return redirect()->route('admin.games.show', $game)->with('status', 'Game created.');
     }
 
-    public function show(SportGame $game): View
+    public function show(Game $game): View
     {
         $game->load([
             'markets' => static fn ($q) => $q->withCount('selections')->orderByDesc('id'),
@@ -111,7 +111,7 @@ class AdminGameController extends Controller
         ]);
     }
 
-    public function edit(SportGame $game): View
+    public function edit(Game $game): View
     {
         $cmsGame = null;
         try {
@@ -126,14 +126,14 @@ class AdminGameController extends Controller
         ]);
     }
 
-    public function update(Request $request, SportGame $game): RedirectResponse
+    public function update(Request $request, Game $game): RedirectResponse
     {
         $cmsReachable = $this->cmsGameExistsForRemoteEdit((int) $game->raw_id);
 
         $rules = [
             'banner_path' => 'nullable|string|max:2000',
             'main_image_path' => 'nullable|string|max:2000',
-            'status' => ['required', 'integer', Rule::enum(SportGameStatus::class)],
+            'status' => ['required', 'integer', Rule::enum(GameStatus::class)],
         ];
         if ($cmsReachable) {
             $rules['name'] = 'required|string|max:500';
@@ -168,7 +168,7 @@ class AdminGameController extends Controller
         return redirect()->route('admin.games.show', $game)->with('status', $status);
     }
 
-    public function destroy(SportGame $game): RedirectResponse
+    public function destroy(Game $game): RedirectResponse
     {
         if ($game->markets()->exists()) {
             return redirect()

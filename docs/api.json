@@ -2,8 +2,8 @@
   "openapi": "3.0.3",
   "info": {
     "title": "bet-agg HTTP API",
-    "description": "Laravel bet aggregation service: public `/api/*` JSON APIs and health check. User profile is **not** served here—call the Foundation (or API gateway) user API; bet-agg only **outbounds** to that service to resolve `X-User-Access-Token`. JSON responses use the `ApiResponse` envelope (`data`, `errorCode`, `message`, `_req_id`). Local catalog betting state is in `biz_game` (status + settlement payload), `biz_market`, and `biz_selection`; game title/media/kickoff come from CMS or separate integrations—not duplicated in `biz_game`. Bet order lines reference a selection via `kid`.\n\n**Internal infrastructure** (XXL-Job HTTP callbacks) lives under `/internal/*` and is intentionally NOT documented here.\n\n**Examples:** Reusable request/response samples are under `components.examples` and referenced from operations. **Contract tests:** `Tests\\Feature\\OpenApiRoutesContractTest` asserts every path/method in this file is registered in the app.",
-    "version": "1.4.0"
+    "description": "Laravel bet aggregation service: public `/api/*` JSON APIs and health check. User profile is **not** served here—call the Foundation (or API gateway) user API; bet-agg only **outbounds** to that service to resolve `X-User-Access-Token`. JSON responses use the `ApiResponse` envelope (`data`, `errorCode`, `message`, `_req_id`). Local catalog betting state is in `biz_game` (status + settlement payload), `biz_market`, and `biz_selection`; game copy/media/kickoff are merged from CMS (`GET /api/cms/game?ids=…`) using `biz_game.raw_id` as the CMS id—not duplicated in `biz_game`. Bet order lines reference a selection via `kid`.\n\n**Internal infrastructure** (XXL-Job HTTP callbacks) lives under `/internal/*` and is intentionally NOT documented here.\n\n**Examples:** Reusable request/response samples are under `components.examples` and referenced from operations. **Contract tests:** `Tests\\Feature\\OpenApiRoutesContractTest` asserts every path/method in this file is registered in the app.",
+    "version": "1.7.0"
   },
   "servers": [
     {
@@ -154,9 +154,9 @@
           }
         }
       },
-      "SportGame": {
+      "Game": {
         "type": "object",
-        "description": "Local `biz_game` betting row. `id` is the local surrogate key; `cms_id` is the external/CMS game id (`raw_id`). Title, banner, main image, and kickoff time are not returned here—use CMS or a future read model.",
+        "description": "Local `biz_game` betting row with CMS overlay. `id` is the local surrogate key; `cms_id` is the CMS primary key (`raw_id`). `GET /api/bet/games` merges `title`, `description`, and `banner` from CMS; `GET /api/bet/games/{game_id}` also adds `main_media` and `start_at` (epoch millis from CMS `starts_at`). CMS failures surface as HTTP errors from bet-agg.",
         "properties": {
           "id": {
             "type": "integer",
@@ -180,10 +180,35 @@
           "ut": {
             "type": "integer",
             "description": "Last update time (milliseconds)"
+          },
+          "title": {
+            "type": "string",
+            "nullable": true,
+            "description": "From CMS; null if unavailable"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true,
+            "description": "From CMS; null if unavailable"
+          },
+          "banner": {
+            "type": "string",
+            "nullable": true,
+            "description": "From CMS (e.g. image URL path); null if unavailable"
+          },
+          "main_media": {
+            "type": "string",
+            "nullable": true,
+            "description": "From CMS; only on `GET /api/bet/games/{game_id}`"
+          },
+          "start_at": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Unix epoch milliseconds from CMS `starts_at`; only on `GET /api/bet/games/{game_id}`"
           }
         }
       },
-      "SportMarket": {
+      "Market": {
         "type": "object",
         "description": "Public `biz_market` row with nested local game summary. GET /api/bet/markets/{market_id} always embeds `selections`. GET /api/bet/markets list includes `selections` when `include_selections` is true (default); when false the key is omitted.",
         "properties": {
@@ -209,12 +234,13 @@
             "type": "array",
             "description": "Options under this market (`biz_selection` rows), ordered by id. Omitted on list when `include_selections=0`.",
             "items": {
-              "$ref": "#/components/schemas/SportSelection"
+              "$ref": "#/components/schemas/Selection"
             }
           },
           "game": {
             "type": "object",
             "nullable": true,
+            "description": "Nested game summary: same CMS overlay as list games (`title`, `description`, `banner`), excluding `main_media` / `start_at`.",
             "properties": {
               "id": {
                 "type": "integer",
@@ -228,12 +254,24 @@
               },
               "ut": {
                 "type": "integer"
+              },
+              "title": {
+                "type": "string",
+                "nullable": true
+              },
+              "description": {
+                "type": "string",
+                "nullable": true
+              },
+              "banner": {
+                "type": "string",
+                "nullable": true
               }
             }
           }
         }
       },
-      "SportSelection": {
+      "Selection": {
         "type": "object",
         "description": "Selection row as embedded in a market payload (`GET /api/bet/markets`, `GET /api/bet/markets/{id}`). No nested market/game objects — parent market carries `game`.",
         "properties": {
@@ -361,8 +399,8 @@
             "schema": {
               "type": "string"
             },
-            "description": "Comma-separated MallDictionaryService codes (unknown codes ignored).",
-            "example": "points_hold_state"
+            "description": "Comma-separated MallDictionaryService codes (unknown codes ignored). Examples: `game_status`, `market_status`.",
+            "example": "points_hold_state,game_status"
           },
           {
             "name": "X-Request-Id",
@@ -433,7 +471,7 @@
                             "items": {
                               "type": "array",
                               "items": {
-                                "$ref": "#/components/schemas/SportGame"
+                                "$ref": "#/components/schemas/Game"
                               }
                             },
                             "pagination": {
@@ -482,7 +520,7 @@
                       "type": "object",
                       "properties": {
                         "data": {
-                          "$ref": "#/components/schemas/SportGame"
+                          "$ref": "#/components/schemas/Game"
                         }
                       }
                     }
@@ -559,7 +597,7 @@
                             "items": {
                               "type": "array",
                               "items": {
-                                "$ref": "#/components/schemas/SportMarket"
+                                "$ref": "#/components/schemas/Market"
                               }
                             },
                             "pagination": {
@@ -618,7 +656,7 @@
                       "type": "object",
                       "properties": {
                         "data": {
-                          "$ref": "#/components/schemas/SportMarket"
+                          "$ref": "#/components/schemas/Market"
                         }
                       }
                     }

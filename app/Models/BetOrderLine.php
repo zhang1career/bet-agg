@@ -62,10 +62,10 @@ class BetOrderLine extends Model
     }
 
     /**
-     * @return BelongsTo<SportSelection, $this>
+     * @return BelongsTo<Selection, $this>
      */
     public function selection(): BelongsTo
     {
-        return $this->belongsTo(SportSelection::class, 'kid');
+        return $this->belongsTo(Selection::class, 'kid');
     }
 }

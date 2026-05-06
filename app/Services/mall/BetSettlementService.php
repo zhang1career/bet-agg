@@ -6,7 +6,7 @@ namespace App\Services\mall;
 
 use App\Enums\BetOrderStatus;
 use App\Models\BetOrder;
-use App\Models\SportGame;
+use App\Models\Game;
 use App\Services\mall\settlement\SettlementBatchItemHandler;
 use App\Services\mall\settlement\SettlementBatchPlanProvider;
 use Illuminate\Support\Facades\DB;
@@ -70,7 +70,7 @@ final readonly class BetSettlementService
         // so retries (e.g. after topping up bookmaker liquidity for SettlementFailed orders) get
         // their own audit row. Once paganini\batch grows native resume support (project todo 9)
         // this can collapse back to a per-game bizKey that the executor resumes by cursor.
-        $bizKey = self::bizKeyForGame($gameId).':'.SportGame::nowMillis();
+        $bizKey = self::bizKeyForGame($gameId).':'.Game::nowMillis();
         $plan = new SettlementBatchPlanProvider($gameId, $winners, $voids);
 
         $result = $this->batchExecutor->execute($bizKey, $plan, $this->itemHandler);
@@ -132,12 +132,12 @@ final readonly class BetSettlementService
     }
 
     /**
-     * Convenience accessor used by call sites that previously expected a {@see SportGame}
+     * Convenience accessor used by call sites that previously expected a {@see Game}
      * back from {@code applyGameResult}. Returns the freshly-settled row (or {@code null}
      * if the game was deleted in the meantime, which should not happen).
      */
-    public function loadGame(int $gameId): ?SportGame
+    public function loadGame(int $gameId): ?Game
     {
-        return SportGame::query()->whereKey($gameId)->first();
+        return Game::query()->whereKey($gameId)->first();
     }
 }

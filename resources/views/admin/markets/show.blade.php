@@ -28,7 +28,7 @@
                 <dd class="col-sm-9">{{ $market->name }}</dd>
                 <dt class="col-sm-3">Status</dt>
                 <dd class="col-sm-9">
-                    @include('admin.partials.sport_status_label', ['kind' => 'market', 'value' => $market->status])
+                    @include('admin.partials.status_label', ['kind' => 'market', 'value' => $market->status])
                     <span class="text-muted">({{ $market->status }})</span>
                 </dd>
                 <dt class="col-sm-3">Timestamps</dt>

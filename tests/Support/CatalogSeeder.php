@@ -4,28 +4,28 @@ declare(strict_types=1);
 
 namespace Tests\Support;
 
-use App\Models\SportGame;
-use App\Models\SportMarket;
-use App\Models\SportSelection;
+use App\Models\Game;
+use App\Models\Market;
+use App\Models\Selection;
 
-final class SportSeeder
+final class CatalogSeeder
 {
     public static function openSelection(int $oddsMillis = 2000): int
     {
         $game = self::seedGame();
 
-        $market = new SportMarket([
+        $market = new Market([
             'game_id' => $game->id,
             'name' => 'Full-time 1X2',
-            'status' => SportMarket::STATUS_OPEN,
+            'status' => Market::STATUS_OPEN,
         ]);
         $market->save();
 
-        $selection = new SportSelection([
+        $selection = new Selection([
             'market_id' => $market->id,
             'label' => 'Home',
             'current_odds_millis' => $oddsMillis,
-            'status' => SportSelection::STATUS_OPEN,
+            'status' => Selection::STATUS_OPEN,
         ]);
         $selection->save();
 
@@ -39,26 +39,26 @@ final class SportSeeder
     {
         $game = self::seedGame();
 
-        $market = new SportMarket([
+        $market = new Market([
             'game_id' => $game->id,
             'name' => '1X2',
-            'status' => SportMarket::STATUS_OPEN,
+            'status' => Market::STATUS_OPEN,
         ]);
         $market->save();
 
-        $a = new SportSelection([
+        $a = new Selection([
             'market_id' => $market->id,
             'label' => 'A',
             'current_odds_millis' => $aOddsMillis,
-            'status' => SportSelection::STATUS_OPEN,
+            'status' => Selection::STATUS_OPEN,
         ]);
         $a->save();
 
-        $b = new SportSelection([
+        $b = new Selection([
             'market_id' => $market->id,
             'label' => 'B',
             'current_odds_millis' => $bOddsMillis,
-            'status' => SportSelection::STATUS_OPEN,
+            'status' => Selection::STATUS_OPEN,
         ]);
         $b->save();
 
@@ -69,13 +69,13 @@ final class SportSeeder
         ];
     }
 
-    public static function seedGame(): SportGame
+    public static function seedGame(): Game
     {
-        $rawId = (int) (SportGame::query()->max('raw_id') ?? 0) + 1;
+        $rawId = (int) (Game::query()->max('raw_id') ?? 0) + 1;
 
-        $game = new SportGame([
+        $game = new Game([
             'raw_id' => $rawId,
-            'status' => SportGame::STATUS_OPEN,
+            'status' => Game::STATUS_OPEN,
         ]);
         $game->save();
 

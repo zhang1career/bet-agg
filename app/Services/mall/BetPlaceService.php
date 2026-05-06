@@ -14,9 +14,9 @@ use App\Models\BetOrder;
 use App\Models\BetOrderLine;
 use App\Models\PointsBalance;
 use App\Models\PointsFlow;
-use App\Models\SportGame;
-use App\Models\SportMarket;
-use App\Models\SportSelection;
+use App\Models\Game;
+use App\Models\Market;
+use App\Models\Selection;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -127,9 +127,9 @@ final readonly class BetPlaceService
             ->first();
     }
 
-    private function loadAndValidateSelection(int $kid, int $expectedOddsMillis): SportSelection
+    private function loadAndValidateSelection(int $kid, int $expectedOddsMillis): Selection
     {
-        $selection = SportSelection::query()
+        $selection = Selection::query()
             ->with(['market.game'])
             ->whereKey($kid)
             ->lockForUpdate()
@@ -147,13 +147,13 @@ final readonly class BetPlaceService
             throw new SelectionNotAcceptingException($kid, 'game missing');
         }
 
-        if ($game->status !== SportGame::STATUS_OPEN) {
+        if ($game->status !== Game::STATUS_OPEN) {
             throw new SelectionNotAcceptingException($kid, 'parent game is not open');
         }
-        if ($market->status !== SportMarket::STATUS_OPEN) {
+        if ($market->status !== Market::STATUS_OPEN) {
             throw new SelectionNotAcceptingException($kid, 'market is not open');
         }
-        if ($selection->status !== SportSelection::STATUS_OPEN) {
+        if ($selection->status !== Selection::STATUS_OPEN) {
             throw new SelectionNotAcceptingException($kid, 'selection is not open');
         }
 
@@ -205,7 +205,7 @@ final readonly class BetPlaceService
 
     private function insertOrderLine(
         BetOrder $order,
-        SportSelection $selection,
+        Selection $selection,
         int $stake,
         int $oddsMillis,
         int $potentialReturn,

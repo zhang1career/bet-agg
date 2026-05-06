@@ -1,5 +1,5 @@
 @php
-    /** @var \App\Models\SportMarket $market */
+    /** @var \App\Models\Market $market */
     $mallOpenSelectionCreateModal = $errors->any()
         && ($errors->has('label') || $errors->has('current_odds_millis') || $errors->has('selection_status'));
 @endphp
@@ -31,7 +31,7 @@
                         <td>{{ $sel->label }}</td>
                         <td class="text-end font-monospace">{{ $sel->current_odds_millis }}</td>
                         <td>
-                            @include('admin.partials.sport_status_label', ['kind' => 'selection', 'value' => $sel->status])
+                            @include('admin.partials.status_label', ['kind' => 'selection', 'value' => $sel->status])
                             <span class="text-muted">({{ $sel->status }})</span>
                         </td>
                         <td class="text-end text-nowrap">
@@ -89,7 +89,7 @@
                     <div class="mb-0">
                         <label class="form-label" for="create_sel_status">Status</label>
                         <select name="selection_status" id="create_sel_status" class="form-select @error('selection_status') is-invalid @enderror" required
-                                data-mall-dict-options="sport_market_status"
+                                data-mall-dict-options="market_status"
                                 data-mall-dict-selected="{{ (int) old('selection_status', 1) }}"></select>
                         @error('selection_status')
                             <div class="invalid-feedback d-block">{{ $message }}</div>
@@ -127,7 +127,7 @@
                     <div class="mb-0">
                         <label class="form-label" for="edit_sel_status">Status</label>
                         <select name="status" id="edit_sel_status" class="form-select" required
-                                data-mall-dict-options="sport_market_status"></select>
+                                data-mall-dict-options="market_status"></select>
                     </div>
                 </div>
                 <div class="modal-footer">

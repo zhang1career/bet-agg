@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\admin;
 
-use App\Enums\SportMarketStatus;
+use App\Enums\MarketStatus;
 use App\Http\Controllers\Controller;
-use App\Models\SportGame;
-use App\Models\SportMarket;
-use App\Models\SportSelection;
+use App\Models\Game;
+use App\Models\Market;
+use App\Models\Selection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -20,7 +20,7 @@ class AdminMarketController extends Controller
     public function index(Request $request): View
     {
         $perPage = min(50, max(1, (int) $request->query('per_page', 20)));
-        $q = SportMarket::query()
+        $q = Market::query()
             ->with('game')
             ->withCount('selections')
             ->orderByDesc('id');
@@ -40,7 +40,7 @@ class AdminMarketController extends Controller
 
     public function create(Request $request): View
     {
-        $games = SportGame::query()->orderByDesc('id')->limit(500)->get();
+        $games = Game::query()->orderByDesc('id')->limit(500)->get();
         $prefillGameId = max(0, (int) $request->query('game_id', 0));
 
         return view('admin.markets.create', [
@@ -54,16 +54,16 @@ class AdminMarketController extends Controller
         $v = $request->validate([
             'game_id' => 'required|integer|exists:biz_game,id',
             'name' => 'string|max:256',
-            'status' => ['required', 'integer', Rule::enum(SportMarketStatus::class)],
+            'status' => ['required', 'integer', Rule::enum(MarketStatus::class)],
             'selections' => 'required|array|min:1',
             'selections.*.label' => 'required|string|max:256',
             'selections.*.current_odds_millis' => 'required|integer|min:1000',
-            'selections.*.status' => ['required', 'integer', Rule::enum(SportMarketStatus::class)],
+            'selections.*.status' => ['required', 'integer', Rule::enum(MarketStatus::class)],
         ]);
 
-        /** @var SportMarket $market */
-        $market = DB::transaction(static function () use ($v): SportMarket {
-            $market = new SportMarket([
+        /** @var Market $market */
+        $market = DB::transaction(static function () use ($v): Market {
+            $market = new Market([
                 'game_id' => (int) $v['game_id'],
                 'name' => trim($v['name']),
                 'status' => (int) $v['status'],
@@ -71,7 +71,7 @@ class AdminMarketController extends Controller
             $market->save();
 
             foreach ($v['selections'] as $row) {
-                $sel = new SportSelection([
+                $sel = new Selection([
                     'market_id' => $market->id,
                     'label' => $row['label'],
                     'current_odds_millis' => (int) $row['current_odds_millis'],
@@ -86,7 +86,7 @@ class AdminMarketController extends Controller
         return redirect()->route('admin.markets.show', $market)->with('status', 'Market and selections created.');
     }
 
-    public function show(SportMarket $market): View
+    public function show(Market $market): View
     {
         $market->load([
             'game',
@@ -96,13 +96,13 @@ class AdminMarketController extends Controller
         return view('admin.markets.show', ['market' => $market]);
     }
 
-    public function edit(SportMarket $market): View
+    public function edit(Market $market): View
     {
         $market->load([
             'game',
             'selections' => static fn ($q) => $q->orderBy('id'),
         ]);
-        $games = SportGame::query()->orderByDesc('id')->limit(500)->get();
+        $games = Game::query()->orderByDesc('id')->limit(500)->get();
 
         return view('admin.markets.edit', [
             'market' => $market,
@@ -110,12 +110,12 @@ class AdminMarketController extends Controller
         ]);
     }
 
-    public function update(Request $request, SportMarket $market): RedirectResponse
+    public function update(Request $request, Market $market): RedirectResponse
     {
         $v = $request->validate([
             'game_id' => 'required|integer|exists:biz_game,id',
             'name' => 'string|max:256',
-            'status' => ['required', 'integer', Rule::enum(SportMarketStatus::class)],
+            'status' => ['required', 'integer', Rule::enum(MarketStatus::class)],
         ]);
 
         $market->fill([
@@ -128,25 +128,25 @@ class AdminMarketController extends Controller
         return redirect()->route('admin.markets.show', $market)->with('status', 'Market updated.');
     }
 
-    public function destroy(SportMarket $market): RedirectResponse
+    public function destroy(Market $market): RedirectResponse
     {
         DB::transaction(static function () use ($market): void {
-            SportSelection::query()->where('market_id', $market->id)->delete();
+            Selection::query()->where('market_id', $market->id)->delete();
             $market->delete();
         });
 
         return redirect()->route('admin.markets.index')->with('status', 'Market and its selections deleted.');
     }
 
-    public function storeSelection(Request $request, SportMarket $market): RedirectResponse
+    public function storeSelection(Request $request, Market $market): RedirectResponse
     {
         $v = $request->validate([
             'label' => 'required|string|max:256',
             'current_odds_millis' => 'required|integer|min:1000',
-            'selection_status' => ['required', 'integer', Rule::enum(SportMarketStatus::class)],
+            'selection_status' => ['required', 'integer', Rule::enum(MarketStatus::class)],
         ]);
 
-        $sel = new SportSelection([
+        $sel = new Selection([
             'market_id' => $market->id,
             'label' => $v['label'],
             'current_odds_millis' => (int) $v['current_odds_millis'],
@@ -157,14 +157,14 @@ class AdminMarketController extends Controller
         return back()->with('status', 'Selection added.');
     }
 
-    public function updateSelection(Request $request, SportMarket $market, SportSelection $selection): RedirectResponse
+    public function updateSelection(Request $request, Market $market, Selection $selection): RedirectResponse
     {
         abort_unless($selection->market_id === $market->id, 404);
 
         $v = $request->validate([
             'label' => 'required|string|max:256',
             'current_odds_millis' => 'required|integer|min:1000',
-            'status' => ['required', 'integer', Rule::enum(SportMarketStatus::class)],
+            'status' => ['required', 'integer', Rule::enum(MarketStatus::class)],
         ]);
 
         $selection->fill([
@@ -177,7 +177,7 @@ class AdminMarketController extends Controller
         return back()->with('status', 'Selection updated.');
     }
 
-    public function destroySelection(SportMarket $market, SportSelection $selection): RedirectResponse
+    public function destroySelection(Market $market, Selection $selection): RedirectResponse
     {
         abort_unless($selection->market_id === $market->id, 404);
         $selection->delete();

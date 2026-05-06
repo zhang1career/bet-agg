@@ -6,9 +6,9 @@ namespace App\Services\mall\settlement;
 
 use App\Enums\BetOrderStatus;
 use App\Models\BetOrder;
-use App\Models\SportGame;
-use App\Models\SportMarket;
-use App\Models\SportSelection;
+use App\Models\Game;
+use App\Models\Market;
+use App\Models\Selection;
 use Paganini\Batch\Contracts\BatchPlanProviderContract;
 use Paganini\Batch\DTO\BatchItem;
 use Paganini\Batch\DTO\BatchPlan;
@@ -38,7 +38,7 @@ final readonly class SettlementBatchPlanProvider implements BatchPlanProviderCon
 
     public function makePlan(): BatchPlan
     {
-        $game = SportGame::query()->whereKey($this->gameId)->lockForUpdate()->first();
+        $game = Game::query()->whereKey($this->gameId)->lockForUpdate()->first();
         if ($game === null) {
             throw new RuntimeException('Game not found.');
         }
@@ -46,23 +46,23 @@ final readonly class SettlementBatchPlanProvider implements BatchPlanProviderCon
         // First-time settlement: mutate game / market / selection state. Subsequent calls (e.g.
         // retry after SettlementFailed) skip these mutations and only re-pick up the orders that
         // still need money movement, so applyGameResult is idempotent on top-level state.
-        if ($game->status !== SportGame::STATUS_SETTLED) {
-            $now = SportGame::nowMillis();
-            SportMarket::query()
+        if ($game->status !== Game::STATUS_SETTLED) {
+            $now = Game::nowMillis();
+            Market::query()
                 ->where('game_id', $this->gameId)
-                ->update(['status' => SportMarket::STATUS_SETTLED, 'ut' => $now]);
+                ->update(['status' => Market::STATUS_SETTLED, 'ut' => $now]);
 
-            SportSelection::query()
-                ->whereIn('market_id', SportMarket::query()->where('game_id', $this->gameId)->select('id'))
-                ->update(['status' => SportSelection::STATUS_SETTLED, 'ut' => $now]);
+            Selection::query()
+                ->whereIn('market_id', Market::query()->where('game_id', $this->gameId)->select('id'))
+                ->update(['status' => Selection::STATUS_SETTLED, 'ut' => $now]);
 
-            $game->status = SportGame::STATUS_SETTLED;
+            $game->status = Game::STATUS_SETTLED;
             $game->winning_selection_ids = $this->winningSelectionIds;
             $game->save();
         }
 
-        $selectionIds = SportSelection::query()
-            ->whereIn('market_id', SportMarket::query()->where('game_id', $this->gameId)->select('id'))
+        $selectionIds = Selection::query()
+            ->whereIn('market_id', Market::query()->where('game_id', $this->gameId)->select('id'))
             ->pluck('id')
             ->all();
 

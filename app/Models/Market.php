@@ -11,13 +11,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * @property int $id
- * @property int $game_id Local {@see SportGame::$id}
+ * @property int $game_id Local {@see Game::$id}
  * @property string $name Display label stored locally (not from CMS).
  * @property int $status
  * @property int $ct
  * @property int $ut
  */
-class SportMarket extends Model
+class Market extends Model
 {
     use HasMillisTimestamps;
 
@@ -42,18 +42,18 @@ class SportMarket extends Model
     ];
 
     /**
-     * @return BelongsTo<SportGame, $this>
+     * @return BelongsTo<Game, $this>
      */
     public function game(): BelongsTo
     {
-        return $this->belongsTo(SportGame::class, 'game_id');
+        return $this->belongsTo(Game::class, 'game_id');
     }
 
     /**
-     * @return HasMany<SportSelection, $this>
+     * @return HasMany<Selection, $this>
      */
     public function selections(): HasMany
     {
-        return $this->hasMany(SportSelection::class, 'market_id');
+        return $this->hasMany(Selection::class, 'market_id');
     }
 }

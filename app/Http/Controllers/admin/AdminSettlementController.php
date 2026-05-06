@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\SportGame;
+use App\Models\Game;
 use App\Services\mall\BetSettlementService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -20,8 +20,8 @@ class AdminSettlementController extends Controller
 
     public function create(): View
     {
-        $games = SportGame::query()
-            ->where('status', SportGame::STATUS_OPEN)
+        $games = Game::query()
+            ->where('status', Game::STATUS_OPEN)
             ->orderByDesc('id')
             ->get();
 

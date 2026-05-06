@@ -22,7 +22,7 @@
         <div class="mb-3">
             <label class="form-label" for="status">Status</label>
             <select name="status" id="status" class="form-select" required
-                    data-mall-dict-options="sport_game_status"
+                    data-mall-dict-options="game_status"
                     data-mall-dict-selected="{{ (int) old('status', 1) }}"></select>
         </div>
         <button type="submit" class="btn btn-primary">Create</button>

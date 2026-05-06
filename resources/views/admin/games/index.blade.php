@@ -32,7 +32,7 @@
                             </td>
                             <td class="font-monospace">{{ $game->raw_id }}</td>
                             <td>
-                                @include('admin.partials.sport_status_label', ['kind' => 'game', 'value' => $game->status])
+                                @include('admin.partials.status_label', ['kind' => 'game', 'value' => $game->status])
                                 <span class="text-muted">({{ $game->status }})</span>
                             </td>
                             <td class="text-end font-monospace">{{ $game->markets_count }}</td>

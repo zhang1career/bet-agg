@@ -9,14 +9,14 @@ use App\Enums\PointsHoldState;
 use App\Models\BetOrder;
 use App\Models\PointsBalance;
 use App\Models\PointsFlow;
-use App\Models\SportGame;
-use App\Models\SportMarket;
-use App\Models\SportSelection;
+use App\Models\Game;
+use App\Models\Market;
+use App\Models\Selection;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Testing\TestResponse;
 use Paganini\Constants\ResponseConstant;
-use Tests\Support\SportSeeder;
+use Tests\Support\CatalogSeeder;
 use Tests\TestCase;
 
 final class BetPlaceApiTest extends TestCase
@@ -72,7 +72,7 @@ final class BetPlaceApiTest extends TestCase
     public function test_requires_idempotency_key_header(): void
     {
         $this->fakeUserMe(42);
-        $sid = SportSeeder::openSelection(2000);
+        $sid = CatalogSeeder::openSelection(2000);
 
         $this->place(
             ['lines' => [['kid' => $sid, 'stake_points' => 100, 'expected_odds_millis' => 2000]]],
@@ -85,7 +85,7 @@ final class BetPlaceApiTest extends TestCase
     public function test_rejects_non_numeric_idempotency_key(): void
     {
         $this->fakeUserMe(42);
-        $sid = SportSeeder::openSelection(2000);
+        $sid = CatalogSeeder::openSelection(2000);
 
         $this->place(
             ['lines' => [['kid' => $sid, 'stake_points' => 100, 'expected_odds_millis' => 2000]]],
@@ -98,7 +98,7 @@ final class BetPlaceApiTest extends TestCase
     public function test_requires_expected_odds_millis(): void
     {
         $this->fakeUserMe(42);
-        $sid = SportSeeder::openSelection(2000);
+        $sid = CatalogSeeder::openSelection(2000);
 
         $this->place(
             ['lines' => [['kid' => $sid, 'stake_points' => 100]]],
@@ -113,7 +113,7 @@ final class BetPlaceApiTest extends TestCase
         $this->fakeUserMe(42);
         PointsBalance::query()->create(['uid' => 42, 'balance' => 500]);
         PointsBalance::query()->create(['uid' => self::BOOKMAKER_UID, 'balance' => 1_000_000]);
-        $sid = SportSeeder::openSelection(2000);
+        $sid = CatalogSeeder::openSelection(2000);
         $idem = self::SNOWFLAKE_BASE + 1;
 
         $res = $this->place(
@@ -154,7 +154,7 @@ final class BetPlaceApiTest extends TestCase
         $this->fakeUserMe(42);
         PointsBalance::query()->create(['uid' => 42, 'balance' => 500]);
         PointsBalance::query()->create(['uid' => self::BOOKMAKER_UID, 'balance' => 1_000_000]);
-        $sid = SportSeeder::openSelection(2000);
+        $sid = CatalogSeeder::openSelection(2000);
         $idem = self::SNOWFLAKE_BASE + 2;
 
         $first = $this->place(
@@ -183,7 +183,7 @@ final class BetPlaceApiTest extends TestCase
         $this->fakeUserMe(42);
         PointsBalance::query()->create(['uid' => 42, 'balance' => 500]);
         PointsBalance::query()->create(['uid' => self::BOOKMAKER_UID, 'balance' => 1_000_000]);
-        $sid = SportSeeder::openSelection(2000);
+        $sid = CatalogSeeder::openSelection(2000);
 
         $idemA = self::SNOWFLAKE_BASE + 100;
         $idemB = self::SNOWFLAKE_BASE + 101;
@@ -211,7 +211,7 @@ final class BetPlaceApiTest extends TestCase
         $this->fakeUserMe(42);
         PointsBalance::query()->create(['uid' => 42, 'balance' => 500]);
         PointsBalance::query()->create(['uid' => self::BOOKMAKER_UID, 'balance' => 1_000_000]);
-        $sid = SportSeeder::openSelection(2000);
+        $sid = CatalogSeeder::openSelection(2000);
 
         $res = $this->place(
             ['lines' => [['kid' => $sid, 'stake_points' => 100, 'expected_odds_millis' => 1900]]],
@@ -229,9 +229,9 @@ final class BetPlaceApiTest extends TestCase
         $this->fakeUserMe(42);
         PointsBalance::query()->create(['uid' => 42, 'balance' => 500]);
         PointsBalance::query()->create(['uid' => self::BOOKMAKER_UID, 'balance' => 1_000_000]);
-        $sid = SportSeeder::openSelection(2000);
-        $sel = SportSelection::query()->findOrFail($sid);
-        $sel->market->game->status = SportGame::STATUS_CLOSED;
+        $sid = CatalogSeeder::openSelection(2000);
+        $sel = Selection::query()->findOrFail($sid);
+        $sel->market->game->status = Game::STATUS_CLOSED;
         $sel->market->game->save();
 
         $res = $this->place(
@@ -248,9 +248,9 @@ final class BetPlaceApiTest extends TestCase
         $this->fakeUserMe(42);
         PointsBalance::query()->create(['uid' => 42, 'balance' => 500]);
         PointsBalance::query()->create(['uid' => self::BOOKMAKER_UID, 'balance' => 1_000_000]);
-        $sid = SportSeeder::openSelection(2000);
-        $sel = SportSelection::query()->findOrFail($sid);
-        $sel->market->status = SportMarket::STATUS_SUSPENDED;
+        $sid = CatalogSeeder::openSelection(2000);
+        $sel = Selection::query()->findOrFail($sid);
+        $sel->market->status = Market::STATUS_SUSPENDED;
         $sel->market->save();
 
         $res = $this->place(
@@ -266,7 +266,7 @@ final class BetPlaceApiTest extends TestCase
         $this->fakeUserMe(42);
         PointsBalance::query()->create(['uid' => 42, 'balance' => 50]);
         PointsBalance::query()->create(['uid' => self::BOOKMAKER_UID, 'balance' => 1_000_000]);
-        $sid = SportSeeder::openSelection(2000);
+        $sid = CatalogSeeder::openSelection(2000);
 
         $res = $this->place(
             ['lines' => [['kid' => $sid, 'stake_points' => 100, 'expected_odds_millis' => 2000]]],
@@ -284,7 +284,7 @@ final class BetPlaceApiTest extends TestCase
         $this->fakeUserMe(42);
         PointsBalance::query()->create(['uid' => 42, 'balance' => 500]);
         PointsBalance::query()->create(['uid' => self::BOOKMAKER_UID, 'balance' => 1_000_000]);
-        $sid = SportSeeder::openSelection(2000);
+        $sid = CatalogSeeder::openSelection(2000);
 
         $this->place(
             ['lines' => [['kid' => $sid, 'stake_points' => 100, 'expected_odds_millis' => 2000]]],

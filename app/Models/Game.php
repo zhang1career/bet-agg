@@ -19,7 +19,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int $ct
  * @property int $ut
  */
-class SportGame extends Model
+class Game extends Model
 {
     use HasMillisTimestamps;
 
@@ -51,10 +51,10 @@ class SportGame extends Model
     ];
 
     /**
-     * @return HasMany<SportMarket, $this>
+     * @return HasMany<Market, $this>
      */
     public function markets(): HasMany
     {
-        return $this->hasMany(SportMarket::class, 'game_id');
+        return $this->hasMany(Market::class, 'game_id');
     }
 }

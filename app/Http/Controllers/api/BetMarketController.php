@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace App\Http\Controllers\api;
 
 use App\Components\ApiResponse;
-use App\Enums\SportMarketStatus;
+use App\Enums\MarketStatus;
 use App\Http\Controllers\Controller;
 use App\Services\mall\MarketListFilter;
-use App\Services\mall\SportMarketCatalogService;
+use App\Services\mall\CatalogService;
 use App\Services\MallDictionaryService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -16,7 +16,7 @@ use Illuminate\Http\Request;
 class BetMarketController extends Controller
 {
     public function __construct(
-        private readonly SportMarketCatalogService $catalog,
+        private readonly CatalogService $catalog,
         private readonly MallDictionaryService $dict,
     ) {}
 
@@ -43,11 +43,7 @@ class BetMarketController extends Controller
         );
 
         $pack = $this->catalog->listMarkets($filter, $page, $perPage);
-        $pack['_dict'] = $this->dict->resolve(
-            $filter->includeSelections
-                ? ['sport_market_status', 'sport_game_status']
-                : ['sport_market_status', 'sport_game_status']
-        );
+        $pack['_dict'] = $this->dict->resolve(['market_status', 'game_status']);
 
         $this->logHandledApiRequest($request, ['handler' => 'bet.markets.index']);
 
@@ -57,7 +53,7 @@ class BetMarketController extends Controller
     public function show(Request $request, int $market_id): JsonResponse
     {
         $row = $this->catalog->getMarketDetail($market_id);
-        $row['_dict'] = $this->dict->resolve(['sport_market_status', 'sport_game_status']);
+        $row['_dict'] = $this->dict->resolve(['market_status', 'game_status']);
 
         $this->logHandledApiRequest($request, ['handler' => 'bet.markets.show', 'market_id' => $market_id]);
 
@@ -74,7 +70,7 @@ class BetMarketController extends Controller
         }
 
         $parts = array_filter(array_map('trim', explode(',', $raw)), static fn (string $s): bool => $s !== '');
-        $valid = array_column(SportMarketStatus::cases(), 'value');
+        $valid = array_column(MarketStatus::cases(), 'value');
         $out = [];
         foreach ($parts as $token) {
             if (! ctype_digit($token)) {

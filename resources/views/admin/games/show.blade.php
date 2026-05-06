@@ -80,7 +80,7 @@
                 </dd>
                 <dt class="col-sm-3">Status</dt>
                 <dd class="col-sm-9">
-                    @include('admin.partials.sport_status_label', ['kind' => 'game', 'value' => $game->status])
+                    @include('admin.partials.status_label', ['kind' => 'game', 'value' => $game->status])
                     <span class="text-muted">({{ $game->status }})</span>
                 </dd>
                 @if(filled($game->winning_selection_ids))
@@ -120,7 +120,7 @@
                             </td>
                             <td>{{ $m->name }}</td>
                             <td>
-                                @include('admin.partials.sport_status_label', ['kind' => 'market', 'value' => $m->status])
+                                @include('admin.partials.status_label', ['kind' => 'market', 'value' => $m->status])
                                 <span class="text-muted">({{ $m->status }})</span>
                             </td>
                             <td class="text-end font-monospace">{{ $m->selections_count }}</td>

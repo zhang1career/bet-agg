@@ -18,7 +18,7 @@ use App\Services\mall\PointsAdminService;
 use App\Services\mall\serv_fd\CmsGameClient;
 use App\Services\mall\settlement\LaravelDbTransactionRunner;
 use App\Services\mall\settlement\SettlementBatchItemHandler;
-use App\Services\mall\SportMarketCatalogService;
+use App\Services\mall\CatalogService;
 use App\Services\user\UserFoundationGateway;
 use App\Services\XxlJobRegistry;
 use DateTimeZone;
@@ -78,7 +78,7 @@ class AppServiceProvider extends ServiceProvider
 
         $this->app->singleton(CmsGameClient::class, static fn () => CmsGameClient::fromConfig());
 
-        $this->app->singleton(SportMarketCatalogService::class);
+        $this->app->singleton(CatalogService::class);
         $this->app->singleton(PointsAdminService::class);
         $this->app->singleton(BetPlaceService::class);
         $this->app->singleton(SettlementBatchItemHandler::class);

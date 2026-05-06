@@ -9,14 +9,14 @@ use App\Enums\PointsHoldState;
 use App\Models\BetOrder;
 use App\Models\PointsBalance;
 use App\Models\PointsFlow;
-use App\Models\SportGame;
+use App\Models\Game;
 use App\Services\mall\BetPlaceService;
 use App\Services\mall\BetSettlementService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Paganini\Batch\Enums\JobStatus;
 use Paganini\Constants\ResponseConstant;
-use Tests\Support\SportSeeder;
+use Tests\Support\CatalogSeeder;
 use Tests\TestCase;
 
 final class BetSettlementFlowTest extends TestCase
@@ -74,7 +74,7 @@ final class BetSettlementFlowTest extends TestCase
         PointsBalance::query()->create(['uid' => $this->bookUid(), 'balance' => 1_000_000]);
         PointsBalance::query()->create(['uid' => 42, 'balance' => 500]);
 
-        $ids = SportSeeder::duelSelections(2500, 2000);
+        $ids = CatalogSeeder::duelSelections(2500, 2000);
         $stake = 100;
         $expectedPayout = intdiv($stake * 2500, 1000);
 
@@ -110,7 +110,7 @@ final class BetSettlementFlowTest extends TestCase
         PointsBalance::query()->create(['uid' => $this->bookUid(), 'balance' => 1_000_000]);
         PointsBalance::query()->create(['uid' => 42, 'balance' => 500]);
 
-        $ids = SportSeeder::duelSelections(2500, 2000);
+        $ids = CatalogSeeder::duelSelections(2500, 2000);
         $orderId = $this->placeBet(42, $ids, 100, 2500, 2);
 
         $result = app(BetSettlementService::class)->applyGameResult($ids['game_local_id'], [$ids['selection_b_id']]);
@@ -129,7 +129,7 @@ final class BetSettlementFlowTest extends TestCase
         PointsBalance::query()->create(['uid' => $this->bookUid(), 'balance' => 1_000_000]);
         PointsBalance::query()->create(['uid' => 42, 'balance' => 500]);
 
-        $ids = SportSeeder::duelSelections(2500, 2000);
+        $ids = CatalogSeeder::duelSelections(2500, 2000);
         $orderId = $this->placeBet(42, $ids, 100, 2500, 3);
 
         $result = app(BetSettlementService::class)->applyGameResult(
@@ -166,7 +166,7 @@ final class BetSettlementFlowTest extends TestCase
         PointsBalance::query()->create(['uid' => $this->bookUid(), 'balance' => 50]);
         PointsBalance::query()->create(['uid' => 42, 'balance' => 500]);
 
-        $ids = SportSeeder::duelSelections(5000, 2000);
+        $ids = CatalogSeeder::duelSelections(5000, 2000);
         $orderId = $this->placeBet(42, $ids, 100, 5000, 4);
 
         $result = app(BetSettlementService::class)->applyGameResult($ids['game_local_id'], [$ids['selection_a_id']]);
@@ -175,9 +175,9 @@ final class BetSettlementFlowTest extends TestCase
         $this->assertSame(1, $result->failureCount);
         $this->assertBookNonNegative();
 
-        $game = SportGame::query()->find($ids['game_local_id']);
+        $game = Game::query()->find($ids['game_local_id']);
         $this->assertNotNull($game);
-        $this->assertSame(SportGame::STATUS_SETTLED, (int) $game->status);
+        $this->assertSame(Game::STATUS_SETTLED, (int) $game->status);
 
         $order = BetOrder::query()->whereKey($orderId)->firstOrFail();
         $this->assertSame(BetOrderStatus::SettlementFailed, $order->status);
@@ -188,7 +188,7 @@ final class BetSettlementFlowTest extends TestCase
         PointsBalance::query()->create(['uid' => $this->bookUid(), 'balance' => 50]);
         PointsBalance::query()->create(['uid' => 42, 'balance' => 500]);
 
-        $ids = SportSeeder::duelSelections(5000, 2000);
+        $ids = CatalogSeeder::duelSelections(5000, 2000);
         $orderId = $this->placeBet(42, $ids, 100, 5000, 5);
 
         $first = app(BetSettlementService::class)->applyGameResult($ids['game_local_id'], [$ids['selection_a_id']]);
@@ -213,7 +213,7 @@ final class BetSettlementFlowTest extends TestCase
         PointsBalance::query()->create(['uid' => $this->bookUid(), 'balance' => 1_000_000]);
         PointsBalance::query()->create(['uid' => 42, 'balance' => 500]);
 
-        $ids = SportSeeder::duelSelections(2500, 2000);
+        $ids = CatalogSeeder::duelSelections(2500, 2000);
         $this->placeBet(42, $ids, 100, 2500, 6);
 
         $first = app(BetSettlementService::class)->applyGameResult($ids['game_local_id'], [$ids['selection_a_id']]);
@@ -238,7 +238,7 @@ final class BetSettlementFlowTest extends TestCase
         PointsBalance::query()->create(['uid' => $this->bookUid(), 'balance' => 1_000_000]);
         PointsBalance::query()->create(['uid' => 42, 'balance' => 500]);
 
-        $ids = SportSeeder::duelSelections(3000, 2000);
+        $ids = CatalogSeeder::duelSelections(3000, 2000);
         $this->placeBet(42, $ids, 100, 3000, 7);
         $expectedPayout = intdiv(100 * 3000, 1000);
 

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Services\mall;
 
 /**
- * Validated filter inputs for {@see SportMarketCatalogService::listMarkets}.
+ * Validated filter inputs for {@see CatalogService::listMarkets}.
  */
 final readonly class MarketListFilter
 {

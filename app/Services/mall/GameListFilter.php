@@ -7,7 +7,7 @@ namespace App\Services\mall;
 use App\Http\Controllers\api\BetGameController;
 
 /**
- * Validated filter inputs for {@see SportMarketCatalogService::listGames}.
+ * Validated filter inputs for {@see CatalogService::listGames}.
  *
  * The HTTP layer is responsible for parsing & validating raw query strings
  * into this shape (see {@see BetGameController}).

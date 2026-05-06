@@ -26,7 +26,7 @@
         <div class="mb-4">
             <label class="form-label" for="status">Market status</label>
             <select name="status" id="status" class="form-select" required
-                    data-mall-dict-options="sport_market_status"
+                    data-mall-dict-options="market_status"
                     data-mall-dict-selected="{{ (int) old('status', 1) }}"></select>
         </div>
 
@@ -59,7 +59,7 @@
                         </td>
                         <td>
                             <select name="selections[{{ $idx }}][status]" class="form-select form-select-sm" required
-                                    data-mall-dict-options="sport_market_status"
+                                    data-mall-dict-options="market_status"
                                     data-mall-dict-selected="{{ (int)($row['status'] ?? 1) }}"></select>
                         </td>
                         <td class="text-end">
@@ -87,7 +87,7 @@
             </td>
             <td>
                 <select name="selections[__I__][status]" class="form-select form-select-sm" required
-                        data-mall-dict-options="sport_market_status"
+                        data-mall-dict-options="market_status"
                         data-mall-dict-selected="1"></select>
             </td>
             <td class="text-end">

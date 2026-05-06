@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace App\Http\Controllers\api;
 
 use App\Components\ApiResponse;
-use App\Enums\SportGameStatus;
+use App\Enums\GameStatus;
 use App\Http\Controllers\Controller;
 use App\Services\mall\GameListFilter;
-use App\Services\mall\SportMarketCatalogService;
+use App\Services\mall\CatalogService;
 use App\Services\MallDictionaryService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -27,7 +27,7 @@ class BetGameController extends Controller
     ];
 
     public function __construct(
-        private readonly SportMarketCatalogService $catalog,
+        private readonly CatalogService $catalog,
         private readonly MallDictionaryService $dict,
     ) {}
 
@@ -49,7 +49,7 @@ class BetGameController extends Controller
         );
 
         $pack = $this->catalog->listGames($filter, $page, $perPage);
-        $pack['_dict'] = $this->dict->resolve(['sport_game_status']);
+        $pack['_dict'] = $this->dict->resolve(['game_status']);
 
         $this->logHandledApiRequest($request, ['handler' => 'bet.games.index']);
 
@@ -59,7 +59,7 @@ class BetGameController extends Controller
     public function show(Request $request, int $game_id): JsonResponse
     {
         $row = $this->catalog->getGameDetail($game_id);
-        $row['_dict'] = $this->dict->resolve(['sport_game_status']);
+        $row['_dict'] = $this->dict->resolve(['game_status']);
 
         $this->logHandledApiRequest($request, ['handler' => 'bet.games.show', 'game_id' => $game_id]);
 
@@ -76,7 +76,7 @@ class BetGameController extends Controller
         }
 
         $parts = array_filter(array_map('trim', explode(',', $raw)), static fn (string $s): bool => $s !== '');
-        $valid = array_column(SportGameStatus::cases(), 'value');
+        $valid = array_column(GameStatus::cases(), 'value');
         $out = [];
         foreach ($parts as $token) {
             if (! ctype_digit($token)) {

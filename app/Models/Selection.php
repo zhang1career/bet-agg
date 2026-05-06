@@ -17,7 +17,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $ct
  * @property int $ut
  */
-class SportSelection extends Model
+class Selection extends Model
 {
     use HasMillisTimestamps;
 
@@ -42,10 +42,10 @@ class SportSelection extends Model
     ];
 
     /**
-     * @return BelongsTo<SportMarket, $this>
+     * @return BelongsTo<Market, $this>
      */
     public function market(): BelongsTo
     {
-        return $this->belongsTo(SportMarket::class, 'market_id');
+        return $this->belongsTo(Market::class, 'market_id');
     }
 }
