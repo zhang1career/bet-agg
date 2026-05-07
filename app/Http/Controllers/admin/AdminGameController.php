@@ -20,7 +20,6 @@ class AdminGameController extends Controller
 {
     public function __construct(
         private readonly CmsGameClient $cmsGameClient,
-        private readonly AdminSettlementController $settlement,
     ) {}
 
     public function index(Request $request): View
@@ -49,7 +48,6 @@ class AdminGameController extends Controller
 
         $mallCreate = $request->boolean('mall_create');
         $mallEditId = (int) $request->query('mall_edit', 0);
-        $mallSettlement = $request->boolean('mall_settlement');
 
         $modalEditGame = null;
         $modalEditCms = null;
@@ -72,23 +70,16 @@ class AdminGameController extends Controller
             }
         }
 
-        $settlementForm = null;
-        if ($mallSettlement) {
-            $settlementForm = $this->settlement->modalFormPayload();
-        }
-
         return view('admin.games.index', [
             'games' => $games,
             'cmsByRawId' => $cmsByRawId,
             'mallCreate' => $mallCreate,
             'mallEditId' => $mallEditId,
-            'mallSettlement' => $mallSettlement,
             'modalEditGame' => $modalEditGame,
             'modalEditCms' => $modalEditCms,
             'modalEditSelectedGroups' => $modalEditSelectedGroups,
             'allGroups' => $allGroups,
             'allSubjects' => $allSubjects,
-            'settlementForm' => $settlementForm,
         ]);
     }
 

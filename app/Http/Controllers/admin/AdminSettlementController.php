@@ -11,7 +11,7 @@ use App\Support\AdminGameSelectOptionLabels;
 use App\Support\SettlementPayloadResolver;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Collection;
+use Illuminate\View\View;
 use RuntimeException;
 
 class AdminSettlementController extends Controller
@@ -21,15 +21,7 @@ class AdminSettlementController extends Controller
         private readonly SettlementPayloadResolver $payloadResolver,
     ) {}
 
-    public function create(): RedirectResponse
-    {
-        return redirect()->route('admin.games.index', ['mall_settlement' => 1]);
-    }
-
-    /**
-     * @return array{games: Collection<int, Game>, gameSelectLabels: array<int, string>, outcomesByGame: array<string, list<array{value: string, label: string}>>}
-     */
-    public function modalFormPayload(): array
+    public function create(): View
     {
         $games = Game::query()
             ->where('status', Game::STATUS_OPEN)
@@ -45,11 +37,11 @@ class AdminSettlementController extends Controller
             $outcomesByGame[(string) $game->id] = $this->outcomeOptionsForGame($game);
         }
 
-        return [
+        return view('admin.settlement.create', [
             'games' => $games,
             'gameSelectLabels' => $this->gameSelectLabels->mapByLocalId($games),
             'outcomesByGame' => $outcomesByGame,
-        ];
+        ]);
     }
 
     public function store(Request $request): RedirectResponse
@@ -63,7 +55,7 @@ class AdminSettlementController extends Controller
 
         if ($game->status !== Game::STATUS_OPEN) {
             return redirect()
-                ->route('admin.games.index', ['mall_settlement' => 1])
+                ->route('admin.settlement.create')
                 ->withInput()
                 ->withErrors(['game_id' => 'Only open games can be queued for settlement.']);
         }
@@ -75,7 +67,7 @@ class AdminSettlementController extends Controller
             );
         } catch (RuntimeException $e) {
             return redirect()
-                ->route('admin.games.index', ['mall_settlement' => 1])
+                ->route('admin.settlement.create')
                 ->withInput()
                 ->withErrors(['result_payload' => $e->getMessage()]);
         }
@@ -89,7 +81,7 @@ class AdminSettlementController extends Controller
         });
 
         return redirect()
-            ->route('admin.games.index')
+            ->route('admin.settlement.create')
             ->with('status', 'Settlement queued for processing.');
     }
 
