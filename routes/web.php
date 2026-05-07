@@ -8,6 +8,8 @@ use App\Http\Controllers\admin\AdminOrderController;
 use App\Http\Controllers\admin\AdminPointsController;
 use App\Http\Controllers\admin\AdminSettlementController;
 use App\Http\Controllers\admin\AdminUploadController;
+use App\Http\Middleware\SetConsoleLocaleFromCookie;
+use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', static function () {
@@ -15,6 +17,23 @@ Route::get('/', static function () {
 });
 
 Route::prefix('admin')->name('admin.')->group(function () {
+    Route::get('locale/{locale}', static function (string $locale) {
+        if (! in_array($locale, SetConsoleLocaleFromCookie::ALLOWED, true)) {
+            abort(404);
+        }
+        $back = url()->previous();
+        if ($back === '' || $back === url()->current()) {
+            $back = route('admin.games.index');
+        } else {
+            $parsed = parse_url($back);
+            if (! is_array($parsed) || ($parsed['host'] ?? '') !== request()->getHost()) {
+                $back = route('admin.games.index');
+            }
+        }
+
+        return redirect()->to($back)->withCookie(Cookie::forever(SetConsoleLocaleFromCookie::COOKIE, $locale));
+    })->whereIn('locale', SetConsoleLocaleFromCookie::ALLOWED)->name('locale.switch');
+
     Route::post('uploads', [AdminUploadController::class, 'store'])->name('uploads.store');
 
     Route::resource('games', AdminGameController::class)->except(['create', 'edit']);

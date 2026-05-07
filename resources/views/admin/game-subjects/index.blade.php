@@ -1,11 +1,11 @@
 @extends('layouts.app')
 
-@section('title', '赛事主体')
+@section('title', __('console.pages.game_subjects'))
 
 @section('content')
     <div class="mall-list-toolbar d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
-        <h2 class="h5 mb-0">赛事主体 <small class="text-muted">biz_game_subject</small></h2>
-        <a href="{{ route('admin.game-subjects.index', ['mall_create' => 1]) }}" class="btn btn-primary btn-sm">新建</a>
+        <h2 class="h5 mb-0">{{ __('console.list.subjects') }} <small class="text-muted">{{ __('console.list.subjects_note') }}</small></h2>
+        <a href="{{ route('admin.game-subjects.index', ['mall_create' => 1]) }}" class="btn btn-primary btn-sm">{{ __('console.btn.new') }}</a>
     </div>
 
     <div class="mall-console-card card shadow-sm">
@@ -14,10 +14,10 @@
                 <table class="table table-striped table-hover mb-0 mall-data-table align-middle">
                     <thead>
                     <tr>
-                        <th>ID</th>
-                        <th>Name</th>
-                        <th class="text-end">分组数 (biz_y)</th>
-                        <th class="text-end text-nowrap">Actions</th>
+                        <th>{{ __('console.table.id') }}</th>
+                        <th>{{ __('console.table.name') }}</th>
+                        <th class="text-end">{{ __('console.table.group_count') }}</th>
+                        <th class="text-end text-nowrap">{{ __('console.table.actions') }}</th>
                     </tr>
                     </thead>
                     <tbody>
@@ -28,7 +28,7 @@
                             <td class="text-end font-monospace">{{ $s->groups_count }}</td>
                             <td class="text-end text-nowrap">
                                 <a href="{{ route('admin.game-subjects.index', ['mall_edit' => $s->id]) }}"
-                                   class="mall-icon-btn d-inline-flex p-1 rounded text-decoration-none" title="Edit">
+                                   class="mall-icon-btn d-inline-flex p-1 rounded text-decoration-none" title="{{ __('console.btn.edit') }}">
                                     @include('admin.partials.icon_pencil')
                                 </a>
                             </td>
@@ -49,16 +49,16 @@
                 <form method="post" action="{{ route('admin.game-subjects.store') }}">
                     @csrf
                     <div class="modal-header">
-                        <h2 class="modal-title h5">新建赛事主体</h2>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        <h2 class="modal-title h5">{{ __('console.game_subjects.create_title') }}</h2>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ __('console.aria.close') }}"></button>
                     </div>
                     <div class="modal-body">
                         <div class="mb-3">
-                            <label class="form-label" for="gsc_name">名称</label>
+                            <label class="form-label" for="gsc_name">{{ __('console.game_subjects.label_name') }}</label>
                             <input type="text" name="name" id="gsc_name" class="form-control" required maxlength="256" value="{{ old('name') }}">
                         </div>
                         <div class="mb-3">
-                            <label class="form-label" for="gsc_group_ids">关联赛事分组 <small class="text-muted">biz_y（多选）</small></label>
+                            <label class="form-label" for="gsc_group_ids">{{ __('console.game_subjects.label_groups') }} <small class="text-muted">{{ __('console.game_subjects.groups_multi') }}</small></label>
                             <select name="group_ids[]" id="gsc_group_ids" class="form-select" multiple size="8">
                                 @foreach($groups as $g)
                                     <option value="{{ $g->id }}" @selected(in_array((int) $g->id, array_map('intval', (array) old('group_ids', [])), true))>
@@ -69,8 +69,8 @@
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <a href="{{ route('admin.game-subjects.index') }}" class="btn btn-outline-secondary">取消</a>
-                        <button type="submit" class="btn btn-primary">创建</button>
+                        <a href="{{ route('admin.game-subjects.index') }}" class="btn btn-outline-secondary">{{ __('console.btn.cancel') }}</a>
+                        <button type="submit" class="btn btn-primary">{{ __('console.btn.create') }}</button>
                     </div>
                 </form>
             </div>
@@ -91,16 +91,16 @@
                         @csrf
                         @method('PUT')
                         <div class="modal-header">
-                            <h2 class="modal-title h5">编辑 #{{ $modalSubject->id }}</h2>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            <h2 class="modal-title h5">{{ __('console.game_subjects.edit_title', ['id' => $modalSubject->id]) }}</h2>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ __('console.aria.close') }}"></button>
                         </div>
                         <div class="modal-body">
                             <div class="mb-3">
-                                <label class="form-label" for="gse_name">名称</label>
+                                <label class="form-label" for="gse_name">{{ __('console.game_subjects.label_name') }}</label>
                                 <input type="text" name="name" id="gse_name" class="form-control" required maxlength="256" value="{{ old('name', $modalSubject->name) }}">
                             </div>
                             <div class="mb-3">
-                                <label class="form-label" for="gse_group_ids">关联赛事分组 <small class="text-muted">biz_y</small></label>
+                                <label class="form-label" for="gse_group_ids">{{ __('console.game_subjects.label_groups') }} <small class="text-muted">biz_y</small></label>
                                 <select name="group_ids[]" id="gse_group_ids" class="form-select" multiple size="8">
                                     @foreach($groups as $g)
                                         <option value="{{ $g->id }}" @selected(in_array((int) $g->id, $gids, true))>
@@ -111,8 +111,8 @@
                             </div>
                         </div>
                         <div class="modal-footer">
-                            <a href="{{ route('admin.game-subjects.index') }}" class="btn btn-outline-secondary">取消</a>
-                            <button type="submit" class="btn btn-primary">保存</button>
+                            <a href="{{ route('admin.game-subjects.index') }}" class="btn btn-outline-secondary">{{ __('console.btn.cancel') }}</a>
+                            <button type="submit" class="btn btn-primary">{{ __('console.btn.save') }}</button>
                         </div>
                     </form>
                 </div>

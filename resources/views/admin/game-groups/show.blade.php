@@ -1,36 +1,38 @@
 @extends('layouts.app')
 
-@section('title', 'Group '.$gameGroup->code)
+@section('title', __('console.pages.group_code', ['code' => $gameGroup->code]))
 
 @section('content')
     @include('admin.includes.detail_back_link', [
         'backUrl' => route('admin.game-groups.index'),
-        'backLabel' => '返回分组列表',
+        'backLabel' => __('console.detail.back_groups'),
     ])
 
     <div class="mall-list-toolbar d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
         <h2 class="h5 mb-0"><code class="small">{{ $gameGroup->code }}</code> <span class="text-muted">#{{ $gameGroup->id }}</span></h2>
         <div class="d-flex gap-2 flex-wrap">
-            <a href="{{ route('admin.game-groups.index', ['mall_edit' => $gameGroup->id]) }}" class="btn btn-outline-primary btn-sm">Edit</a>
+            <a href="{{ route('admin.game-groups.index', ['mall_edit' => $gameGroup->id]) }}" class="btn btn-outline-primary btn-sm">{{ __('console.btn.edit') }}</a>
             <button type="button" class="btn btn-outline-danger btn-sm"
-                    title="Delete" aria-label="Delete"
+                    title="{{ __('console.btn.delete') }}" aria-label="{{ __('console.btn.delete') }}"
                     data-mall-delete-url="{{ route('admin.game-groups.destroy', $gameGroup) }}"
-                    data-mall-delete-message="删除分组 {{ $gameGroup->code }}？将解除 biz_x / biz_y 关联，不删除赛事或主体。">
-                Delete group
+                    data-mall-delete-message="{{ __('console.game_groups.delete_show', ['code' => $gameGroup->code]) }}">
+                {{ __('console.btn.delete_group') }}
             </button>
         </div>
     </div>
 
-    <p class="text-muted small mb-3">关联赛事请在 <a href="{{ route('admin.games.index') }}">Games</a> 新建 / 编辑页通过多选分组维护；此页仅查看。</p>
+    <p class="text-muted small mb-3">{{ __('console.game_groups.group_note_before') }}
+        <a href="{{ route('admin.games.index') }}">{{ __('console.list.games') }}</a>{{ __('console.game_groups.group_note_after') }}
+    </p>
 
     <div class="mall-console-card card shadow-sm mb-4">
         <div class="card-body">
             <dl class="row mb-0">
-                <dt class="col-sm-3">Local ID</dt>
+                <dt class="col-sm-3">{{ __('console.table.local_id') }}</dt>
                 <dd class="col-sm-9 font-monospace">{{ $gameGroup->id }}</dd>
-                <dt class="col-sm-3">Code</dt>
+                <dt class="col-sm-3">{{ __('console.table.code') }}</dt>
                 <dd class="col-sm-9 font-monospace"><code>{{ $gameGroup->code }}</code></dd>
-                <dt class="col-sm-3">Timestamps</dt>
+                <dt class="col-sm-3">{{ __('console.games.timestamps') }}</dt>
                 <dd class="col-sm-9 text-muted small">ct {{ \App\Support\MillisTimestampDisplay::format($gameGroup->ct) }}
                     · ut {{ \App\Support\MillisTimestampDisplay::format($gameGroup->ut) }}</dd>
             </dl>
@@ -38,7 +40,7 @@
     </div>
 
     <div class="mall-list-toolbar d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
-        <h3 class="h6 mb-0">关联赛事</h3>
+        <h3 class="h6 mb-0">{{ __('console.list.related_games') }}</h3>
     </div>
 
     <div class="mall-console-card card shadow-sm">
@@ -47,10 +49,10 @@
                 <table class="table table-striped table-hover mb-0 mall-data-table align-middle">
                     <thead>
                     <tr>
-                        <th>Local ID</th>
-                        <th>raw id</th>
-                        <th>Title</th>
-                        <th>Status</th>
+                        <th>{{ __('console.table.local_id') }}</th>
+                        <th>{{ __('console.table.raw_id') }}</th>
+                        <th>{{ __('console.table.title') }}</th>
+                        <th>{{ __('console.table.status') }}</th>
                     </tr>
                     </thead>
                     <tbody>
@@ -74,7 +76,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="4" class="text-center text-muted py-4">暂无关联赛事。</td>
+                            <td colspan="4" class="text-center text-muted py-4">{{ __('console.empty.no_linked_games') }}</td>
                         </tr>
                     @endforelse
                     </tbody>

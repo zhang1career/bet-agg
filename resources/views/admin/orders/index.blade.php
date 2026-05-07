@@ -1,10 +1,10 @@
 @extends('layouts.app')
 
-@section('title', 'Orders')
+@section('title', __('console.pages.orders'))
 
 @section('content')
     <div class="mall-list-toolbar d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
-        <h2 class="h5 mb-0">Orders</h2>
+        <h2 class="h5 mb-0">{{ __('console.list.orders') }}</h2>
     </div>
 
     <div class="mall-console-card card shadow-sm">
@@ -13,11 +13,11 @@
                 <table class="table table-striped table-hover mb-0 mall-data-table align-middle">
                     <thead>
                     <tr>
-                        <th>ID</th>
-                        <th>Uid</th>
-                        <th>Status</th>
-                        <th>Total (minor)</th>
-                        <th>Created</th>
+                        <th>{{ __('console.table.id') }}</th>
+                        <th>{{ __('console.table.uid') }}</th>
+                        <th>{{ __('console.table.status') }}</th>
+                        <th>{{ __('console.table.total_minor') }}</th>
+                        <th>{{ __('console.table.created') }}</th>
                     </tr>
                     </thead>
                     <tbody>

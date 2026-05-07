@@ -1,30 +1,30 @@
 @extends('layouts.app')
 
-@section('title', 'Order '.$order->id)
+@section('title', __('console.pages.order_detail', ['id' => $order->id]))
 
 @section('content')
     @include('admin.includes.detail_back_link', [
         'backUrl' => route('admin.orders.index'),
-        'backLabel' => '返回订单列表',
+        'backLabel' => __('console.detail.back_orders'),
     ])
 
     <div class="bg-white shadow-sm p-4 rounded mb-4">
-        <p><strong>Uid:</strong> {{ $order->uid }}</p>
-        <p><strong>Status:</strong> <span data-mall-dict-code="bet_order_status" data-mall-dict-value="{{ $order->status->value }}">{{ $order->status->value }}</span></p>
-        <p><strong>Total stake (points):</strong> {{ $order->total_price }}</p>
-        <p><strong>ct / ut:</strong> {{ \App\Support\MillisTimestampDisplay::format($order->ct) }}
+        <p><strong>{{ __('console.table.uid') }}:</strong> {{ $order->uid }}</p>
+        <p><strong>{{ __('console.table.status') }}:</strong> <span data-mall-dict-code="bet_order_status" data-mall-dict-value="{{ $order->status->value }}">{{ $order->status->value }}</span></p>
+        <p><strong>{{ __('console.detail.total_stake') }}:</strong> {{ $order->total_price }}</p>
+        <p><strong>{{ __('console.detail.ct_ut') }}:</strong> {{ \App\Support\MillisTimestampDisplay::format($order->ct) }}
             / {{ \App\Support\MillisTimestampDisplay::format($order->ut) }}</p>
     </div>
 
-    <h2 class="h5">Lines</h2>
+    <h2 class="h5">{{ __('console.table.lines') }}</h2>
     <table class="table table-sm bg-white shadow-sm">
         <thead>
         <tr>
-            <th>Outcome</th>
-            <th>Stake</th>
-            <th>Odds millis</th>
-            <th>Potential return</th>
-            <th>Line result</th>
+            <th>{{ __('console.table.outcome') }}</th>
+            <th>{{ __('console.table.stake') }}</th>
+            <th>{{ __('console.table.odds_millis_line') }}</th>
+            <th>{{ __('console.table.potential_return') }}</th>
+            <th>{{ __('console.table.line_result') }}</th>
         </tr>
         </thead>
         <tbody>
@@ -46,7 +46,7 @@
         </tbody>
     </table>
 
-    <p class="text-muted mt-3">Order status is driven by placement and settlement. Use admin/games to apply game results.</p>
+    <p class="text-muted mt-3">{{ __('console.orders.foot_note') }}</p>
 
-    <a href="{{ route('admin.orders.index') }}" class="btn btn-link mt-3">Back to orders</a>
+    <a href="{{ route('admin.orders.index') }}" class="btn btn-link mt-3">{{ __('console.orders.back_to_orders') }}</a>
 @endsection

@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Settlement')
+@section('title', __('console.pages.settlement'))
 
 @section('content')
     <div class="mb-3">
@@ -8,21 +8,21 @@
             <svg class="flex-shrink-0 me-1" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
             </svg>
-            返回 Games 列表
+            {{ __('console.settlement.back_games') }}
         </a>
     </div>
 
     <div class="bg-white shadow-sm p-4 rounded mb-4" style="max-width: 640px;">
-        <h2 class="h5 mb-3">录入赛果（入队结算）</h2>
-        <p class="text-muted small">提交后写入待处理队列，由队列 Worker 执行兑奖；本表单不直接调用结算服务。</p>
+        <h2 class="h5 mb-3">{{ __('console.settlement.heading') }}</h2>
+        <p class="text-muted small">{{ __('console.settlement.hint') }}</p>
 
         <form method="post" action="{{ route('admin.settlement.store') }}">
             @csrf
             <div class="mb-3">
-                <label class="form-label" for="settlement_game_id">Open game</label>
+                <label class="form-label" for="settlement_game_id">{{ __('console.settlement.open_game') }}</label>
                 <select name="game_id" id="settlement_game_id" class="form-select" required>
                     @if($games->isEmpty())
-                        <option value="" disabled>No open games</option>
+                        <option value="" disabled>{{ __('console.settlement.no_open_games') }}</option>
                     @else
                         @include('admin.partials.game_select_options', [
                             'games' => $games,
@@ -33,11 +33,13 @@
                 </select>
             </div>
             <div class="mb-3">
-                <label class="form-label" for="result_payload">赛果</label>
+                <label class="form-label" for="result_payload">{{ __('console.settlement.result') }}</label>
                 <select name="result_payload" id="result_payload" class="form-select" required></select>
             </div>
-            <button type="submit" class="btn btn-primary" @if($games->isEmpty()) disabled @endif>入队结算</button>
-            <a href="{{ route('admin.games.index') }}" class="btn btn-outline-secondary">取消</a>
+            <div class="d-flex flex-wrap gap-2">
+                <a href="{{ route('admin.games.index') }}" class="btn btn-outline-secondary">{{ __('console.btn.cancel') }}</a>
+                <button type="submit" class="btn btn-primary" @if($games->isEmpty()) disabled @endif>{{ __('console.btn.submit_settlement') }}</button>
+            </div>
         </form>
     </div>
 

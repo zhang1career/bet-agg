@@ -9,7 +9,7 @@
     $sideB = old('side_b_subject_id', $selectedSideB ?? '');
 @endphp
 <div class="mb-3">
-    <label class="form-label" for="game_group_ids{{ $idSuf }}">关联赛事分组（biz_x，多选）</label>
+    <label class="form-label" for="game_group_ids{{ $idSuf }}">{{ __('console.games_partials.group_label') }}</label>
     <select name="group_ids[]" id="game_group_ids{{ $idSuf }}" class="form-select @error('group_ids') is-invalid @enderror" multiple required size="5">
         @foreach($allGroups as $g)
             <option value="{{ $g->id }}" @selected(in_array((int) $g->id, $groupIdsForOld, true))>
@@ -20,13 +20,13 @@
     @error('group_ids')
         <div class="invalid-feedback d-block">{{ $message }}</div>
     @enderror
-    <p class="text-muted small mt-1">勾选后，下方 A/B 方下拉仅显示这些分组在「赛事主体 ↔ 分组」<code>biz_y</code> 中的主体。分组与赛事的关联仅在此表单维护。</p>
+    <p class="text-muted small mt-1">{{ __('console.games_partials.group_help') }}</p>
 </div>
 
 <div class="mb-3">
-    <label class="form-label" for="side_a_subject_id{{ $idSuf }}">Side A（主场侧，biz_game.side_a_subject_id）</label>
+    <label class="form-label" for="side_a_subject_id{{ $idSuf }}">{{ __('console.games_partials.side_a') }}</label>
     <select name="side_a_subject_id" id="side_a_subject_id{{ $idSuf }}" class="form-select @error('side_a_subject_id') is-invalid @enderror">
-        <option value="">— 未选 —</option>
+        <option value="">{{ __('console.games_partials.none_selected') }}</option>
         @foreach($allSubjects as $subj)
             @php
                 $gidList = $subj->groups->pluck('id')->map(fn ($id) => (int) $id)->values()->all();
@@ -44,9 +44,9 @@
     @enderror
 </div>
 <div class="mb-3">
-    <label class="form-label" for="side_b_subject_id{{ $idSuf }}">Side B（客场侧，biz_game.side_b_subject_id）</label>
+    <label class="form-label" for="side_b_subject_id{{ $idSuf }}">{{ __('console.games_partials.side_b') }}</label>
     <select name="side_b_subject_id" id="side_b_subject_id{{ $idSuf }}" class="form-select @error('side_b_subject_id') is-invalid @enderror">
-        <option value="">— 未选 —</option>
+        <option value="">{{ __('console.games_partials.none_selected') }}</option>
         @foreach($allSubjects as $subj)
             @php
                 $gidList = $subj->groups->pluck('id')->map(fn ($id) => (int) $id)->values()->all();

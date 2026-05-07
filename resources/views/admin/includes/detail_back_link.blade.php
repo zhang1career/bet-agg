@@ -3,7 +3,7 @@
     Requires window.returnToList from bet-admin.js.
 --}}
 @php
-    $backLabel = $backLabel ?? '返回';
+    $backLabel = $backLabel ?? __('console.back');
 @endphp
 <div class="mb-3">
     <a href="{{ $backUrl }}"

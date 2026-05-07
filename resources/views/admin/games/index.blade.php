@@ -1,11 +1,11 @@
 @extends('layouts.app')
 
-@section('title', 'Games')
+@section('title', __('console.pages.games'))
 
 @section('content')
     <div class="mall-list-toolbar d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
-        <h2 class="h5 mb-0">Games</h2>
-        <a href="{{ route('admin.games.index', ['mall_create' => 1]) }}" class="btn btn-primary btn-sm">新建</a>
+        <h2 class="h5 mb-0">{{ __('console.list.games') }}</h2>
+        <a href="{{ route('admin.games.index', ['mall_create' => 1]) }}" class="btn btn-primary btn-sm">{{ __('console.btn.new') }}</a>
     </div>
 
     <div class="mall-console-card card shadow-sm">
@@ -14,12 +14,12 @@
                 <table class="table table-striped table-hover mb-0 mall-data-table align-middle">
                     <thead>
                     <tr>
-                        <th>Local ID</th>
-                        <th>raw id</th>
-                        <th>Title</th>
-                        <th>Status</th>
-                        <th class="text-end">Markets</th>
-                        <th class="text-end text-nowrap">Actions</th>
+                        <th>{{ __('console.table.local_id') }}</th>
+                        <th>{{ __('console.table.raw_id') }}</th>
+                        <th>{{ __('console.table.title') }}</th>
+                        <th>{{ __('console.table.status') }}</th>
+                        <th class="text-end">{{ __('console.table.markets') }}</th>
+                        <th class="text-end text-nowrap">{{ __('console.table.actions') }}</th>
                     </tr>
                     </thead>
                     <tbody>
@@ -38,13 +38,13 @@
                             <td class="text-end text-nowrap">
                                 <a href="{{ route('admin.games.index', ['mall_edit' => $game->id]) }}"
                                    class="mall-icon-btn d-inline-flex p-1 rounded text-decoration-none"
-                                   title="Edit" aria-label="Edit">
+                                   title="{{ __('console.btn.edit') }}" aria-label="{{ __('console.btn.edit') }}">
                                     @include('admin.partials.icon_pencil')
                                 </a>
                                 <button type="button" class="mall-icon-btn d-inline-flex p-1 rounded text-danger"
-                                        title="Delete" aria-label="Delete"
+                                        title="{{ __('console.btn.delete') }}" aria-label="{{ __('console.btn.delete') }}"
                                         data-mall-delete-url="{{ route('admin.games.destroy', $game) }}"
-                                        data-mall-delete-message="Delete game #{{ $game->id }}?">
+                                        data-mall-delete-message="{{ __('console.games.delete_confirm', ['id' => $game->id]) }}">
                                     @include('admin.partials.icon_trash')
                                 </button>
                             </td>
@@ -69,16 +69,16 @@
                 <form method="post" action="{{ route('admin.games.store') }}">
                     @csrf
                     <div class="modal-header">
-                        <h2 class="modal-title h5">Create game</h2>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        <h2 class="modal-title h5">{{ __('console.games.create_title') }}</h2>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ __('console.aria.close') }}"></button>
                     </div>
                     <div class="modal-body">
-                        <p class="text-muted small">Creates the record in CMS (<code>POST /api/cms/game</code>), then registers local betting state.</p>
+                        <p class="text-muted small">{{ __('console.games.create_blurb') }}</p>
                         @if($errors->has('cms'))
                             <div class="alert alert-danger">{{ $errors->first('cms') }}</div>
                         @endif
                         <div class="mb-3">
-                            <label class="form-label" for="game_name_gc">Title (CMS)</label>
+                            <label class="form-label" for="game_name_gc">{{ __('console.games.cms_title') }}</label>
                             <input type="text" name="name" id="game_name_gc" class="form-control" required maxlength="500" value="{{ old('name') }}">
                         </div>
                         @include('admin.games.partials.starts-at-field', ['startsAtMs' => (int) old('starts_at', 0), 'idSuf' => '_gc'])
@@ -93,15 +93,15 @@
                             'idSuf' => '_gc',
                         ])
                         <div class="mb-3">
-                            <label class="form-label" for="game_status_gc">Status</label>
+                            <label class="form-label" for="game_status_gc">{{ __('console.games.status') }}</label>
                             <select name="status" id="game_status_gc" class="form-select" required
                                     data-mall-dict-options="game_status"
                                     data-mall-dict-selected="{{ (int) old('status', 1) }}"></select>
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <a href="{{ route('admin.games.index') }}" class="btn btn-outline-secondary">取消</a>
-                        <button type="submit" class="btn btn-primary">Create</button>
+                        <a href="{{ route('admin.games.index') }}" class="btn btn-outline-secondary">{{ __('console.btn.cancel') }}</a>
+                        <button type="submit" class="btn btn-primary">{{ __('console.btn.create') }}</button>
                     </div>
                 </form>
             </div>
@@ -129,13 +129,13 @@
                         @csrf
                         @method('PUT')
                         <div class="modal-header">
-                            <h2 class="modal-title h5">Edit game #{{ $game->id }}</h2>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            <h2 class="modal-title h5">{{ __('console.games.edit_title', ['id' => $game->id]) }}</h2>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ __('console.aria.close') }}"></button>
                         </div>
                         <div class="modal-body">
                             @if(! is_array($cms_game))
                                 <p class="text-muted small">
-                                    <strong class="text-warning">CMS record could not be loaded</strong> (check gateway or create this id in CMS). You can still save local betting status; media syncs to CMS when the record is available.
+                                    <strong class="text-warning">{{ __('console.games.cms_unavailable') }}</strong>
                                 </p>
                             @endif
                             @if($errors->has('cms'))
@@ -143,14 +143,14 @@
                             @endif
                             @if(is_array($cms_game))
                                 <div class="mb-3">
-                                    <label class="form-label" for="game_name_ge">Title (CMS)</label>
+                                    <label class="form-label" for="game_name_ge">{{ __('console.games.cms_title') }}</label>
                                     <input type="text" name="name" id="game_name_ge" class="form-control" required maxlength="500" value="{{ $cmsName }}">
                                 </div>
                                 @include('admin.games.partials.starts-at-field', ['startsAtMs' => $cmsStarts, 'idSuf' => '_ge'])
                             @else
                                 <div class="mb-3">
-                                    <span class="form-label d-block">Title / starts at (CMS)</span>
-                                    <p class="text-muted small mb-1">Not loaded. Fix CMS or gateway for <span class="font-monospace">{{ $game->raw_id }}</span>.</p>
+                                    <span class="form-label d-block">{{ __('console.games.cms_not_loaded_fields') }}</span>
+                                    <p class="text-muted small mb-1">{{ __('console.games.cms_not_loaded_body', ['raw_id' => $game->raw_id]) }}</p>
                                     <input type="hidden" name="name" value="">
                                     <input type="hidden" name="starts_at" value="0">
                                 </div>
@@ -169,15 +169,15 @@
                                 'idSuf' => '_ge',
                             ])
                             <div class="mb-3">
-                                <label class="form-label" for="game_status_ge">Status</label>
+                                <label class="form-label" for="game_status_ge">{{ __('console.games.status') }}</label>
                                 <select name="status" id="game_status_ge" class="form-select" required
                                         data-mall-dict-options="game_status"
                                         data-mall-dict-selected="{{ (int) old('status', $game->status) }}"></select>
                             </div>
                         </div>
                         <div class="modal-footer">
-                            <a href="{{ route('admin.games.index') }}" class="btn btn-outline-secondary">取消</a>
-                            <button type="submit" class="btn btn-primary">Save</button>
+                            <a href="{{ route('admin.games.index') }}" class="btn btn-outline-secondary">{{ __('console.btn.cancel') }}</a>
+                            <button type="submit" class="btn btn-primary">{{ __('console.btn.save') }}</button>
                         </div>
                     </form>
                 </div>

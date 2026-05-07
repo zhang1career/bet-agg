@@ -190,6 +190,7 @@
         var toggleBtn = document.getElementById('sidebar-toggle');
         var iconExpand = document.getElementById('sidebar-toggle-icon-expand');
         var iconCollapse = document.getElementById('sidebar-toggle-icon-collapse');
+        var I18N = window.MALL_CONSOLE_I18N || {};
 
         if (!sidebar) {
             return;
@@ -236,7 +237,7 @@
                     iconCollapse.classList.add('hidden');
                 }
                 if (toggleBtn) {
-                    toggleBtn.title = 'Expand';
+                    toggleBtn.title = I18N.sidebarExpand || 'Expand';
                 }
             } else {
                 sidebar.classList.remove('sidebar-collapsed');
@@ -262,7 +263,7 @@
                     iconCollapse.classList.remove('hidden');
                 }
                 if (toggleBtn) {
-                    toggleBtn.title = 'Collapse';
+                    toggleBtn.title = I18N.sidebarCollapse || 'Collapse';
                 }
             }
         }

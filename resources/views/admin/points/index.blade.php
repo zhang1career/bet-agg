@@ -1,13 +1,13 @@
 @extends('layouts.app')
 
-@section('title', 'Points')
+@section('title', __('console.pages.points'))
 
 @section('content')
-    <nav class="mall-subnav d-flex flex-wrap gap-2 mb-4" aria-label="Points">
+    <nav class="mall-subnav d-flex flex-wrap gap-2 mb-4" aria-label="{{ __('console.points.nav_label') }}">
         <a href="{{ route('admin.points.index', ['tab' => 'balances']) }}"
-           class="btn btn-sm {{ $tab === 'balances' ? 'btn-primary' : 'btn-outline-secondary' }}">Balances</a>
+           class="btn btn-sm {{ $tab === 'balances' ? 'btn-primary' : 'btn-outline-secondary' }}">{{ __('console.list.balances') }}</a>
         <a href="{{ route('admin.points.index', ['tab' => 'flows']) }}"
-           class="btn btn-sm {{ $tab === 'flows' ? 'btn-primary' : 'btn-outline-secondary' }}">Flows</a>
+           class="btn btn-sm {{ $tab === 'flows' ? 'btn-primary' : 'btn-outline-secondary' }}">{{ __('console.list.flows') }}</a>
     </nav>
 
     @if($errors->has('delete'))
@@ -16,8 +16,8 @@
 
     @if($tab === 'balances' && $balances)
         <div class="mall-list-toolbar d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
-            <h2 class="h5 mb-0">Balances</h2>
-            <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#mallModalOpenAccount">New</button>
+            <h2 class="h5 mb-0">{{ __('console.list.balances') }}</h2>
+            <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#mallModalOpenAccount">{{ __('console.btn.new') }}</button>
         </div>
 
         <div class="mall-console-card card shadow-sm">
@@ -29,12 +29,12 @@
                            @endif>
                         <thead>
                         <tr>
-                            <th>ID</th>
-                            <th>UID</th>
-                            <th>Username</th>
-                            <th class="text-end">Balance (points)</th>
-                            <th>Updated</th>
-                            <th class="text-end text-nowrap">Actions</th>
+                            <th>{{ __('console.table.id') }}</th>
+                            <th>{{ __('console.table.uid') }}</th>
+                            <th>{{ __('console.table.username') }}</th>
+                            <th class="text-end">{{ __('console.table.balance_points') }}</th>
+                            <th>{{ __('console.table.updated') }}</th>
+                            <th class="text-end text-nowrap">{{ __('console.table.actions') }}</th>
                         </tr>
                         </thead>
                         <tbody>
@@ -46,7 +46,7 @@
                                 <td>
                                     <button type="button"
                                             class="btn btn-link p-0 align-baseline font-monospace text-decoration-none"
-                                            title="View user"
+                                            title="{{ __('console.points.view_user') }}"
                                             data-bs-toggle="modal"
                                             data-bs-target="#mallModalUserDetail"
                                             data-gateway-user-id="{{ $row->uid }}"
@@ -59,21 +59,21 @@
                                 <td class="text-end font-monospace">{{ number_format((int) $row->balance) }}</td>
                                 <td class="text-muted small">{{ \App\Support\MillisTimestampDisplay::format($row->ut) }}</td>
                                 <td class="text-end text-nowrap">
-                                    <button type="button" class="mall-icon-btn d-inline-flex p-1 rounded" title="Adjust"
+                                    <button type="button" class="mall-icon-btn d-inline-flex p-1 rounded" title="{{ __('console.points.adjust') }}"
                                             data-bs-toggle="modal" data-bs-target="#mallModalAdjust"
                                             data-balance-uid="{{ $row->uid }}">
                                         @include('admin.partials.icon_pencil')
                                     </button>
-                                    <button type="button" class="mall-icon-btn d-inline-flex p-1 rounded text-danger" title="Delete"
+                                    <button type="button" class="mall-icon-btn d-inline-flex p-1 rounded text-danger" title="{{ __('console.btn.delete') }}"
                                             data-mall-delete-url="{{ route('admin.points.balances.destroy', $row->id) }}"
-                                            data-mall-delete-message="Delete balance #{{ $row->id }}? Balance must be zero.">
+                                            data-mall-delete-message="{{ __('console.points.delete_balance_confirm', ['id' => $row->id]) }}">
                                         @include('admin.partials.icon_trash')
                                     </button>
                                 </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="6" class="text-center text-muted py-4">No accounts yet.</td>
+                                <td colspan="6" class="text-center text-muted py-4">{{ __('console.empty.no_accounts') }}</td>
                             </tr>
                         @endforelse
                         </tbody>
@@ -85,7 +85,7 @@
 
     @elseif($tab === 'flows' && $flows)
         <div class="mall-list-toolbar d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
-            <h2 class="h5 mb-0">Flows</h2>
+            <h2 class="h5 mb-0">{{ __('console.list.flows') }}</h2>
         </div>
 
         <div class="mall-console-card card shadow-sm">
@@ -94,12 +94,12 @@
                     <table class="table table-striped table-hover mb-0 mall-data-table align-middle">
                         <thead>
                         <tr>
-                            <th>ID</th>
-                            <th>UID</th>
-                            <th>OID</th>
-                            <th class="text-end">Amount</th>
-                            <th>State</th>
-                            <th class="text-end text-nowrap">Actions</th>
+                            <th>{{ __('console.table.id') }}</th>
+                            <th>{{ __('console.table.uid') }}</th>
+                            <th>{{ __('console.table.oid') }}</th>
+                            <th class="text-end">{{ __('console.table.amount') }}</th>
+                            <th>{{ __('console.table.state') }}</th>
+                            <th class="text-end text-nowrap">{{ __('console.table.actions') }}</th>
                         </tr>
                         </thead>
                         <tbody>
@@ -117,7 +117,7 @@
                                           data-mall-dict-value="{{ $f->state->value }}">{{ $f->state->value }}</span>
                                 </td>
                                 <td class="text-end text-nowrap">
-                                    <button type="button" class="mall-icon-btn d-inline-flex p-1 rounded" title="View"
+                                    <button type="button" class="mall-icon-btn d-inline-flex p-1 rounded" title="{{ __('console.points.view') }}"
                                             data-bs-toggle="modal" data-bs-target="#mallModalFlowView"
                                             data-flow-id="{{ $f->id }}"
                                             data-flow-uid="{{ $f->uid }}"
@@ -132,7 +132,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="6" class="text-center text-muted py-4">No flow rows.</td>
+                                <td colspan="6" class="text-center text-muted py-4">{{ __('console.empty.no_flows') }}</td>
                             </tr>
                         @endforelse
                         </tbody>
@@ -150,25 +150,25 @@
                 <form method="post" action="{{ route('admin.points.accounts.store') }}">
                     @csrf
                     <div class="modal-header">
-                        <h2 class="modal-title h5">New account</h2>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        <h2 class="modal-title h5">{{ __('console.points.new_account') }}</h2>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ __('console.aria.close') }}"></button>
                     </div>
                     <div class="modal-body">
                         @if($errors->has('account'))
                             <div class="alert alert-danger py-2">{{ $errors->first('account') }}</div>
                         @endif
                         <div class="mb-3">
-                            <label class="form-label" for="m-open-uid">User id</label>
+                            <label class="form-label" for="m-open-uid">{{ __('console.points.user_id') }}</label>
                             <input type="number" name="uid" id="m-open-uid" class="form-control" required min="1" value="{{ old('uid') }}">
                         </div>
                         <div class="mb-0">
-                            <label class="form-label" for="m-open-bal">Initial balance (points)</label>
+                            <label class="form-label" for="m-open-bal">{{ __('console.points.initial_balance') }}</label>
                             <input type="number" name="balance" id="m-open-bal" class="form-control" min="0" value="{{ old('balance', 0) }}">
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-primary">Create</button>
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">{{ __('console.btn.cancel') }}</button>
+                        <button type="submit" class="btn btn-primary">{{ __('console.btn.create') }}</button>
                     </div>
                 </form>
             </div>
@@ -182,49 +182,49 @@
                 <form method="post" action="{{ route('admin.points.adjust') }}">
                     @csrf
                     <div class="modal-header">
-                        <h2 class="modal-title h5">Adjust balance</h2>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        <h2 class="modal-title h5">{{ __('console.points.adjust_balance') }}</h2>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ __('console.aria.close') }}"></button>
                     </div>
                     <div class="modal-body">
                         @if($errors->has('adjust'))
                             <div class="alert alert-danger py-2">{{ $errors->first('adjust') }}</div>
                         @endif
                         <div class="mb-3">
-                            <label class="form-label" for="m-adj-uid">User id</label>
+                            <label class="form-label" for="m-adj-uid">{{ __('console.points.user_id') }}</label>
                             <input type="number" name="uid" id="m-adj-uid" class="form-control" required min="1" readonly>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label" for="m-adj-delta">Delta (points)</label>
+                            <label class="form-label" for="m-adj-delta">{{ __('console.points.delta') }}</label>
                             <input type="number" name="delta_points" id="m-adj-delta" class="form-control" required value="{{ old('delta_points') }}">
                         </div>
                         <div class="mb-0">
-                            <label class="form-label" for="m-adj-oid">Order id (optional)</label>
+                            <label class="form-label" for="m-adj-oid">{{ __('console.points.order_id_optional') }}</label>
                             <input type="number" name="oid" id="m-adj-oid" class="form-control" min="0" value="{{ old('oid', 0) }}">
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-primary">Apply</button>
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">{{ __('console.btn.cancel') }}</button>
+                        <button type="submit" class="btn btn-primary">{{ __('console.btn.apply') }}</button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
 
-    {{-- User JSON via GET /admin/users/{user_id} (proxies gateway /api/user/users/{id}) --}}
+    {{-- User JSON via GET /admin/users/{user_id} --}}
     <div class="modal fade" id="mallModalUserDetail" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h2 class="modal-title h5">User <span id="m-user-title-id"></span></h2>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <h2 class="modal-title h5">{{ __('console.points.user_title') }} <span id="m-user-title-id"></span></h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ __('console.aria.close') }}"></button>
                 </div>
                 <div class="modal-body">
-                    <p class="text-muted small mb-2" id="m-user-status">Loading…</p>
+                    <p class="text-muted small mb-2" id="m-user-status">{{ __('console.js.loading') }}</p>
                     <div id="m-user-detail-body"></div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">{{ __('console.btn.close') }}</button>
                 </div>
             </div>
         </div>
@@ -235,25 +235,25 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h2 class="modal-title h5">Flow <span id="m-flow-title-id"></span></h2>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <h2 class="modal-title h5">{{ __('console.points.flow_title') }} <span id="m-flow-title-id"></span></h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ __('console.aria.close') }}"></button>
                 </div>
                 <div class="modal-body small">
                     <dl class="row mb-0">
-                        <dt class="col-4">UID</dt>
+                        <dt class="col-4">{{ __('console.table.uid') }}</dt>
                         <dd class="col-8" id="m-flow-uid"></dd>
-                        <dt class="col-4">OID</dt>
+                        <dt class="col-4">{{ __('console.table.oid') }}</dt>
                         <dd class="col-8" id="m-flow-oid"></dd>
-                        <dt class="col-4">Amount</dt>
+                        <dt class="col-4">{{ __('console.table.amount') }}</dt>
                         <dd class="col-8 font-monospace" id="m-flow-amount"></dd>
-                        <dt class="col-4">State</dt>
+                        <dt class="col-4">{{ __('console.table.state') }}</dt>
                         <dd class="col-8" id="m-flow-state"></dd>
-                        <dt class="col-4">ct / ut</dt>
+                        <dt class="col-4">{{ __('console.points.flow_ct_ut') }}</dt>
                         <dd class="col-8" id="m-flow-ctut"></dd>
                     </dl>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">{{ __('console.btn.close') }}</button>
                 </div>
             </div>
         </div>
@@ -263,6 +263,7 @@
 @push('scripts')
     <script>
         (function () {
+            var I18N = window.MALL_CONSOLE_I18N || {};
             var balanceUserTable = document.querySelector('table[data-mall-balance-user-ids]');
             if (balanceUserTable) {
                 var rawIds = balanceUserTable.getAttribute('data-mall-balance-user-ids');
@@ -327,7 +328,7 @@
                         titleEl.textContent = uid ? '#' + uid : '';
                     }
                     if (statusEl) {
-                        statusEl.textContent = 'Loading…';
+                        statusEl.textContent = I18N.loading || '';
                         statusEl.classList.remove('text-danger', 'd-none');
                         statusEl.classList.add('text-muted');
                     }
@@ -350,7 +351,7 @@
                             }
                             var user = res.json && res.json.user;
                             if (!user || typeof user !== 'object') {
-                                statusEl.textContent = 'Invalid response.';
+                                statusEl.textContent = I18N.invalidResponse || '';
                                 statusEl.classList.remove('text-muted');
                                 statusEl.classList.add('text-danger');
                                 return;
@@ -381,7 +382,7 @@
                         })
                         .catch(function () {
                             if (statusEl) {
-                                statusEl.textContent = 'Request failed.';
+                                statusEl.textContent = I18N.requestFailed || '';
                                 statusEl.classList.remove('text-muted');
                                 statusEl.classList.add('text-danger');
                             }
@@ -391,7 +392,7 @@
                     var s = document.getElementById('m-user-status');
                     var b = document.getElementById('m-user-detail-body');
                     if (s) {
-                        s.textContent = 'Loading…';
+                        s.textContent = I18N.loading || '';
                         s.classList.remove('text-danger', 'd-none');
                         s.classList.add('text-muted');
                     }
