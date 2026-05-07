@@ -17,13 +17,13 @@ Route::get('/', static function () {
 Route::prefix('admin')->name('admin.')->group(function () {
     Route::post('uploads', [AdminUploadController::class, 'store'])->name('uploads.store');
 
-    Route::resource('games', AdminGameController::class);
+    Route::resource('games', AdminGameController::class)->except(['create', 'edit']);
 
-    Route::resource('game-groups', AdminGameGroupController::class);
+    Route::resource('game-groups', AdminGameGroupController::class)->except(['create', 'edit']);
 
-    Route::resource('game-subjects', AdminGameSubjectController::class);
+    Route::resource('game-subjects', AdminGameSubjectController::class)->except(['create', 'edit']);
 
-    Route::resource('markets', AdminMarketController::class);
+    Route::resource('markets', AdminMarketController::class)->except(['create', 'edit']);
 
     Route::get('settlement', [AdminSettlementController::class, 'create'])->name('settlement.create');
     Route::post('settlement', [AdminSettlementController::class, 'store'])->name('settlement.store');

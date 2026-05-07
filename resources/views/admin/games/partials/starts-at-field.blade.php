@@ -1,17 +1,18 @@
 @php
+    $idSuf = $idSuf ?? '';
     $startsAtMs = (int) ($startsAtMs ?? 0);
 @endphp
 <div class="mb-3">
-    <label class="form-label" for="starts_at_picker">Starts at</label>
-    <input type="datetime-local" id="starts_at_picker" class="form-control" step="60" autocomplete="off">
-    <input type="hidden" name="starts_at" id="starts_at_ms" value="{{ $startsAtMs }}">
+    <label class="form-label" for="starts_at_picker{{ $idSuf }}">Starts at</label>
+    <input type="datetime-local" id="starts_at_picker{{ $idSuf }}" class="form-control" step="60" autocomplete="off">
+    <input type="hidden" name="starts_at" id="starts_at_ms{{ $idSuf }}" value="{{ $startsAtMs }}">
     <p class="form-text text-muted small mb-0">Submitted to CMS as Unix timestamp (milliseconds).</p>
 </div>
 @push('scripts')
 <script>
 (function () {
-    var msEl = document.getElementById('starts_at_ms');
-    var pickEl = document.getElementById('starts_at_picker');
+    var msEl = document.getElementById(@json('starts_at_ms'.$idSuf));
+    var pickEl = document.getElementById(@json('starts_at_picker'.$idSuf));
     if (!msEl || !pickEl || !msEl.form) {
         return;
     }

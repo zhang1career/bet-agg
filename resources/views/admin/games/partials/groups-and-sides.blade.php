@@ -1,4 +1,5 @@
 @php
+    $idSuf = $idSuf ?? '';
     $groupIdsForOld = old('group_ids', $selectedGroupIds ?? []);
     if (! is_array($groupIdsForOld)) {
         $groupIdsForOld = [];
@@ -8,8 +9,8 @@
     $sideB = old('side_b_subject_id', $selectedSideB ?? '');
 @endphp
 <div class="mb-3">
-    <label class="form-label" for="game_group_ids">关联赛事分组（biz_x，多选）</label>
-    <select name="group_ids[]" id="game_group_ids" class="form-select @error('group_ids') is-invalid @enderror" multiple required size="5">
+    <label class="form-label" for="game_group_ids{{ $idSuf }}">关联赛事分组（biz_x，多选）</label>
+    <select name="group_ids[]" id="game_group_ids{{ $idSuf }}" class="form-select @error('group_ids') is-invalid @enderror" multiple required size="5">
         @foreach($allGroups as $g)
             <option value="{{ $g->id }}" @selected(in_array((int) $g->id, $groupIdsForOld, true))>
                 <code>{{ $g->code }}</code> · #{{ $g->id }}
@@ -23,8 +24,8 @@
 </div>
 
 <div class="mb-3">
-    <label class="form-label" for="side_a_subject_id">Side A（主场侧，biz_game.side_a_subject_id）</label>
-    <select name="side_a_subject_id" id="side_a_subject_id" class="form-select @error('side_a_subject_id') is-invalid @enderror">
+    <label class="form-label" for="side_a_subject_id{{ $idSuf }}">Side A（主场侧，biz_game.side_a_subject_id）</label>
+    <select name="side_a_subject_id" id="side_a_subject_id{{ $idSuf }}" class="form-select @error('side_a_subject_id') is-invalid @enderror">
         <option value="">— 未选 —</option>
         @foreach($allSubjects as $subj)
             @php
@@ -43,8 +44,8 @@
     @enderror
 </div>
 <div class="mb-3">
-    <label class="form-label" for="side_b_subject_id">Side B（客场侧，biz_game.side_b_subject_id）</label>
-    <select name="side_b_subject_id" id="side_b_subject_id" class="form-select @error('side_b_subject_id') is-invalid @enderror">
+    <label class="form-label" for="side_b_subject_id{{ $idSuf }}">Side B（客场侧，biz_game.side_b_subject_id）</label>
+    <select name="side_b_subject_id" id="side_b_subject_id{{ $idSuf }}" class="form-select @error('side_b_subject_id') is-invalid @enderror">
         <option value="">— 未选 —</option>
         @foreach($allSubjects as $subj)
             @php
@@ -66,9 +67,9 @@
 @push('scripts')
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            var grp = document.getElementById('game_group_ids');
-            var a = document.getElementById('side_a_subject_id');
-            var b = document.getElementById('side_b_subject_id');
+            var grp = document.getElementById(@json('game_group_ids'.$idSuf));
+            var a = document.getElementById(@json('side_a_subject_id'.$idSuf));
+            var b = document.getElementById(@json('side_b_subject_id'.$idSuf));
             if (!grp || !a || !b) return;
 
             function selectedGroupIdSet() {

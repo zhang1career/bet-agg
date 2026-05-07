@@ -11,7 +11,7 @@
     <div class="mall-list-toolbar d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
         <h2 class="h5 mb-0">Game #{{ $game->id }}</h2>
         <div class="d-flex gap-2 flex-wrap">
-            <a href="{{ route('admin.games.edit', $game) }}" class="btn btn-outline-primary btn-sm">Edit</a>
+            <a href="{{ route('admin.games.index', ['mall_edit' => $game->id]) }}" class="btn btn-outline-primary btn-sm">Edit</a>
         </div>
     </div>
 
@@ -110,7 +110,7 @@
 
     <div class="mall-list-toolbar d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
         <h3 class="h6 mb-0">Markets</h3>
-        <a href="{{ route('admin.markets.create', ['game_id' => $game->id]) }}" class="btn btn-primary btn-sm">New market</a>
+        <a href="{{ route('admin.markets.index', ['mall_create' => 1, 'game_id' => $game->id]) }}" class="btn btn-primary btn-sm">New market</a>
     </div>
 
     <div class="mall-console-card card shadow-sm">
@@ -143,7 +143,7 @@
                                 <span class="text-muted">({{ $m->status }})</span>
                             </td>
                             <td class="text-end text-nowrap">
-                                <a href="{{ route('admin.markets.edit', $m) }}" class="mall-icon-btn d-inline-flex p-1 rounded text-decoration-none" title="Edit">
+                                <a href="{{ route('admin.markets.index', ['mall_edit' => $m->id]) }}" class="mall-icon-btn d-inline-flex p-1 rounded text-decoration-none" title="Edit">
                                     @include('admin.partials.icon_pencil')
                                 </a>
                             </td>

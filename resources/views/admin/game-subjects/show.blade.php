@@ -10,7 +10,7 @@
     <div class="mall-list-toolbar d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
         <h2 class="h5 mb-0">{{ $subject->name }} <span class="text-muted">#{{ $subject->id }}</span></h2>
         <div class="d-flex gap-2">
-            <a href="{{ route('admin.game-subjects.edit', $subject) }}" class="btn btn-outline-primary btn-sm">Edit</a>
+            <a href="{{ route('admin.game-subjects.index', ['mall_edit' => $subject->id]) }}" class="btn btn-outline-primary btn-sm">Edit</a>
             <button type="button" class="btn btn-outline-danger btn-sm"
                     data-mall-delete-url="{{ route('admin.game-subjects.destroy', $subject) }}"
                     data-mall-delete-message="删除赛事主体 {{ $subject->name }}？">

@@ -28,14 +28,18 @@ class AdminGameGroupController extends Controller
             ->paginate($perPage)
             ->withQueryString();
 
+        $mallCreate = $request->boolean('mall_create');
+        $mallEditId = (int) $request->query('mall_edit', 0);
+        $modalGroup = null;
+        if ($mallEditId >= 1) {
+            $modalGroup = GameGroup::query()->find($mallEditId);
+        }
+
         return view('admin.game-groups.index', [
             'groups' => $groups,
+            'mallCreate' => $mallCreate,
+            'modalGroup' => $modalGroup,
         ]);
-    }
-
-    public function create(): View
-    {
-        return view('admin.game-groups.create');
     }
 
     public function store(Request $request): RedirectResponse
@@ -73,13 +77,6 @@ class AdminGameGroupController extends Controller
         return view('admin.game-groups.show', [
             'gameGroup' => $gameGroup,
             'cmsByRawId' => $cmsByRawId,
-        ]);
-    }
-
-    public function edit(GameGroup $gameGroup): View
-    {
-        return view('admin.game-groups.edit', [
-            'gameGroup' => $gameGroup,
         ]);
     }
 

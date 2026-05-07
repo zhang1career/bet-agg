@@ -1,29 +1,30 @@
 @php
+    $mediaIdPfx = $mediaIdPfx ?? 'gg';
     $banner_path = $banner_path ?? '';
     $main_image_path = $main_image_path ?? '';
 @endphp
 
 <div class="game-media-upload">
     <div class="mb-3">
-        <label class="form-label" for="gg-banner_path">Banner</label>
+        <label class="form-label" for="{{ $mediaIdPfx }}-banner_path">Banner</label>
         <div class="d-flex flex-column gap-2">
-            <input type="text" name="banner_path" id="gg-banner_path" class="form-control font-monospace small"
+            <input type="text" name="banner_path" id="{{ $mediaIdPfx }}-banner_path" class="form-control font-monospace small"
                    value="{{ $banner_path }}" placeholder="OSS object key (upload or paste)">
-            <input type="file" class="form-control" id="gg-banner_path-file" accept="image/*">
+            <input type="file" class="form-control" id="{{ $mediaIdPfx }}-banner_path-file" accept="image/*">
         </div>
         <div class="form-text text-muted">Single file; form submits the OSS path (object key), not a public URL.</div>
-        <div class="text-danger small mt-1 d-none" id="gg-banner_path-err" role="alert"></div>
+        <div class="text-danger small mt-1 d-none" id="{{ $mediaIdPfx }}-banner_path-err" role="alert"></div>
     </div>
 
     <div class="mb-3">
-        <label class="form-label" for="gg-main_image_path">Main media</label>
+        <label class="form-label" for="{{ $mediaIdPfx }}-main_image_path">Main media</label>
         <div class="d-flex flex-column gap-2">
-            <input type="text" name="main_image_path" id="gg-main_image_path" class="form-control font-monospace small"
+            <input type="text" name="main_image_path" id="{{ $mediaIdPfx }}-main_image_path" class="form-control font-monospace small"
                    value="{{ $main_image_path }}" placeholder="OSS object key (upload or paste)">
-            <input type="file" class="form-control" id="gg-main_image_path-file" accept="image/*">
+            <input type="file" class="form-control" id="{{ $mediaIdPfx }}-main_image_path-file" accept="image/*">
         </div>
         <div class="form-text text-muted">Single file; form submits the OSS path (object key), not a public URL.</div>
-        <div class="text-danger small mt-1 d-none" id="gg-main_image_path-err" role="alert"></div>
+        <div class="text-danger small mt-1 d-none" id="{{ $mediaIdPfx }}-main_image_path-err" role="alert"></div>
     </div>
 </div>
 
@@ -85,12 +86,13 @@
             }
 
             document.addEventListener('DOMContentLoaded', function () {
-                var bannerInput = document.getElementById('gg-banner_path');
-                var bannerFile = document.getElementById('gg-banner_path-file');
+                var pfx = @json($mediaIdPfx);
+                var bannerInput = document.getElementById(pfx + '-banner_path');
+                var bannerFile = document.getElementById(pfx + '-banner_path-file');
                 if (bannerFile && bannerInput) {
                     bannerFile.addEventListener('change', function () {
                         var f = bannerFile.files && bannerFile.files[0];
-                        showErr('gg-banner_path-err', '');
+                        showErr(pfx + '-banner_path-err', '');
                         if (!f) {
                             return;
                         }
@@ -98,18 +100,18 @@
                             bannerInput.value = path;
                             bannerFile.value = '';
                         }).catch(function (e) {
-                            showErr('gg-banner_path-err', e.message || 'Upload failed');
+                            showErr(pfx + '-banner_path-err', e.message || 'Upload failed');
                             bannerFile.value = '';
                         });
                     });
                 }
 
-                var mainInput = document.getElementById('gg-main_image_path');
-                var mainFile = document.getElementById('gg-main_image_path-file');
+                var mainInput = document.getElementById(pfx + '-main_image_path');
+                var mainFile = document.getElementById(pfx + '-main_image_path-file');
                 if (mainFile && mainInput) {
                     mainFile.addEventListener('change', function () {
                         var f = mainFile.files && mainFile.files[0];
-                        showErr('gg-main_image_path-err', '');
+                        showErr(pfx + '-main_image_path-err', '');
                         if (!f) {
                             return;
                         }
@@ -117,7 +119,7 @@
                             mainInput.value = path;
                             mainFile.value = '';
                         }).catch(function (e) {
-                            showErr('gg-main_image_path-err', e.message || 'Upload failed');
+                            showErr(pfx + '-main_image_path-err', e.message || 'Upload failed');
                             mainFile.value = '';
                         });
                     });

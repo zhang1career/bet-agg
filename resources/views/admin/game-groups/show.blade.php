@@ -11,7 +11,7 @@
     <div class="mall-list-toolbar d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
         <h2 class="h5 mb-0"><code class="small">{{ $gameGroup->code }}</code> <span class="text-muted">#{{ $gameGroup->id }}</span></h2>
         <div class="d-flex gap-2 flex-wrap">
-            <a href="{{ route('admin.game-groups.edit', $gameGroup) }}" class="btn btn-outline-primary btn-sm">Edit</a>
+            <a href="{{ route('admin.game-groups.index', ['mall_edit' => $gameGroup->id]) }}" class="btn btn-outline-primary btn-sm">Edit</a>
             <button type="button" class="btn btn-outline-danger btn-sm"
                     title="Delete" aria-label="Delete"
                     data-mall-delete-url="{{ route('admin.game-groups.destroy', $gameGroup) }}"

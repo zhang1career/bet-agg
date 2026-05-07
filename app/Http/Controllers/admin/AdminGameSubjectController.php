@@ -23,13 +23,27 @@ class AdminGameSubjectController extends Controller
             ->paginate($perPage)
             ->withQueryString();
 
-        return view('admin.game-subjects.index', ['subjects' => $subjects]);
-    }
+        $groups = GameGroup::query()->orderBy('code')->get();
 
-    public function create(): View
-    {
-        return view('admin.game-subjects.create', [
-            'groups' => GameGroup::query()->orderBy('code')->get(),
+        $mallCreate = $request->boolean('mall_create');
+        $mallEditId = (int) $request->query('mall_edit', 0);
+        $modalSubject = null;
+        $modalSelectedGroupIds = [];
+        if ($mallEditId >= 1) {
+            $modalSubject = GameSubject::query()->with('groups')->find($mallEditId);
+            if ($modalSubject instanceof GameSubject) {
+                $modalSelectedGroupIds = $modalSubject->groups->pluck('id')->map(static fn ($id): int => (int) $id)->all();
+            } else {
+                $modalSubject = null;
+            }
+        }
+
+        return view('admin.game-subjects.index', [
+            'subjects' => $subjects,
+            'groups' => $groups,
+            'mallCreate' => $mallCreate,
+            'modalSubject' => $modalSubject,
+            'modalSelectedGroupIds' => $modalSelectedGroupIds,
         ]);
     }
 
@@ -55,18 +69,6 @@ class AdminGameSubjectController extends Controller
         $gameSubject->load(['groups' => static fn ($q) => $q->orderBy('code')]);
 
         return view('admin.game-subjects.show', ['subject' => $gameSubject]);
-    }
-
-    public function edit(GameSubject $gameSubject): View
-    {
-        $gameSubject->load('groups');
-        $selected = $gameSubject->groups->pluck('id')->map(static fn ($id): int => (int) $id)->all();
-
-        return view('admin.game-subjects.edit', [
-            'subject' => $gameSubject,
-            'groups' => GameGroup::query()->orderBy('code')->get(),
-            'selectedGroupIds' => $selected,
-        ]);
     }
 
     public function update(Request $request, GameSubject $gameSubject): RedirectResponse

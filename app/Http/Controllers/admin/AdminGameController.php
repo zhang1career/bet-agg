@@ -12,7 +12,6 @@ use App\Services\mall\serv_fd\CmsGameClient;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Paganini\Aggregation\Exceptions\DownstreamServiceException;
 use Throwable;
@@ -21,6 +20,7 @@ class AdminGameController extends Controller
 {
     public function __construct(
         private readonly CmsGameClient $cmsGameClient,
+        private readonly AdminSettlementController $settlement,
     ) {}
 
     public function index(Request $request): View
@@ -47,17 +47,48 @@ class AdminGameController extends Controller
         } catch (Throwable) {
         }
 
+        $mallCreate = $request->boolean('mall_create');
+        $mallEditId = (int) $request->query('mall_edit', 0);
+        $mallSettlement = $request->boolean('mall_settlement');
+
+        $modalEditGame = null;
+        $modalEditCms = null;
+        $modalEditSelectedGroups = [];
+        $allGroups = collect();
+        $allSubjects = collect();
+
+        if ($mallCreate || ($mallEditId >= 1)) {
+            $allGroups = GameGroup::query()->orderBy('code')->get();
+            $allSubjects = GameSubject::query()->with('groups')->orderBy('name')->get();
+        }
+
+        if ($mallEditId >= 1) {
+            $modalEditGame = Game::query()->with('groups')->find($mallEditId);
+            if ($modalEditGame instanceof Game) {
+                $modalEditCms = $this->fetchCmsGameOrNull((int) $modalEditGame->raw_id);
+                $modalEditSelectedGroups = $modalEditGame->groups->pluck('id')->map(static fn ($id): int => (int) $id)->all();
+            } else {
+                $modalEditGame = null;
+            }
+        }
+
+        $settlementForm = null;
+        if ($mallSettlement) {
+            $settlementForm = $this->settlement->modalFormPayload();
+        }
+
         return view('admin.games.index', [
             'games' => $games,
             'cmsByRawId' => $cmsByRawId,
-        ]);
-    }
-
-    public function create(): View
-    {
-        return view('admin.games.create', [
-            'allGroups' => GameGroup::query()->orderBy('code')->get(),
-            'allSubjects' => GameSubject::query()->with('groups')->orderBy('name')->get(),
+            'mallCreate' => $mallCreate,
+            'mallEditId' => $mallEditId,
+            'mallSettlement' => $mallSettlement,
+            'modalEditGame' => $modalEditGame,
+            'modalEditCms' => $modalEditCms,
+            'modalEditSelectedGroups' => $modalEditSelectedGroups,
+            'allGroups' => $allGroups,
+            'allSubjects' => $allSubjects,
+            'settlementForm' => $settlementForm,
         ]);
     }
 
@@ -67,21 +98,32 @@ class AdminGameController extends Controller
         $groupIds = $this->normalizedGroupIds($v);
         $sideA = $this->normalizedOptionalSubjectId($v['side_a_subject_id'] ?? null);
         $sideB = $this->normalizedOptionalSubjectId($v['side_b_subject_id'] ?? null);
-        $this->assertSidesBelongToSelectedGroups($groupIds, $sideA, $sideB);
+        $sideErrors = $this->sideSubjectValidationErrors($groupIds, $sideA, $sideB);
+        if ($sideErrors !== []) {
+            return redirect()->route('admin.games.index', ['mall_create' => 1])
+                ->withInput()
+                ->withErrors($sideErrors);
+        }
 
         $cmsFields = $this->cmsWriteFieldsFromValidated($v);
 
         try {
             $created = $this->cmsGameClient->create($cmsFields);
         } catch (DownstreamServiceException $e) {
-            return redirect()->back()->withInput()->withErrors(['cms' => $e->getMessage()]);
+            return redirect()->route('admin.games.index', ['mall_create' => 1])
+                ->withInput()
+                ->withErrors(['cms' => $e->getMessage()]);
         } catch (Throwable $e) {
-            return redirect()->back()->withInput()->withErrors(['cms' => $e->getMessage()]);
+            return redirect()->route('admin.games.index', ['mall_create' => 1])
+                ->withInput()
+                ->withErrors(['cms' => $e->getMessage()]);
         }
 
         $rawId = $this->cmsResponseId($created);
         if ($rawId < 1) {
-            return redirect()->back()->withInput()->withErrors(['cms' => 'CMS did not return a game id.']);
+            return redirect()->route('admin.games.index', ['mall_create' => 1])
+                ->withInput()
+                ->withErrors(['cms' => 'CMS did not return a game id.']);
         }
 
         $game = new Game([
@@ -113,44 +155,37 @@ class AdminGameController extends Controller
         ]);
     }
 
-    public function edit(Game $game): View
-    {
-        $game->load('groups');
-        $cmsGame = $this->fetchCmsGameOrNull((int) $game->raw_id);
-
-        return view('admin.games.edit', [
-            'game' => $game,
-            'cms_game' => $cmsGame,
-            'allGroups' => GameGroup::query()->orderBy('code')->get(),
-            'allSubjects' => GameSubject::query()->with('groups')->orderBy('name')->get(),
-            'selectedGroupIds' => $game->groups->pluck('id')->map(static fn ($id): int => (int) $id)->all(),
-            'selectedSideA' => $game->side_a_subject_id,
-            'selectedSideB' => $game->side_b_subject_id,
-        ]);
-    }
-
     public function update(Request $request, Game $game): RedirectResponse
     {
         $v = $request->validate($this->gameFormRules(forCreate: false));
         $groupIds = $this->normalizedGroupIds($v);
         $sideA = $this->normalizedOptionalSubjectId($v['side_a_subject_id'] ?? null);
         $sideB = $this->normalizedOptionalSubjectId($v['side_b_subject_id'] ?? null);
-        $this->assertSidesBelongToSelectedGroups($groupIds, $sideA, $sideB);
+        $sideErrors = $this->sideSubjectValidationErrors($groupIds, $sideA, $sideB);
+        if ($sideErrors !== []) {
+            return redirect()->route('admin.games.index', ['mall_edit' => $game->id])
+                ->withInput()
+                ->withErrors($sideErrors);
+        }
 
         $cmsGame = $this->fetchCmsGameOrNull((int) $game->raw_id);
         if (is_array($cmsGame)) {
             if (trim((string) ($v['name'] ?? '')) === '') {
-                throw ValidationException::withMessages([
-                    'name' => 'Title is required when the CMS record can be loaded.',
-                ]);
+                return redirect()->route('admin.games.index', ['mall_edit' => $game->id])
+                    ->withInput()
+                    ->withErrors(['name' => 'Title is required when the CMS record can be loaded.']);
             }
             $cmsFields = $this->cmsWriteFieldsFromValidated($v);
             try {
                 $this->cmsGameClient->update((int) $game->raw_id, $cmsFields);
             } catch (DownstreamServiceException $e) {
-                return redirect()->back()->withInput()->withErrors(['cms' => $e->getMessage()]);
+                return redirect()->route('admin.games.index', ['mall_edit' => $game->id])
+                    ->withInput()
+                    ->withErrors(['cms' => $e->getMessage()]);
             } catch (Throwable $e) {
-                return redirect()->back()->withInput()->withErrors(['cms' => $e->getMessage()]);
+                return redirect()->route('admin.games.index', ['mall_edit' => $game->id])
+                    ->withInput()
+                    ->withErrors(['cms' => $e->getMessage()]);
             }
         }
 
@@ -235,9 +270,11 @@ class AdminGameController extends Controller
 
     /**
      * @param  list<int>  $groupIds
+     * @return array<string, list<string>>
      */
-    private function assertSidesBelongToSelectedGroups(array $groupIds, ?int $sideA, ?int $sideB): void
+    private function sideSubjectValidationErrors(array $groupIds, ?int $sideA, ?int $sideB): array
     {
+        $errors = [];
         foreach (['A' => $sideA, 'B' => $sideB] as $label => $sid) {
             if ($sid === null) {
                 continue;
@@ -247,11 +284,13 @@ class AdminGameController extends Controller
                 ->whereHas('groups', static fn ($q) => $q->whereIn('biz_game_group.id', $groupIds))
                 ->exists();
             if (! $ok) {
-                throw ValidationException::withMessages([
-                    'side_'.strtolower($label).'_subject_id' => 'The selected side '.$label.' subject is not in any of the chosen groups.',
-                ]);
+                $errors['side_'.strtolower($label).'_subject_id'] = [
+                    'The selected side '.$label.' subject is not in any of the chosen groups.',
+                ];
             }
         }
+
+        return $errors;
     }
 
     /**

@@ -30,19 +30,24 @@ class AdminMarketController extends Controller
             ->paginate($perPage)
             ->withQueryString();
 
+        $games = Game::query()->orderByDesc('id')->limit(500)->get();
+        $gameSelectLabels = $this->gameSelectLabels->mapByLocalId($games);
+
+        $mallCreate = $request->boolean('mall_create');
+        $mallEditId = (int) $request->query('mall_edit', 0);
+        $prefillGameId = (int) $request->query('game_id', 0);
+
+        $modalMarket = null;
+        if ($mallEditId >= 1) {
+            $modalMarket = Market::query()->find($mallEditId);
+        }
+
         return view('admin.markets.index', [
             'markets' => $markets,
-        ]);
-    }
-
-    public function create(Request $request): View
-    {
-        $games = Game::query()->orderByDesc('id')->limit(500)->get();
-        $prefillGameId = max(0, (int) $request->query('game_id', 0));
-
-        return view('admin.markets.create', [
             'games' => $games,
-            'gameSelectLabels' => $this->gameSelectLabels->mapByLocalId($games),
+            'gameSelectLabels' => $gameSelectLabels,
+            'mallCreate' => $mallCreate,
+            'modalMarket' => $modalMarket,
             'prefillGameId' => $prefillGameId,
         ]);
     }
@@ -82,18 +87,6 @@ class AdminMarketController extends Controller
         $market->load(['game.sideASubject', 'game.sideBSubject']);
 
         return view('admin.markets.show', ['market' => $market]);
-    }
-
-    public function edit(Market $market): View
-    {
-        $market->load('game');
-        $games = Game::query()->orderByDesc('id')->limit(500)->get();
-
-        return view('admin.markets.edit', [
-            'market' => $market,
-            'games' => $games,
-            'gameSelectLabels' => $this->gameSelectLabels->mapByLocalId($games),
-        ]);
     }
 
     public function update(Request $request, Market $market): RedirectResponse

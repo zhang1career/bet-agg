@@ -11,7 +11,7 @@
     <div class="mall-list-toolbar d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
         <h2 class="h5 mb-0">Market #{{ $market->id }}</h2>
         <div class="d-flex gap-2 flex-wrap">
-            <a href="{{ route('admin.markets.edit', $market) }}" class="btn btn-primary btn-sm">Edit market</a>
+            <a href="{{ route('admin.markets.index', ['mall_edit' => $market->id]) }}" class="btn btn-primary btn-sm">Edit market</a>
             <button type="button" class="btn btn-outline-danger btn-sm" title="Delete"
                     data-mall-delete-url="{{ route('admin.markets.destroy', $market) }}"
                     data-mall-delete-message="Delete market #{{ $market->id }}?">
