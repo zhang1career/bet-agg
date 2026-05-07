@@ -28,6 +28,9 @@ enum PointsHoldState: int implements HasDictionaryLabel
     /** Bookmaker liquidity debited when paying an accepted bet win (paired with SettlementPayout on user). */
     case BookPayoutDebit = 73;
 
+    /** Bookmaker liquidity debited when refunding a void bet stake (paired with SettlementRefund on user). */
+    case BookStakeRefund = 74;
+
     public function label(): string
     {
         return match ($this) {
@@ -40,6 +43,7 @@ enum PointsHoldState: int implements HasDictionaryLabel
             self::SettlementRefund => 'settlement refund',
             self::BookStakeCredit => 'book stake credit',
             self::BookPayoutDebit => 'book payout debit',
+            self::BookStakeRefund => 'book stake refund',
         };
     }
 }

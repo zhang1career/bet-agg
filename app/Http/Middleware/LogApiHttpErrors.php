@@ -7,6 +7,7 @@ use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Paganini\Constants\ResponseConstant;
+use Random\RandomException;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -15,6 +16,9 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class LogApiHttpErrors
 {
+    /**
+     * @throws RandomException
+     */
     public function handle(Request $request, Closure $next): Response
     {
         $response = $next($request);

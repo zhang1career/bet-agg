@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Logging\monolog;
 
+use DateTimeImmutable;
+use DateTimeZone;
+use Exception;
 use Monolog\Handler\StreamHandler;
 use Monolog\Level;
 use Monolog\LogRecord;
@@ -50,12 +53,18 @@ class TodayAppLogHandler extends StreamHandler
         );
     }
 
+    /**
+     * @throws Exception
+     */
     protected function write(LogRecord $record): void
     {
         $this->syncActiveFileFor($record);
         parent::write($record);
     }
 
+    /**
+     * @throws Exception
+     */
     private function syncActiveFileFor(LogRecord $record): void
     {
         $day = $record->datetime->format('Y-m-d');
@@ -78,13 +87,16 @@ class TodayAppLogHandler extends StreamHandler
         $this->activeDay = $day;
     }
 
-    private function archiveStaleFileIfAny(string $day, \DateTimeZone $tz): void
+    /**
+     * @throws Exception
+     */
+    private function archiveStaleFileIfAny(string $day, DateTimeZone $tz): void
     {
         if (! is_file($this->basePath)) {
             return;
         }
 
-        $fileDay = (new \DateTimeImmutable('@'.(string) filemtime($this->basePath)))
+        $fileDay = (new DateTimeImmutable('@'. filemtime($this->basePath)))
             ->setTimezone($tz)
             ->format('Y-m-d');
 
@@ -158,7 +170,7 @@ class TodayAppLogHandler extends StreamHandler
                 continue;
             }
             $base = basename($path);
-            if (preg_match($re, $base, $m)) {
+            if (preg_match($re, $base)) {
                 $candidates[] = $path;
             }
         }

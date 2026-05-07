@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\mall;
 
 use App\Services\api_gw\ResolvedApiGatewayBaseUrl;
+use Illuminate\Contracts\Container\BindingResolutionException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
@@ -23,6 +24,7 @@ final readonly class MallOssUploadService
      * Object key {@code {segment}/{uuid}.ext}; {@code segment} must be in {@see self::GAME_MEDIA_SEGMENTS}.
      *
      * @return non-empty-string
+     * @throws BindingResolutionException
      */
     public function uploadGameMediaFile(UploadedFile $uploadedFile, string $segment): string
     {

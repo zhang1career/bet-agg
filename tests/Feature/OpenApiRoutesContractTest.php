@@ -31,6 +31,30 @@ final class OpenApiRoutesContractTest extends TestCase
         $this->assertArrayHasKey('examples', $components);
     }
 
+    public function test_openapi_endpoint_serves_spec_file_verbatim(): void
+    {
+        $response = $this->getJson('/api/openapi.json');
+        $response->assertOk()->assertHeader('content-type', 'application/json');
+        $body = $response->json();
+        $this->assertSame('3.0.3', $body['openapi']);
+        $this->assertArrayHasKey('/api/openapi.json', $body['paths']);
+    }
+
+    public function test_documented_paths_only_cover_public_api_surface(): void
+    {
+        /** @var array<string, mixed> $spec */
+        $spec = json_decode(file_get_contents(base_path('docs/api.json')) ?: 'null', true, 512, JSON_THROW_ON_ERROR);
+        foreach (array_keys($spec['paths']) as $openApiPath) {
+            $path = (string) $openApiPath;
+            $isPublic = str_starts_with($path, '/api/') || $path === '/up';
+            $this->assertTrue(
+                $isPublic,
+                'docs/api.json must only document public surface (/api/* or /up); got '.$path,
+            );
+            $this->assertStringStartsNotWith('/internal/', $path, 'Internal routes must not appear in docs/api.json.');
+        }
+    }
+
     public function test_documented_paths_match_laravel_routes(): void
     {
         /** @var array<string, mixed> $spec */
@@ -80,11 +104,7 @@ final class OpenApiRoutesContractTest extends TestCase
     public static function examplePayloadProvider(): array
     {
         return [
-            ['BetOrderCreateBody'],
-            ['BetCheckoutBody'],
-            ['BetOrderPatchBody'],
-            ['XxlJobRunBody'],
-            ['XxlJobKillBody'],
+            ['BetPlaceBody'],
             ['ApiEnvelopeSuccess'],
         ];
     }

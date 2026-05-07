@@ -2,6 +2,7 @@
 
 use App\Exceptions\ApiJsonExceptionHandler;
 use App\Http\Middleware\LogApiHttpErrors;
+use App\Http\Middleware\SetConsoleLocaleFromCookie;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -22,6 +23,9 @@ $app = Application::configure(basePath: dirname(__DIR__))
         },
     )
     ->withMiddleware(function (Middleware $middleware) {
+        $middleware->web(append: [
+            SetConsoleLocaleFromCookie::class,
+        ]);
         $middleware->appendToGroup('api', LogApiHttpErrors::class);
     })
     ->withExceptions(function (Exceptions $exceptions) {

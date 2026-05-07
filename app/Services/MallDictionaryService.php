@@ -6,10 +6,9 @@ namespace App\Services;
 
 use App\Contracts\HasDictionaryLabel;
 use App\Enums\BetOrderStatus;
-use App\Enums\CheckoutPhase;
+use App\Enums\GameStatus;
+use App\Enums\MarketStatus;
 use App\Enums\PointsHoldState;
-use App\Enums\SportGameStatus;
-use App\Enums\SportMarketStatus;
 use BackedEnum;
 use InvalidArgumentException;
 use UnitEnum;
@@ -20,9 +19,8 @@ final class MallDictionaryService
     private const CODE_TO_ENUM = [
         'points_hold_state' => PointsHoldState::class,
         'bet_order_status' => BetOrderStatus::class,
-        'checkout_phase' => CheckoutPhase::class,
-        'sport_market_status' => SportMarketStatus::class,
-        'sport_game_status' => SportGameStatus::class,
+        'market_status' => MarketStatus::class,
+        'game_status' => GameStatus::class,
     ];
 
     /**
@@ -78,13 +76,5 @@ final class MallDictionaryService
         }
 
         return $case->name;
-    }
-
-    /**
-     * @return list<string>
-     */
-    public static function registeredCodes(): array
-    {
-        return array_keys(self::CODE_TO_ENUM);
     }
 }

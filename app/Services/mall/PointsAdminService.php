@@ -12,6 +12,19 @@ use RuntimeException;
 
 final class PointsAdminService
 {
+    /**
+     * Available points balance for {@code uid}; missing row yields 0.
+     */
+    public function availableBalance(int $uid): int
+    {
+        $row = PointsBalance::query()->where('uid', $uid)->first();
+        if ($row === null) {
+            return 0;
+        }
+
+        return $row->balance;
+    }
+
     public function openAccount(int $uid, int $initialBalance = 0): PointsBalance
     {
         if ($uid < 1) {
@@ -61,27 +74,6 @@ final class PointsAdminService
         });
     }
 
-    /** @return array{balance: PointsBalance, flow: PointsFlow} */
-    public function adjustBalanceByBalanceId(int $balanceId, int $deltaPoints, int $oid = 0): array
-    {
-        if ($balanceId < 1) {
-            throw new RuntimeException('Invalid balance id.');
-        }
-        if ($deltaPoints === 0) {
-            throw new RuntimeException('Adjustment amount must be non-zero.');
-        }
-        if ($oid < 0) {
-            throw new RuntimeException('Invalid order id.');
-        }
-
-        return DB::transaction(function () use ($balanceId, $deltaPoints, $oid): array {
-            $balance = PointsBalance::query()->where('id', $balanceId)->lockForUpdate()->first();
-            $uid = $balance === null ? 0 : (int) $balance->uid;
-
-            return $this->applyAdjustmentToBalance($balance, $uid, $deltaPoints, $oid);
-        });
-    }
-
     /**
      * @return array{balance: PointsBalance, flow: PointsFlow}
      */
@@ -91,7 +83,7 @@ final class PointsAdminService
             throw new RuntimeException('Points account does not exist. Open an account first.');
         }
 
-        $next = (int) $balance->balance + $deltaPoints;
+        $next = $balance->balance + $deltaPoints;
         if ($next < 0) {
             throw new RuntimeException('Insufficient points for this adjustment.');
         }
@@ -111,16 +103,11 @@ final class PointsAdminService
             if ($row === null) {
                 throw new RuntimeException('Account not found.');
             }
-            if ((int) $row->balance !== 0) {
+            if ($row->balance !== 0) {
                 throw new RuntimeException('Balance must be zero before delete.');
             }
             $row->delete();
         });
-    }
-
-    public function deleteFlowById(int $id): void
-    {
-        throw new RuntimeException('Points flow is append-only for audit; deletion is disabled.');
     }
 
     /**
@@ -144,39 +131,51 @@ final class PointsAdminService
         }
 
         return DB::transaction(function () use ($bookUid, $winnerUid, $payoutPoints, $betOrderId): array {
-            $bookBal = PointsBalance::query()->where('uid', $bookUid)->lockForUpdate()->first();
-            if ($bookBal === null || (int) $bookBal->balance < $payoutPoints) {
-                throw new RuntimeException('Insufficient bookmaker liquidity for this payout.');
-            }
+            return $this->transferFromBookmakerToUser(
+                $bookUid,
+                $winnerUid,
+                $payoutPoints,
+                $betOrderId,
+                PointsHoldState::BookPayoutDebit,
+                PointsHoldState::SettlementPayout,
+                'Insufficient bookmaker liquidity for this payout.',
+            );
+        });
+    }
 
-            $userBal = PointsBalance::query()->where('uid', $winnerUid)->lockForUpdate()->first();
-            if ($userBal === null) {
-                throw new RuntimeException('Points account does not exist.');
-            }
+    /**
+     * Refunds a void bet's stake from the bookmaker pool back to the user. Mirrors
+     * {@see payoutBetWinFromBookmaker} but uses the {@see PointsHoldState::BookStakeRefund} /
+     * {@see PointsHoldState::SettlementRefund} pair so audit and settlement filters can
+     * distinguish "void refund" from "win payout".
+     *
+     * @return array{user_flow: PointsFlow, book_flow: PointsFlow}
+     */
+    public function refundBetStakeFromBookmaker(int $bookUid, int $userUid, int $stakePoints, int $betOrderId): array
+    {
+        if ($bookUid < 1 || $userUid < 1) {
+            throw new RuntimeException('Invalid user id.');
+        }
+        if ($bookUid === $userUid) {
+            throw new RuntimeException('Bookmaker uid cannot match user uid.');
+        }
+        if ($stakePoints < 1) {
+            throw new RuntimeException('Refund amount must be positive.');
+        }
+        if ($betOrderId < 1) {
+            throw new RuntimeException('Invalid bet order id.');
+        }
 
-            $bookBal->balance = (int) $bookBal->balance - $payoutPoints;
-            $bookBal->save();
-
-            $userBal->balance = (int) $userBal->balance + $payoutPoints;
-            $userBal->save();
-
-            $bookFlow = new PointsFlow([
-                'uid' => $bookUid,
-                'oid' => $betOrderId,
-                'amount' => -$payoutPoints,
-                'state' => PointsHoldState::BookPayoutDebit,
-            ]);
-            $bookFlow->save();
-
-            $userFlow = new PointsFlow([
-                'uid' => $winnerUid,
-                'oid' => $betOrderId,
-                'amount' => $payoutPoints,
-                'state' => PointsHoldState::SettlementPayout,
-            ]);
-            $userFlow->save();
-
-            return ['user_flow' => $userFlow, 'book_flow' => $bookFlow];
+        return DB::transaction(function () use ($bookUid, $userUid, $stakePoints, $betOrderId): array {
+            return $this->transferFromBookmakerToUser(
+                $bookUid,
+                $userUid,
+                $stakePoints,
+                $betOrderId,
+                PointsHoldState::BookStakeRefund,
+                PointsHoldState::SettlementRefund,
+                'Insufficient bookmaker liquidity for this refund.',
+            );
         });
     }
 
@@ -204,7 +203,7 @@ final class PointsAdminService
                 throw new RuntimeException('Bookmaker points account missing.');
             }
 
-            $balance->balance = (int) $balance->balance + $stakePoints;
+            $balance->balance = $balance->balance + $stakePoints;
             $balance->save();
 
             $flow = new PointsFlow([
@@ -218,42 +217,53 @@ final class PointsAdminService
     }
 
     /**
-     * Immutable ledger append (settlement payouts/refunds). Application-layer audit guarantee.
+     * Debits the bookmaker pool and credits the user by {@code $points}, with paired ledger rows.
+     * Must be called inside {@see DB::transaction}; {@code $points} must be positive.
+     *
+     * @return array{user_flow: PointsFlow, book_flow: PointsFlow}
      */
-    public function appendImmutableLedger(int $uid, int $deltaPoints, int $oid, PointsHoldState $state): PointsFlow
-    {
-        if ($uid < 1) {
-            throw new RuntimeException('Invalid user id.');
-        }
-        if ($deltaPoints < 1) {
-            throw new RuntimeException('Ledger amount must be positive.');
-        }
-        if ($oid < 1) {
-            throw new RuntimeException('Invalid bet order id.');
-        }
-        if ($state !== PointsHoldState::SettlementPayout && $state !== PointsHoldState::SettlementRefund) {
-            throw new RuntimeException('Invalid ledger state for settlement posting.');
+    private function transferFromBookmakerToUser(
+        int $bookUid,
+        int $userUid,
+        int $points,
+        int $betOrderId,
+        PointsHoldState $bookDebitState,
+        PointsHoldState $userCreditState,
+        string $insufficientBookLiquidityMessage,
+    ): array {
+        $bookBal = PointsBalance::query()->where('uid', $bookUid)->lockForUpdate()->first();
+        if ($bookBal === null || (int) $bookBal->balance < $points) {
+            throw new RuntimeException($insufficientBookLiquidityMessage);
         }
 
-        return DB::transaction(function () use ($uid, $deltaPoints, $oid, $state): PointsFlow {
-            $balance = PointsBalance::query()->where('uid', $uid)->lockForUpdate()->first();
-            if ($balance === null) {
-                throw new RuntimeException('Points account does not exist.');
-            }
+        $userBal = PointsBalance::query()->where('uid', $userUid)->lockForUpdate()->first();
+        if ($userBal === null) {
+            throw new RuntimeException('Points account does not exist.');
+        }
 
-            $balance->balance = (int) $balance->balance + $deltaPoints;
-            $balance->save();
+        $bookBal->balance = (int) $bookBal->balance - $points;
+        $bookBal->save();
 
-            $flow = new PointsFlow([
-                'uid' => $uid,
-                'oid' => $oid,
-                'amount' => $deltaPoints,
-                'state' => $state,
-            ]);
-            $flow->save();
+        $userBal->balance = (int) $userBal->balance + $points;
+        $userBal->save();
 
-            return $flow;
-        });
+        $bookFlow = new PointsFlow([
+            'uid' => $bookUid,
+            'oid' => $betOrderId,
+            'amount' => -$points,
+            'state' => $bookDebitState,
+        ]);
+        $bookFlow->save();
+
+        $userFlow = new PointsFlow([
+            'uid' => $userUid,
+            'oid' => $betOrderId,
+            'amount' => $points,
+            'state' => $userCreditState,
+        ]);
+        $userFlow->save();
+
+        return ['user_flow' => $userFlow, 'book_flow' => $bookFlow];
     }
 
     private function insertLedgerRow(int $uid, int $oid, int $amountPoints): PointsFlow

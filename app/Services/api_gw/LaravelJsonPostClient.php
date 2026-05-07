@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services\api_gw;
 
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
+use InvalidArgumentException;
 use Paganini\Foundation\Http\JsonPostClientInterface;
 use RuntimeException;
 
@@ -21,11 +23,14 @@ final readonly class LaravelJsonPostClient implements JsonPostClientInterface
     ) {
         $t = trim($baseUrl);
         if ($t === '') {
-            throw new \InvalidArgumentException('baseUrl must be non-empty.');
+            throw new InvalidArgumentException('baseUrl must be non-empty.');
         }
         $this->baseUrl = rtrim($t, '/');
     }
 
+    /**
+     * @throws ConnectionException
+     */
     public function postJson(string $path, array $body, array $headers = []): array
     {
         $url = $this->baseUrl.'/'.ltrim($path, '/');

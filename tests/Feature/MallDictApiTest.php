@@ -38,12 +38,21 @@ class MallDictApiTest extends TestCase
             ->assertJsonPath('data.points_hold_state.0.v', '10');
     }
 
-    public function test_dict_returns_sport_market_status(): void
+    public function test_dict_returns_game_status(): void
     {
-        $this->getJson('/api/bet/dict?codes=sport_market_status')
+        $this->getJson('/api/bet/dict?codes=game_status')
             ->assertOk()
             ->assertJsonPath('errorCode', ResponseConstant::RET_OK)
-            ->assertJsonPath('data.sport_market_status.0.v', '1')
-            ->assertJsonPath('data.sport_market_status.0.k', 'Open');
+            ->assertJsonPath('data.game_status.0.v', '1')
+            ->assertJsonPath('data.game_status.0.k', 'Open');
+    }
+
+    public function test_dict_returns_market_status(): void
+    {
+        $this->getJson('/api/bet/dict?codes=market_status')
+            ->assertOk()
+            ->assertJsonPath('errorCode', ResponseConstant::RET_OK)
+            ->assertJsonPath('data.market_status.0.v', '1')
+            ->assertJsonPath('data.market_status.0.k', 'Open');
     }
 }

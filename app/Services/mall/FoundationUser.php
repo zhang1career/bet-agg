@@ -9,7 +9,7 @@ use InvalidArgumentException;
 final class FoundationUser
 {
     /**
-     * @param array<string, mixed> $user
+     * @param  array<string, mixed>  $user
      */
     public static function id(array $user): int
     {
@@ -18,6 +18,6 @@ final class FoundationUser
             throw new InvalidArgumentException('Foundation user payload has no id.');
         }
 
-        return (int)$id;
+        return (int) $id;
     }
 }

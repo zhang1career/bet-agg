@@ -190,6 +190,7 @@
         var toggleBtn = document.getElementById('sidebar-toggle');
         var iconExpand = document.getElementById('sidebar-toggle-icon-expand');
         var iconCollapse = document.getElementById('sidebar-toggle-icon-collapse');
+        var I18N = window.MALL_CONSOLE_I18N || {};
 
         if (!sidebar) {
             return;
@@ -236,7 +237,7 @@
                     iconCollapse.classList.add('hidden');
                 }
                 if (toggleBtn) {
-                    toggleBtn.title = 'Expand';
+                    toggleBtn.title = I18N.sidebarExpand || 'Expand';
                 }
             } else {
                 sidebar.classList.remove('sidebar-collapsed');
@@ -262,7 +263,7 @@
                     iconCollapse.classList.remove('hidden');
                 }
                 if (toggleBtn) {
-                    toggleBtn.title = 'Collapse';
+                    toggleBtn.title = I18N.sidebarCollapse || 'Collapse';
                 }
             }
         }
@@ -363,9 +364,69 @@
         return false;
     };
 
+    function mallStripUrlSearchParams(keys) {
+        if (!keys || keys.length === 0 || !window.history || !window.history.replaceState) {
+            return;
+        }
+        try {
+            var u = new URL(window.location.href);
+            var changed = false;
+            keys.forEach(function (k) {
+                if (u.searchParams.has(k)) {
+                    u.searchParams.delete(k);
+                    changed = true;
+                }
+            });
+            if (changed) {
+                var qs = u.searchParams.toString();
+                window.history.replaceState({}, '', u.pathname + (qs ? '?' + qs : '') + u.hash);
+            }
+        } catch (e) {}
+    }
+
+    /**
+     * Bootstrap restores focus to the modal trigger on hide. Icon buttons in data tables
+     * then keep a focus ring that looks like a stuck "selected" state; list pages that open
+     * edit via navigation do not show this. Blur after close so the list matches that look.
+     */
+    function initMallModalTriggerFocusCleanup() {
+        document.addEventListener('hidden.bs.modal', function () {
+            window.setTimeout(function () {
+                var el = document.activeElement;
+                if (el && el.classList && el.classList.contains('mall-icon-btn')) {
+                    el.blur();
+                }
+            }, 0);
+        });
+    }
+
+    function initMallListModals() {
+        document.querySelectorAll('.modal[data-mall-auto-show="1"]').forEach(function (el) {
+            if (window.bootstrap && window.bootstrap.Modal) {
+                window.bootstrap.Modal.getOrCreateInstance(el).show();
+            }
+        });
+        document.querySelectorAll('.modal[data-mall-modal="1"]').forEach(function (modalEl) {
+            modalEl.addEventListener('shown.bs.modal', function () {
+                if (typeof window.mallDictInit === 'function') {
+                    window.mallDictInit(modalEl);
+                }
+            });
+            modalEl.addEventListener('hidden.bs.modal', function () {
+                var raw = modalEl.getAttribute('data-mall-strip-query') || '';
+                var keys = raw.split(/\s+/).map(function (x) {
+                    return x.trim();
+                }).filter(Boolean);
+                mallStripUrlSearchParams(keys);
+            });
+        });
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
         initTheme();
         initSidebar();
         mallDictInit(document);
+        initMallModalTriggerFocusCleanup();
+        initMallListModals();
     });
 })();

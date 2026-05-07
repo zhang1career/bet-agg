@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
-use App\Services\mall\BetOverdueOrderSweepService;
 use App\Services\mall\BetSettlementService;
 use Illuminate\Support\Facades\Log;
 use Paganini\XxlJobExecutor\Attributes\XxlJob;
@@ -17,26 +16,8 @@ use Throwable;
 final class BetOrderMaintenance
 {
     /**
-     * @return array{0: bool, 1: array<string, int>|null, 2: string|null}
-     */
-    #[XxlJob('closeExpiredOrders')]
-    public static function closeExpiredOrders(mixed $_executorParams): array
-    {
-        try {
-            $stats = app(BetOverdueOrderSweepService::class)->sweepExpired();
-            Log::debug('[xxljob] closeExpiredOrders', $stats);
-
-            return [true, $stats, null];
-        } catch (Throwable $e) {
-            Log::error('[xxljob] closeExpiredOrders failed: '.$e->getMessage());
-
-            return [false, null, $e->getMessage()];
-        }
-    }
-
-    /**
-     * Apply result + settle stakes for {@code biz_game}. {@code executorParams} JSON example:
-     * {@code {"game_id":12,"winning_selection_ids":[101,102]}}.
+     * Apply result + settle stakes. {@code executorParams} JSON example:
+     * {@code {"game_id":12,"winning_outcomes":["home_win"],"void_outcomes":[]}}.
      *
      * @return array{0: bool, 1: array<string, int|string>|null, 2: string|null}
      */
@@ -57,21 +38,32 @@ final class BetOrderMaintenance
             }
 
             $gameId = isset($decoded['game_id']) ? (int) $decoded['game_id'] : 0;
-            /** @var mixed $winnerRaw */
-            $winnerRaw = $decoded['winning_selection_ids'] ?? [];
-            if (! is_array($winnerRaw)) {
-                return [false, null, 'winning_selection_ids must be an array.'];
+            $winners = self::stringList($decoded['winning_outcomes'] ?? []);
+            $voids = self::stringList($decoded['void_outcomes'] ?? []);
+
+            $result = app(BetSettlementService::class)->applyGameResult($gameId, $winners, $voids);
+            Log::debug('[xxljob] applyGameSettlement', [
+                'game_id' => $gameId,
+                'job_id' => $result->jobId,
+                'total' => $result->total,
+                'success' => $result->successCount,
+                'failure' => $result->failureCount,
+            ]);
+
+            $payload = [
+                'game_id' => $gameId,
+                'job_id' => $result->jobId,
+                'total' => $result->total,
+                'success_count' => $result->successCount,
+                'failure_count' => $result->failureCount,
+                'status' => $result->status->value,
+            ];
+
+            if ($result->failureCount > 0) {
+                return [false, $payload, 'Settlement completed with failures: '.$result->failureCount];
             }
 
-            $winners = [];
-            foreach ($winnerRaw as $v) {
-                $winners[] = is_int($v) ? $v : (int) $v;
-            }
-
-            $game = app(BetSettlementService::class)->applyGameResult($gameId, $winners);
-            Log::debug('[xxljob] applyGameSettlement', ['game_id' => $game->id, 'winner_count' => count($winners)]);
-
-            return [true, ['game_id' => $game->id, 'status' => $game->status], null];
+            return [true, $payload, null];
         } catch (RuntimeException $e) {
             Log::warning('[xxljob] applyGameSettlement failed: '.$e->getMessage());
 
@@ -81,5 +73,27 @@ final class BetOrderMaintenance
 
             return [false, null, $e->getMessage()];
         }
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function stringList(mixed $raw): array
+    {
+        if (! is_array($raw)) {
+            return [];
+        }
+        $seen = [];
+        foreach ($raw as $v) {
+            if (! is_string($v)) {
+                continue;
+            }
+            $t = trim($v);
+            if ($t !== '') {
+                $seen[$t] = true;
+            }
+        }
+
+        return array_keys($seen);
     }
 }

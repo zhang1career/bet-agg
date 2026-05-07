@@ -6,7 +6,6 @@ namespace App\Services\api_gw;
 
 use Illuminate\Contracts\Container\BindingResolutionException;
 use Illuminate\Contracts\Foundation\Application;
-use JsonException;
 use Paganini\ServiceDiscovery\Contracts\ServiceUriResolverInterface;
 use Paganini\ServiceDiscovery\ServiceUrlSpecifier;
 
@@ -26,9 +25,8 @@ final readonly class MemoizedServiceDiscoveryUrl
 
     /**
      * @throws BindingResolutionException
-     * @throws JsonException
      */
-    public function resolveRtrimmed(string $raw, string $_cacheKeyPrefix): string
+    public function resolveRtrimmed(string $raw): string
     {
         if ($raw === '') {
             return '';

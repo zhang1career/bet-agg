@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Queues;
 
-use App\Services\Adapters\XxlJobGuzzleCallbackClientAdapter;
-use App\Services\Adapters\XxlJobStorageFileLockAdapter;
+use App\Services\adapters\XxlJobGuzzleCallbackClientAdapter;
+use App\Services\adapters\XxlJobStorageFileLockAdapter;
 use App\Services\api_gw\ResolvedXxlJobAdminAddress;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Support\Facades\Log;

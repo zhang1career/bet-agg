@@ -19,6 +19,8 @@ return [
         ],
         'me_endpoint' => '/api/user/me',
         'timeout_seconds' => 3,
+        /** Cross-request TTL cache for {@code GET /api/user/me} responses, keyed by sha256(token). 401/403 invalidates immediately. */
+        'cache_ttl_seconds' => (int) env('BET_FOUNDATION_USER_CACHE_TTL_SECONDS', 60),
         'unauthorized_code' => ResponseConstant::RET_UNAUTHORIZED,
     ],
 

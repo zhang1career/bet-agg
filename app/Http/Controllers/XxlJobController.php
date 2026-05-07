@@ -6,7 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Components\XxlResponse;
 use App\Queues\XxlJobExecutor;
-use App\Services\Adapters\XxlJobStorageFileLockAdapter;
+use App\Services\adapters\XxlJobStorageFileLockAdapter;
 use App\Services\XxlJobRegistry;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -17,10 +17,10 @@ use Paganini\XxlJobExecutor\JobRequestHandler;
 /**
  * XXL-Job executor HTTP surface (aligned with job-executor). Base path: /api/xxl-job.
  */
-final class XxlJobController
+final readonly class XxlJobController
 {
     public function __construct(
-        private readonly XxlJobRegistry $jobRegistry,
+        private XxlJobRegistry $jobRegistry,
     ) {}
 
     /**

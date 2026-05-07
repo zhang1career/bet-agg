@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\mall\serv_fd;
 
 use App\Services\api_gw\ResolvedApiGatewayBaseUrl;
+use Illuminate\Contracts\Container\BindingResolutionException;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
@@ -26,6 +27,9 @@ final readonly class CmsGameClient
         private int $timeoutSeconds,
     ) {}
 
+    /**
+     * @throws BindingResolutionException
+     */
     public static function fromConfig(): self
     {
         /** @var ResolvedApiGatewayBaseUrl $foundationBase */
@@ -101,6 +105,70 @@ final readonly class CmsGameClient
         }
 
         return DownstreamPayload::extractData($response->json(), 'cms game detail');
+    }
+
+    /**
+     * Batch detail via {@code GET .../{game_route}?ids=1,2,3} (list path; query {@code ids} enables batch mode).
+     *
+     * @param  list<int>  $ids  Positive integers; duplicates are sent once (server-defined order of results).
+     * @return array<int, array<string, mixed>> Map of CMS record id → detail payload (same shape as {@see find}).
+     *
+     * @throws ConnectionException
+     */
+    public function findManyById(array $ids): array
+    {
+        $normalized = [];
+        foreach ($ids as $x) {
+            if (! is_int($x) || $x < 1) {
+                continue;
+            }
+            $normalized[$x] = true;
+        }
+        $unique = array_keys($normalized);
+        if ($unique === []) {
+            return [];
+        }
+
+        $response = Http::timeout($this->timeoutSeconds)
+            ->acceptJson()
+            ->get($this->listUrl(), [
+                'ids' => implode(',', array_map(static fn (int $i): string => (string) $i, $unique)),
+            ]);
+
+        if ($response->status() === 404) {
+            throw new NotFoundHttpException('CMS game route not found: '.$this->contentRoute);
+        }
+
+        if (! $response->successful()) {
+            throw new DownstreamServiceException(
+                sprintf('CMS game batch detail failed with HTTP %d.', $response->status())
+            );
+        }
+
+        $json = $response->json();
+        if (! is_array($json)) {
+            throw new DownstreamServiceException('Invalid CMS game batch detail JSON.');
+        }
+        if ((int) ($json['errorCode'] ?? -1) === 100) {
+            $message = (string) ($json['message'] ?? 'validation failed');
+
+            throw new DownstreamServiceException('CMS game batch detail: '.$message);
+        }
+
+        $data = DownstreamPayload::extractData($json, 'cms game batch detail');
+        if (! isset($data['items']) || ! is_array($data['items'])) {
+            throw new DownstreamServiceException('Invalid CMS game batch detail payload: missing items.');
+        }
+
+        $out = [];
+        foreach ($data['items'] as $row) {
+            if (! is_array($row) || ! isset($row['id'])) {
+                continue;
+            }
+            $out[(int) $row['id']] = $row;
+        }
+
+        return $out;
     }
 
     /**

@@ -5,10 +5,11 @@ declare(strict_types=1);
 namespace App\Http\Controllers\api;
 
 use App\Components\ApiResponse;
+use App\Exceptions\ConfigurationMissingException;
 use App\Exceptions\FoundationAuthRequiredException;
 use App\Http\Controllers\Controller;
 use App\Services\mall\FoundationUser;
-use App\Services\mall\PointsTccService;
+use App\Services\mall\PointsAdminService;
 use App\Services\user\UserFoundationGateway;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -17,13 +18,14 @@ class BetPointsController extends Controller
 {
     public function __construct(
         private readonly UserFoundationGateway $foundationGateway,
-        private readonly PointsTccService $points,
+        private readonly PointsAdminService $points,
     ) {}
 
     /**
      * Current user's available points balance (integer game points).
      *
      * @throws FoundationAuthRequiredException
+     * @throws ConfigurationMissingException
      */
     public function show(Request $request): JsonResponse
     {
@@ -42,6 +44,7 @@ class BetPointsController extends Controller
      * @return array<string, mixed>
      *
      * @throws FoundationAuthRequiredException
+     * @throws ConfigurationMissingException
      */
     private function requireAuthenticatedUser(Request $request): array
     {

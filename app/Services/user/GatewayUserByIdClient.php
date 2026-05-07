@@ -6,6 +6,8 @@ namespace App\Services\user;
 
 use App\Exceptions\ConfigurationMissingException;
 use App\Services\api_gw\ResolvedApiGatewayBaseUrl;
+use Illuminate\Contracts\Container\BindingResolutionException;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Paganini\Aggregation\Exceptions\DownstreamServiceException;
 use Paganini\Aggregation\Support\DownstreamPayload;
@@ -20,7 +22,9 @@ readonly class GatewayUserByIdClient
      * @return array<string, mixed>|null absent when HTTP 404
      *
      * @throws ConfigurationMissingException
+     * @throws ConnectionException
      * @throws DownstreamServiceException
+     * @throws BindingResolutionException
      */
     public function fetch(int $userId): ?array
     {
@@ -50,11 +54,13 @@ readonly class GatewayUserByIdClient
     /**
      * GET `{gateway}/api/user/users` with query {@code user_ids} (comma-separated). {@see DownstreamPayload::extractData} on success body.
      *
-     * @param  list<int>  $userIds
+     * @param list<int> $userIds
      * @return list<array<string, mixed>>
      *
      * @throws ConfigurationMissingException
+     * @throws ConnectionException
      * @throws DownstreamServiceException
+     * @throws BindingResolutionException
      */
     public function fetchMany(array $userIds): array
     {

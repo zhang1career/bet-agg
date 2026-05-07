@@ -1,11 +1,15 @@
 <?php
 
-use App\Http\Controllers\Admin\AdminGameController;
-use App\Http\Controllers\Admin\AdminMarketController;
-use App\Http\Controllers\Admin\AdminOrderController;
-use App\Http\Controllers\Admin\AdminPointsController;
-use App\Http\Controllers\Admin\AdminSettlementController;
-use App\Http\Controllers\Admin\AdminUploadController;
+use App\Http\Controllers\admin\AdminGameController;
+use App\Http\Controllers\admin\AdminGameGroupController;
+use App\Http\Controllers\admin\AdminGameSubjectController;
+use App\Http\Controllers\admin\AdminMarketController;
+use App\Http\Controllers\admin\AdminOrderController;
+use App\Http\Controllers\admin\AdminPointsController;
+use App\Http\Controllers\admin\AdminSettlementController;
+use App\Http\Controllers\admin\AdminUploadController;
+use App\Http\Middleware\SetConsoleLocaleFromCookie;
+use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', static function () {
@@ -13,23 +17,38 @@ Route::get('/', static function () {
 });
 
 Route::prefix('admin')->name('admin.')->group(function () {
+    Route::get('locale/{locale}', static function (string $locale) {
+        if (! in_array($locale, SetConsoleLocaleFromCookie::ALLOWED, true)) {
+            abort(404);
+        }
+        $back = url()->previous();
+        if ($back === '' || $back === url()->current()) {
+            $back = route('admin.games.index');
+        } else {
+            $parsed = parse_url($back);
+            if (! is_array($parsed) || ($parsed['host'] ?? '') !== request()->getHost()) {
+                $back = route('admin.games.index');
+            }
+        }
+
+        return redirect()->to($back)->withCookie(Cookie::forever(SetConsoleLocaleFromCookie::COOKIE, $locale));
+    })->whereIn('locale', SetConsoleLocaleFromCookie::ALLOWED)->name('locale.switch');
+
     Route::post('uploads', [AdminUploadController::class, 'store'])->name('uploads.store');
 
-    Route::resource('games', AdminGameController::class);
-    Route::post('markets/{market}/selections', [AdminMarketController::class, 'storeSelection'])
-        ->name('markets.selections.store');
-    Route::put('markets/{market}/selections/{selection}', [AdminMarketController::class, 'updateSelection'])
-        ->name('markets.selections.update');
-    Route::delete('markets/{market}/selections/{selection}', [AdminMarketController::class, 'destroySelection'])
-        ->name('markets.selections.destroy');
-    Route::resource('markets', AdminMarketController::class);
+    Route::resource('games', AdminGameController::class)->except(['create', 'edit']);
+
+    Route::resource('game-groups', AdminGameGroupController::class)->except(['create', 'edit']);
+
+    Route::resource('game-subjects', AdminGameSubjectController::class)->except(['create', 'edit']);
+
+    Route::resource('markets', AdminMarketController::class)->except(['create', 'edit']);
 
     Route::get('settlement', [AdminSettlementController::class, 'create'])->name('settlement.create');
     Route::post('settlement', [AdminSettlementController::class, 'store'])->name('settlement.store');
 
     Route::get('orders', [AdminOrderController::class, 'index'])->name('orders.index');
     Route::get('orders/{id}', [AdminOrderController::class, 'show'])->name('orders.show');
-    Route::patch('orders/{id}', [AdminOrderController::class, 'update'])->name('orders.update');
 
     Route::get('points', [AdminPointsController::class, 'index'])->name('points.index');
     Route::get('users', [AdminPointsController::class, 'indexUsers'])->name('users.index');

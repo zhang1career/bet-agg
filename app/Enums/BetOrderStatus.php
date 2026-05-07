@@ -16,6 +16,14 @@ enum BetOrderStatus: int implements HasDictionaryLabel
     case Won = 3;
     case Lost = 4;
     case Void = 5;
+    /**
+     * Settlement attempted but the inner-phase transaction was rolled back
+     * (e.g. bookmaker liquidity insufficient at payout time). The order is
+     * parked here for manual review; once the underlying issue is resolved
+     * the operator can re-run settlement which will transition to a terminal
+     * outcome.
+     */
+    case SettlementFailed = 6;
 
     /**
      * @return list<int>
@@ -34,6 +42,7 @@ enum BetOrderStatus: int implements HasDictionaryLabel
             self::Won => 'won',
             self::Lost => 'lost',
             self::Void => 'void',
+            self::SettlementFailed => 'settlement failed',
         };
     }
 
@@ -41,7 +50,11 @@ enum BetOrderStatus: int implements HasDictionaryLabel
     {
         return match ($this) {
             self::Pending => $next === self::Accepted || $next === self::Cancelled,
-            self::Accepted => $next === self::Won || $next === self::Lost || $next === self::Void,
+            // Accepted may also park into SettlementFailed when an inner-phase tx aborts.
+            self::Accepted => $next === self::Won || $next === self::Lost || $next === self::Void
+                || $next === self::SettlementFailed,
+            // SettlementFailed is recoverable: operator retries settlement → terminal outcome.
+            self::SettlementFailed => $next === self::Won || $next === self::Lost || $next === self::Void,
             self::Cancelled, self::Won, self::Lost, self::Void => false,
         };
     }

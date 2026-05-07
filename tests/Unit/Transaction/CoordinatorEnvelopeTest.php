@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Transaction;
 
-use App\Services\Transaction\CoordinatorEnvelope;
+use App\Services\transaction\CoordinatorEnvelope;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
