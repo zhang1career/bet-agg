@@ -93,7 +93,7 @@ class AdminGameController extends Controller
         $game->save();
         $game->groups()->sync($groupIds);
 
-        return redirect()->route('admin.games.show', $game)->with('status', 'Game created.');
+        return redirect()->route('admin.games.index')->with('status', 'Game created.');
     }
 
     public function show(Game $game): View
@@ -160,7 +160,7 @@ class AdminGameController extends Controller
         $game->save();
         $game->groups()->sync($groupIds);
 
-        return redirect()->route('admin.games.show', $game)->with('status', 'Game updated.');
+        return redirect()->route('admin.games.index')->with('status', 'Game updated.');
     }
 
     public function destroy(Game $game): RedirectResponse

@@ -7,7 +7,6 @@
         @csrf
         <div class="mall-list-toolbar d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
             <h2 class="h5 mb-0">Create market</h2>
-            <a href="{{ $prefillGameId ? route('admin.games.show', $prefillGameId) : route('admin.markets.index') }}" class="btn btn-outline-secondary btn-sm">Cancel</a>
         </div>
 
         <div class="mb-3">
@@ -59,5 +58,5 @@
                     data-mall-dict-selected="{{ (int) old('status', 1) }}"></select>
         </div>
         <button type="submit" class="btn btn-primary">Create market</button>
-    </form>
+        <a href="{{ route('admin.markets.index') }}" class="btn btn-outline-secondary">Cancel</a>
 @endsection

@@ -24,20 +24,14 @@ class AdminMarketController extends Controller
     public function index(Request $request): View
     {
         $perPage = min(50, max(1, (int) $request->query('per_page', 20)));
-        $q = Market::query()
+        $markets = Market::query()
             ->with('game')
-            ->orderByDesc('id');
-
-        if ($request->filled('game_id')) {
-            $q->where('game_id', (int) $request->query('game_id'));
-        }
-
-        $markets = $q->paginate($perPage)->withQueryString();
-        $filterGameId = $request->filled('game_id') ? (int) $request->query('game_id') : null;
+            ->orderByDesc('id')
+            ->paginate($perPage)
+            ->withQueryString();
 
         return view('admin.markets.index', [
             'markets' => $markets,
-            'filterGameId' => $filterGameId,
         ]);
     }
 
@@ -80,7 +74,7 @@ class AdminMarketController extends Controller
         ]);
         $market->save();
 
-        return redirect()->route('admin.markets.show', $market)->with('status', 'Market created.');
+        return redirect()->route('admin.markets.index')->with('status', 'Market created.');
     }
 
     public function show(Market $market): View
@@ -129,7 +123,7 @@ class AdminMarketController extends Controller
         ]);
         $market->save();
 
-        return redirect()->route('admin.markets.show', $market)->with('status', 'Market updated.');
+        return redirect()->route('admin.markets.index')->with('status', 'Market updated.');
     }
 
     public function destroy(Market $market): RedirectResponse

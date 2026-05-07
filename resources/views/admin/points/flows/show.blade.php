@@ -3,9 +3,13 @@
 @section('title', 'Points · Flow')
 
 @section('content')
+    @include('admin.includes.detail_back_link', [
+        'backUrl' => route('admin.points.index', ['tab' => 'flows']),
+        'backLabel' => '返回积分流水列表',
+    ])
+
     <div class="mall-list-toolbar d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
         <h2 class="h5 mb-0">Flow #{{ $flow->id }}</h2>
-        <a href="{{ route('admin.points.index', ['tab' => 'flows']) }}" class="btn btn-outline-secondary btn-sm">Back to list</a>
     </div>
 
     <div class="mall-console-card card shadow-sm">

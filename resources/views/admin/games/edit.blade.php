@@ -48,6 +48,6 @@
                     data-mall-dict-selected="{{ (int) old('status', $game->status) }}"></select>
         </div>
         <button type="submit" class="btn btn-primary">Save</button>
-        <a href="{{ route('admin.games.show', $game) }}" class="btn btn-link">Cancel</a>
+        <a href="{{ route('admin.games.index') }}" class="btn btn-outline-secondary">Cancel</a>
     </form>
 @endsection

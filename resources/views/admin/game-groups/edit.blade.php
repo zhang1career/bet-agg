@@ -25,6 +25,6 @@
         </div>
 
         <button type="submit" class="btn btn-primary">Save</button>
-        <a href="{{ route('admin.game-groups.show', $gameGroup) }}" class="btn btn-link">Cancel</a>
+        <a href="{{ route('admin.game-groups.index') }}" class="btn btn-outline-secondary">取消</a>
     </form>
 @endsection

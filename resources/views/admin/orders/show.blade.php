@@ -3,6 +3,11 @@
 @section('title', 'Order '.$order->id)
 
 @section('content')
+    @include('admin.includes.detail_back_link', [
+        'backUrl' => route('admin.orders.index'),
+        'backLabel' => '返回订单列表',
+    ])
+
     <div class="bg-white shadow-sm p-4 rounded mb-4">
         <p><strong>Uid:</strong> {{ $order->uid }}</p>
         <p><strong>Status:</strong> <span data-mall-dict-code="bet_order_status" data-mall-dict-value="{{ $order->status->value }}">{{ $order->status->value }}</span></p>

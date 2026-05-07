@@ -3,6 +3,11 @@
 @section('title', 'Market #'.$market->id)
 
 @section('content')
+    @include('admin.includes.detail_back_link', [
+        'backUrl' => route('admin.markets.index'),
+        'backLabel' => '返回 Markets 列表',
+    ])
+
     <div class="mall-list-toolbar d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
         <h2 class="h5 mb-0">Market #{{ $market->id }}</h2>
         <div class="d-flex gap-2 flex-wrap">

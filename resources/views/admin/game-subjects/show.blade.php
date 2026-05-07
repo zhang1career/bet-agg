@@ -5,7 +5,7 @@
 @section('content')
     @include('admin.includes.detail_back_link', [
         'backUrl' => route('admin.game-subjects.index'),
-        'backLabel' => '返回列表',
+        'backLabel' => '返回赛事主体列表',
     ])
     <div class="mall-list-toolbar d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
         <h2 class="h5 mb-0">{{ $subject->name }} <span class="text-muted">#{{ $subject->id }}</span></h2>

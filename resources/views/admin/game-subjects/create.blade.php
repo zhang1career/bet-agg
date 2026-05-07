@@ -21,6 +21,6 @@
             </select>
         </div>
         <button type="submit" class="btn btn-primary">创建</button>
-        <a href="{{ route('admin.game-subjects.index') }}" class="btn btn-link">返回</a>
+        <a href="{{ route('admin.game-subjects.index') }}" class="btn btn-outline-secondary">取消</a>
     </form>
 @endsection

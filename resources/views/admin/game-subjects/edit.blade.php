@@ -26,6 +26,6 @@
             </select>
         </div>
         <button type="submit" class="btn btn-primary">保存</button>
-        <a href="{{ route('admin.game-subjects.show', $subject) }}" class="btn btn-link">取消</a>
+        <a href="{{ route('admin.game-subjects.index') }}" class="btn btn-outline-secondary">取消</a>
     </form>
 @endsection

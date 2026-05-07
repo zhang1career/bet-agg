@@ -28,6 +28,7 @@
                 <select name="result_payload" id="result_payload" class="form-select" required></select>
             </div>
             <button type="submit" class="btn btn-primary" @if($games->isEmpty()) disabled @endif>入队结算</button>
+            <a href="{{ route('admin.games.index') }}" class="btn btn-outline-secondary">取消</a>
         </form>
     </div>
 

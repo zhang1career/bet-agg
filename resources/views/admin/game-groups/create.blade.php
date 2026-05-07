@@ -5,10 +5,7 @@
 @section('content')
     <form method="post" action="{{ route('admin.game-groups.store') }}" class="bg-white shadow-sm p-4 rounded" style="max-width: 640px;">
         @csrf
-        <div class="mall-list-toolbar d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
-            <h2 class="h5 mb-0">新建赛事分组</h2>
-            <a href="{{ route('admin.game-groups.index') }}" class="btn btn-outline-secondary btn-sm">Cancel</a>
-        </div>
+        <h2 class="h5 mb-3">新建赛事分组</h2>
 
         <p class="text-muted small">仅能包含字母、数字、<code>.</code>、<code>_</code>、<code>-</code>，例如 <code class="small">fifa-2026-group</code></p>
 
@@ -22,6 +19,6 @@
         </div>
 
         <button type="submit" class="btn btn-primary">创建</button>
-        <a href="{{ route('admin.game-groups.index') }}" class="btn btn-link">Cancel</a>
+        <a href="{{ route('admin.game-groups.index') }}" class="btn btn-outline-secondary">取消</a>
     </form>
 @endsection

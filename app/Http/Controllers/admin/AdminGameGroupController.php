@@ -47,7 +47,7 @@ class AdminGameGroupController extends Controller
         $group = new GameGroup(['code' => (string) $v['code']]);
         $group->save();
 
-        return redirect()->route('admin.game-groups.show', $group)->with('status', '分组已创建。');
+        return redirect()->route('admin.game-groups.index')->with('status', '分组已创建。');
     }
 
     public function show(GameGroup $gameGroup): View
@@ -98,7 +98,7 @@ class AdminGameGroupController extends Controller
         $gameGroup->code = (string) $v['code'];
         $gameGroup->save();
 
-        return redirect()->route('admin.game-groups.show', $gameGroup)->with('status', '分组已更新。');
+        return redirect()->route('admin.game-groups.index')->with('status', '分组已更新。');
     }
 
     public function destroy(GameGroup $gameGroup): RedirectResponse

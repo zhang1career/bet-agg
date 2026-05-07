@@ -47,7 +47,7 @@ class AdminGameSubjectController extends Controller
         $subject->save();
         $subject->groups()->sync($groupIds);
 
-        return redirect()->route('admin.game-subjects.show', $subject)->with('status', '赛事主体已创建。');
+        return redirect()->route('admin.game-subjects.index')->with('status', '赛事主体已创建。');
     }
 
     public function show(GameSubject $gameSubject): View
@@ -82,7 +82,7 @@ class AdminGameSubjectController extends Controller
         $groupIds = array_values(array_unique(array_map('intval', $v['group_ids'] ?? [])));
         $gameSubject->groups()->sync($groupIds);
 
-        return redirect()->route('admin.game-subjects.show', $gameSubject)->with('status', '已保存。');
+        return redirect()->route('admin.game-subjects.index')->with('status', '已保存。');
     }
 
     public function destroy(GameSubject $gameSubject): RedirectResponse

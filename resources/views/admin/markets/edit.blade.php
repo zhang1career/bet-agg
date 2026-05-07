@@ -63,5 +63,5 @@
                     data-mall-dict-selected="{{ (int) old('status', $market->status) }}"></select>
         </div>
         <button type="submit" class="btn btn-primary">Save market</button>
-    </form>
+        <a href="{{ route('admin.markets.index') }}" class="btn btn-outline-secondary">Cancel</a>
 @endsection
