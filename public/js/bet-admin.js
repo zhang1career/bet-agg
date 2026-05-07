@@ -383,6 +383,22 @@
         } catch (e) {}
     }
 
+    /**
+     * Bootstrap restores focus to the modal trigger on hide. Icon buttons in data tables
+     * then keep a focus ring that looks like a stuck "selected" state; list pages that open
+     * edit via navigation do not show this. Blur after close so the list matches that look.
+     */
+    function initMallModalTriggerFocusCleanup() {
+        document.addEventListener('hidden.bs.modal', function () {
+            window.setTimeout(function () {
+                var el = document.activeElement;
+                if (el && el.classList && el.classList.contains('mall-icon-btn')) {
+                    el.blur();
+                }
+            }, 0);
+        });
+    }
+
     function initMallListModals() {
         document.querySelectorAll('.modal[data-mall-auto-show="1"]').forEach(function (el) {
             if (window.bootstrap && window.bootstrap.Modal) {
@@ -409,6 +425,7 @@
         initTheme();
         initSidebar();
         mallDictInit(document);
+        initMallModalTriggerFocusCleanup();
         initMallListModals();
     });
 })();
