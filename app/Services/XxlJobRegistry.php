@@ -48,7 +48,7 @@ final class XxlJobRegistry extends PaganiniXxlJobRegistry
                 $handler = $attribute->newInstance()->handler;
 
                 if ($this->hasJob($handler)) {
-                    Log::warning("[jobreg] duplicate handler '{$handler}', overwriting.");
+                    Log::warning("[jobreg] duplicate handler '$handler', overwriting.");
                 }
 
                 parent::register($handler, [$className, $method->getName()]);

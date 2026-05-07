@@ -11,23 +11,10 @@ use App\Models\BetOrderLine;
 use App\Services\mall\PointsAdminService;
 use Paganini\Batch\Contracts\BatchItemHandlerContract;
 use Paganini\Batch\DTO\BatchItem;
-use Paganini\Batch\Execution\BatchExecutor;
 use RuntimeException;
 
 /**
- * Inner-phase per-order settlement. Invoked inside the per-item transaction
- * owned by {@see BatchExecutor} so any throw rolls
- * back the order's writes atomically and the executor records a failure
- * outcome on the {@code settle_job} row.
- *
- * Idempotent on terminal states: re-running settlement against a {@code Won},
- * {@code Lost}, or {@code Void} order is a no-op (treated as a successful
- * skip), which lets the executor advance its cursor cleanly on resume.
- *
- * Order resolution priority:
- *   1. line.kid in voids   → Void   (refund stake)
- *   2. line.kid in winners → Won    (payout potential_return_points)
- *   3. otherwise           → Lost   (no money movement)
+ * Per-order settlement: compare {@see BetOrderLine::selectionSettlementKey()} to payload winners/voids.
  */
 final readonly class SettlementBatchItemHandler implements BatchItemHandlerContract
 {
@@ -42,10 +29,10 @@ final readonly class SettlementBatchItemHandler implements BatchItemHandlerContr
             throw new RuntimeException('Invalid order ref: '.$item->ref);
         }
 
-        /** @var list<int> $winners */
-        $winners = array_map(static fn (mixed $v): int => (int) $v, $jobPayload['winners'] ?? []);
-        /** @var list<int> $voids */
-        $voids = array_map(static fn (mixed $v): int => (int) $v, $jobPayload['voids'] ?? []);
+        /** @var list<string> $winners */
+        $winners = self::stringList($jobPayload['winners'] ?? []);
+        /** @var list<string> $voids */
+        $voids = self::stringList($jobPayload['voids'] ?? []);
         $winnerSet = array_fill_keys($winners, true);
         $voidSet = array_fill_keys($voids, true);
 
@@ -55,9 +42,6 @@ final readonly class SettlementBatchItemHandler implements BatchItemHandlerContr
             throw new RuntimeException('Order disappeared mid-settlement: '.$orderId);
         }
 
-        // Idempotent skip: a previous settlement run already terminated this order. The
-        // outer phase's plan provider only schedules Accepted / SettlementFailed orders, but
-        // a concurrent admin transition could land in between → guard here too.
         if (in_array($order->status, [BetOrderStatus::Won, BetOrderStatus::Lost, BetOrderStatus::Void], true)) {
             return;
         }
@@ -77,20 +61,43 @@ final readonly class SettlementBatchItemHandler implements BatchItemHandlerContr
 
         /** @var BetOrderLine $line */
         $line = $order->lines->first();
-        $kid = (int) $line->kid;
+        $outcome = $line->selectionSettlementKey();
 
-        if (isset($voidSet[$kid])) {
+        if (isset($voidSet[$outcome])) {
             $this->settleVoid($order, $line);
 
             return;
         }
-        if (isset($winnerSet[$kid])) {
+        if (isset($winnerSet[$outcome])) {
             $this->settleWin($order, $line);
 
             return;
         }
 
         $this->settleLoss($order, $line);
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function stringList(mixed $raw): array
+    {
+        if (! is_array($raw)) {
+            return [];
+        }
+        $out = [];
+        foreach ($raw as $v) {
+            if (! is_string($v)) {
+                continue;
+            }
+            $t = trim($v);
+            if ($t === '') {
+                continue;
+            }
+            $out[$t] = true;
+        }
+
+        return array_keys($out);
     }
 
     private function settleWin(BetOrder $order, BetOrderLine $line): void
@@ -101,16 +108,16 @@ final readonly class SettlementBatchItemHandler implements BatchItemHandlerContr
         $line->result = BetLineResult::Win;
         $line->save();
 
-        $payout = (int) $line->potential_return_points;
+        $payout = $line->potential_return_points;
         $bookmakerUid = (int) config('bet_agg.points.bookmaker_uid');
         if ($bookmakerUid < 1) {
             throw new RuntimeException('Bookmaker account is not configured (bet_agg.points.bookmaker_uid).');
         }
         $this->pointsAdmin->payoutBetWinFromBookmaker(
             $bookmakerUid,
-            (int) $order->uid,
+            $order->uid,
             $payout,
-            (int) $order->id,
+            $order->id,
         );
 
         $order->status = $next;
@@ -137,16 +144,16 @@ final readonly class SettlementBatchItemHandler implements BatchItemHandlerContr
         $line->result = BetLineResult::Void;
         $line->save();
 
-        $stake = (int) $order->total_price;
+        $stake = $order->total_price;
         $bookmakerUid = (int) config('bet_agg.points.bookmaker_uid');
         if ($bookmakerUid < 1) {
             throw new RuntimeException('Bookmaker account is not configured (bet_agg.points.bookmaker_uid).');
         }
         $this->pointsAdmin->refundBetStakeFromBookmaker(
             $bookmakerUid,
-            (int) $order->uid,
+            $order->uid,
             $stake,
-            (int) $order->id,
+            $order->id,
         );
 
         $order->status = $next;
@@ -158,7 +165,7 @@ final readonly class SettlementBatchItemHandler implements BatchItemHandlerContr
         if (! $order->status->canTransitionTo($next)) {
             throw new RuntimeException(sprintf(
                 'Cannot transition order %d from %s to %s.',
-                (int) $order->id,
+                $order->id,
                 $order->status->value,
                 $next->value,
             ));

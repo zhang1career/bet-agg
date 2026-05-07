@@ -6,17 +6,20 @@ namespace App\Models;
 
 use App\Models\concerns\HasMillisTimestamps;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * Local betting aggregate for a CMS game: {@code raw_id} is the external game id;
- * title, media, and kickoff time are owned by CMS (not stored here).
+ * title, media, kickoff in CMS. Sides reference {@see GameSubject} (order: A=主场侧, B=客场侧).
  *
- * @property int $id Local surrogate primary key
- * @property int $raw_id External/CMS game identifier (unique)
- * @property int $status 1 open, 2 closed, 3 settled
- * @property list<int>|null $winning_selection_ids JSON when settled
+ * @property int $id
+ * @property int $raw_id
+ * @property int|null $side_a_subject_id
+ * @property int|null $side_b_subject_id
+ * @property int $status
+ * @property list<string>|null $winning_outcomes 1X2 synthetic keys ({@code home_win} / {@code draw} / {@code away_win}); persisted as JSON in {@code biz_game.winning_outcomes} (TEXT)
  * @property int $ct
  * @property int $ut
  */
@@ -36,8 +39,10 @@ class Game extends Model
 
     protected $fillable = [
         'raw_id',
+        'side_a_subject_id',
+        'side_b_subject_id',
         'status',
-        'winning_selection_ids',
+        'winning_outcomes',
         'ct',
         'ut',
     ];
@@ -45,11 +50,29 @@ class Game extends Model
     protected $casts = [
         'id' => 'integer',
         'raw_id' => 'integer',
+        'side_a_subject_id' => 'integer',
+        'side_b_subject_id' => 'integer',
         'status' => 'integer',
-        'winning_selection_ids' => 'array',
+        'winning_outcomes' => 'array',
         'ct' => 'integer',
         'ut' => 'integer',
     ];
+
+    /**
+     * @return BelongsTo<GameSubject, $this>
+     */
+    public function sideASubject(): BelongsTo
+    {
+        return $this->belongsTo(GameSubject::class, 'side_a_subject_id');
+    }
+
+    /**
+     * @return BelongsTo<GameSubject, $this>
+     */
+    public function sideBSubject(): BelongsTo
+    {
+        return $this->belongsTo(GameSubject::class, 'side_b_subject_id');
+    }
 
     /**
      * @return HasMany<Market, $this>

@@ -83,9 +83,23 @@
                     @include('admin.partials.status_label', ['kind' => 'game', 'value' => $game->status])
                     <span class="text-muted">({{ $game->status }})</span>
                 </dd>
-                @if(filled($game->winning_selection_ids))
-                    <dt class="col-sm-3">Winning selection ids</dt>
-                    <dd class="col-sm-9 font-monospace small">{{ json_encode($game->winning_selection_ids) }}</dd>
+                <dt class="col-sm-3">Groups (biz_x)</dt>
+                <dd class="col-sm-9">
+                    @forelse($game->groups as $gr)
+                        <code class="small">{{ $gr->code }}</code>@if(!$loop->last), @endif
+                    @empty
+                        <span class="text-muted">—</span>
+                    @endforelse
+                </dd>
+                <dt class="col-sm-3">Side A / B</dt>
+                <dd class="col-sm-9">
+                    {{ $game->sideASubject?->name ?? '—' }}
+                    <span class="text-muted"> vs </span>
+                    {{ $game->sideBSubject?->name ?? '—' }}
+                </dd>
+                @if(filled($game->winning_outcomes))
+                    <dt class="col-sm-3">Winning outcomes</dt>
+                    <dd class="col-sm-9 font-monospace small">{{ json_encode($game->winning_outcomes) }}</dd>
                 @endif
                 <dt class="col-sm-3">Timestamps</dt>
                 <dd class="col-sm-9 text-muted small">ct {{ \App\Support\MillisTimestampDisplay::format($game->ct) }}
@@ -107,8 +121,9 @@
                     <tr>
                         <th>ID</th>
                         <th>Name</th>
+                        <th>Type</th>
+                        <th class="text-end">Odds JSON ×1000</th>
                         <th>Status</th>
-                        <th class="text-end">Selections</th>
                         <th class="text-end text-nowrap">Actions</th>
                     </tr>
                     </thead>
@@ -119,11 +134,14 @@
                                 <a href="{{ route('admin.markets.show', $m) }}" class="font-monospace">{{ $m->id }}</a>
                             </td>
                             <td>{{ $m->name }}</td>
+                            <td class="font-monospace small">{{ $m->type->value }} · {{ $m->type->label() }}</td>
+                            <td class="text-end font-monospace small">
+                                {{ json_encode($m->outcomeOddsMillisMap(), JSON_UNESCAPED_UNICODE) }}
+                            </td>
                             <td>
                                 @include('admin.partials.status_label', ['kind' => 'market', 'value' => $m->status])
                                 <span class="text-muted">({{ $m->status }})</span>
                             </td>
-                            <td class="text-end font-monospace">{{ $m->selections_count }}</td>
                             <td class="text-end text-nowrap">
                                 <a href="{{ route('admin.markets.edit', $m) }}" class="mall-icon-btn d-inline-flex p-1 rounded text-decoration-none" title="Edit">
                                     @include('admin.partials.icon_pencil')
@@ -132,7 +150,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="5" class="text-center text-muted py-4">No markets yet.</td>
+                            <td colspan="6" class="text-center text-muted py-4">No markets yet.</td>
                         </tr>
                     @endforelse
                     </tbody>

@@ -9,7 +9,7 @@
             <a href="{{ route('admin.markets.edit', $market) }}" class="btn btn-primary btn-sm">Edit market</a>
             <button type="button" class="btn btn-outline-danger btn-sm" title="Delete"
                     data-mall-delete-url="{{ route('admin.markets.destroy', $market) }}"
-                    data-mall-delete-message="Delete market #{{ $market->id }} and all selections?">
+                    data-mall-delete-message="Delete market #{{ $market->id }}?">
                 Delete
             </button>
         </div>
@@ -26,6 +26,21 @@
                 </dd>
                 <dt class="col-sm-3">Name</dt>
                 <dd class="col-sm-9">{{ $market->name }}</dd>
+                <dt class="col-sm-3">Type</dt>
+                <dd class="col-sm-9 font-monospace">{{ $market->type->value }} — {{ $market->type->label() }}</dd>
+                <dt class="col-sm-3">odds_millis</dt>
+                <dd class="col-sm-9 font-monospace small">{{ json_encode($market->outcomeOddsMillisMap(), JSON_UNESCAPED_UNICODE) }}</dd>
+                <dt class="col-sm-3">Synthetic legs</dt>
+                <dd class="col-sm-9 small">
+                    @php
+                        $legs = app(\App\Services\mall\SyntheticMatchMarket::class)->legsForApi($market, $market->game);
+                    @endphp
+                    <ul class="mb-0">
+                        @foreach($legs as $leg)
+                            <li><code>{{ $leg['outcome_code'] }}</code> — {{ $leg['label'] }} · {{ $leg['current_odds_millis'] }}</li>
+                        @endforeach
+                    </ul>
+                </dd>
                 <dt class="col-sm-3">Status</dt>
                 <dd class="col-sm-9">
                     @include('admin.partials.status_label', ['kind' => 'market', 'value' => $market->status])
@@ -37,6 +52,4 @@
             </dl>
         </div>
     </div>
-
-    @include('admin.markets.partials.selections-panel', ['market' => $market])
 @endsection

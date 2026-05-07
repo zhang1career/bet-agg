@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * Atomic bet order produced by {@code POST /api/bet/place}: created in
- * {@link \App\Enums\BetOrderStatus::Accepted} state with stake already debited
+ * {@link BetOrderStatus::Accepted} state with stake already debited
  * from the user's points balance and credited to the bookmaker pool. Settlement
  * later transitions to {@code Won} / {@code Lost} / {@code Void}.
  *

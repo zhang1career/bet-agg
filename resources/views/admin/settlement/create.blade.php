@@ -4,37 +4,58 @@
 
 @section('content')
     <div class="bg-white shadow-sm p-4 rounded mb-4" style="max-width: 640px;">
-        <h2 class="h5 mb-3">Record result (internal)</h2>
-
-        @if($errors->has('settlement'))
-            <div class="alert alert-danger py-2">{{ $errors->first('settlement') }}</div>
-        @endif
+        <h2 class="h5 mb-3">录入赛果（入队结算）</h2>
+        <p class="text-muted small">提交后写入待处理队列，由队列 Worker 执行兑奖；本表单不直接调用结算服务。</p>
 
         <form method="post" action="{{ route('admin.settlement.store') }}">
             @csrf
             <div class="mb-3">
                 <label class="form-label" for="game_id">Open game</label>
-                <select name="game_id" id="game_id" class="form-select" required>
-                    @forelse($games as $g)
-                        <option value="{{ $g->id }}">Local #{{ $g->id }} · raw {{ $g->raw_id }}</option>
-                    @empty
+                <select name="game_id" id="settlement_game_id" class="form-select" required>
+                    @if($games->isEmpty())
                         <option value="" disabled>No open games</option>
-                    @endforelse
+                    @else
+                        @include('admin.partials.game_select_options', [
+                            'games' => $games,
+                            'gameSelectLabels' => $gameSelectLabels,
+                            'selectedGameId' => (int) old('game_id', $games->first()->id),
+                        ])
+                    @endif
                 </select>
             </div>
             <div class="mb-3">
-                <label class="form-label" for="winning_selection_ids">Winning selection IDs (comma-separated)</label>
-                <input type="text" name="winning_selection_ids" id="winning_selection_ids" class="form-control"
-                       placeholder="e.g. 1,2" value="{{ old('winning_selection_ids') }}">
-                <small class="form-text text-muted">Bets on these selections settle as Won.</small>
+                <label class="form-label" for="result_payload">赛果</label>
+                <select name="result_payload" id="result_payload" class="form-select" required></select>
             </div>
-            <div class="mb-3">
-                <label class="form-label" for="voided_selection_ids">Voided selection IDs (comma-separated)</label>
-                <input type="text" name="voided_selection_ids" id="voided_selection_ids" class="form-control"
-                       placeholder="e.g. 3" value="{{ old('voided_selection_ids') }}">
-                <small class="form-text text-muted">Bets on these selections refund the stake (Void).</small>
-            </div>
-            <button type="submit" class="btn btn-primary" @if($games->isEmpty()) disabled @endif>Settle</button>
+            <button type="submit" class="btn btn-primary" @if($games->isEmpty()) disabled @endif>入队结算</button>
         </form>
     </div>
+
+    @push('scripts')
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                var byGame = @json($outcomesByGame);
+                var gameSel = document.getElementById('settlement_game_id');
+                var payloadSel = document.getElementById('result_payload');
+                if (!gameSel || !payloadSel) return;
+
+                function refill() {
+                    var gid = gameSel.value;
+                    payloadSel.innerHTML = '';
+                    var rows = byGame[gid] || [];
+                    var oldVal = @json(old('result_payload', ''));
+                    rows.forEach(function (o) {
+                        var opt = document.createElement('option');
+                        opt.value = o.value;
+                        opt.textContent = o.label;
+                        if (oldVal && oldVal === o.value) opt.selected = true;
+                        payloadSel.appendChild(opt);
+                    });
+                }
+
+                gameSel.addEventListener('change', refill);
+                refill();
+            });
+        </script>
+    @endpush
 @endsection

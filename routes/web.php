@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\admin\AdminGameController;
 use App\Http\Controllers\admin\AdminGameGroupController;
+use App\Http\Controllers\admin\AdminGameSubjectController;
 use App\Http\Controllers\admin\AdminMarketController;
 use App\Http\Controllers\admin\AdminOrderController;
 use App\Http\Controllers\admin\AdminPointsController;
@@ -18,18 +19,10 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
     Route::resource('games', AdminGameController::class);
 
-    Route::post('game-groups/{game_group}/games', [AdminGameGroupController::class, 'storeGame'])
-        ->name('game-groups.games.store');
-    Route::delete('game-groups/{game_group}/games/{game}', [AdminGameGroupController::class, 'destroyGame'])
-        ->name('game-groups.games.destroy');
     Route::resource('game-groups', AdminGameGroupController::class);
 
-    Route::post('markets/{market}/selections', [AdminMarketController::class, 'storeSelection'])
-        ->name('markets.selections.store');
-    Route::put('markets/{market}/selections/{selection}', [AdminMarketController::class, 'updateSelection'])
-        ->name('markets.selections.update');
-    Route::delete('markets/{market}/selections/{selection}', [AdminMarketController::class, 'destroySelection'])
-        ->name('markets.selections.destroy');
+    Route::resource('game-subjects', AdminGameSubjectController::class);
+
     Route::resource('markets', AdminMarketController::class);
 
     Route::get('settlement', [AdminSettlementController::class, 'create'])->name('settlement.create');

@@ -15,7 +15,7 @@
     <table class="table table-sm bg-white shadow-sm">
         <thead>
         <tr>
-            <th>Selection</th>
+            <th>Outcome</th>
             <th>Stake</th>
             <th>Odds millis</th>
             <th>Potential return</th>
@@ -25,11 +25,17 @@
         <tbody>
         @foreach($order->items as $item)
             <tr>
-                <td>{{ $item->kid }} — {{ $item->odds_snapshot['label'] ?? '' }}</td>
+                <td class="small">
+                    m{{ $item->market_id }}
+                    · <code class="small">{{ json_encode($item->selection ?? [], JSON_UNESCAPED_UNICODE) }}</code>
+                    @if(!empty($item->odds_snapshot['label']))
+                        <br><span class="text-muted">{{ $item->odds_snapshot['label'] }}</span>
+                    @endif
+                </td>
                 <td>{{ $item->stake_points }}</td>
                 <td>{{ $item->decimal_odds_millis }}</td>
                 <td>{{ $item->potential_return_points }}</td>
-                <td>{{ $item->line_result?->value ?? '—' }}</td>
+                <td>{{ $item->result?->value ?? '—' }}</td>
             </tr>
         @endforeach
         </tbody>

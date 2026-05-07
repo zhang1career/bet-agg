@@ -11,8 +11,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * @property int $id
- * @property int $oid order.id
- * @property int $kid biz_selection.id
+ * @property int $oid
+ * @property int $market_id
+ * @property array<string, mixed>|null $selection Chosen option JSON; 1X2 uses key {@code code} (e.g. home_win)
  * @property int $stake_points
  * @property array<string, mixed>|null $odds_snapshot
  * @property int $decimal_odds_millis
@@ -31,7 +32,8 @@ class BetOrderLine extends Model
 
     protected $fillable = [
         'oid',
-        'kid',
+        'market_id',
+        'selection',
         'stake_points',
         'odds_snapshot',
         'decimal_odds_millis',
@@ -43,7 +45,8 @@ class BetOrderLine extends Model
 
     protected $casts = [
         'oid' => 'integer',
-        'kid' => 'integer',
+        'market_id' => 'integer',
+        'selection' => 'array',
         'stake_points' => 'integer',
         'odds_snapshot' => 'array',
         'decimal_odds_millis' => 'integer',
@@ -54,6 +57,19 @@ class BetOrderLine extends Model
     ];
 
     /**
+     * Value compared to settlement payload {@code winners} / {@code voids} for supported types (1X2 leg codes).
+     */
+    public function selectionSettlementKey(): string
+    {
+        $sel = $this->selection;
+        if (! is_array($sel)) {
+            return '';
+        }
+
+        return trim((string) ($sel['code'] ?? ''));
+    }
+
+    /**
      * @return BelongsTo<BetOrder, $this>
      */
     public function order(): BelongsTo
@@ -62,10 +78,10 @@ class BetOrderLine extends Model
     }
 
     /**
-     * @return BelongsTo<Selection, $this>
+     * @return BelongsTo<Market, $this>
      */
-    public function selection(): BelongsTo
+    public function market(): BelongsTo
     {
-        return $this->belongsTo(Selection::class, 'kid');
+        return $this->belongsTo(Market::class, 'market_id');
     }
 }

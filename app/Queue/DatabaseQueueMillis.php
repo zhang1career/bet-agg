@@ -4,6 +4,8 @@ namespace App\Queue;
 
 use App\Queue\jobs\DatabaseJobRecordMillis;
 use Carbon\Carbon;
+use DateInterval;
+use DateTimeInterface;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Queue\DatabaseQueue;
 
@@ -14,7 +16,7 @@ class DatabaseQueueMillis extends DatabaseQueue
      *
      * @return int
      */
-    protected function currentTime()
+    protected function currentTime(): int
     {
         return (int) floor(microtime(true) * 1000);
     }
@@ -22,14 +24,14 @@ class DatabaseQueueMillis extends DatabaseQueue
     /**
      * Get the "available at" UNIX timestamp in milliseconds.
      *
-     * @param  \DateTimeInterface|\DateInterval|int  $delay
+     * @param  DateTimeInterface|DateInterval|int  $delay
      * @return int
      */
-    protected function availableAt($delay = 0)
+    protected function availableAt($delay = 0): int
     {
         $delay = $this->parseDateInterval($delay);
 
-        return $delay instanceof \DateTimeInterface
+        return $delay instanceof DateTimeInterface
             ? (int) ($delay->getTimestamp() * 1000)
             : (int) (Carbon::now()->addRealSeconds($delay)->getTimestamp() * 1000);
     }
@@ -43,7 +45,7 @@ class DatabaseQueueMillis extends DatabaseQueue
      * @param  int  $attempts
      * @return array
      */
-    protected function buildDatabaseRecord($queue, $payload, $availableAt, $attempts = 0)
+    protected function buildDatabaseRecord($queue, $payload, $availableAt, $attempts = 0): array
     {
         return [
             'queue' => $queue,
@@ -67,7 +69,7 @@ class DatabaseQueueMillis extends DatabaseQueue
      * @param  Builder  $query
      * @return void
      */
-    protected function isAvailable($query)
+    protected function isAvailable($query): void
     {
         $query->where(function ($query) {
             $query->where('reserved_at', 0)
@@ -81,7 +83,7 @@ class DatabaseQueueMillis extends DatabaseQueue
      * @param  Builder  $query
      * @return void
      */
-    protected function isReservedButExpired($query)
+    protected function isReservedButExpired($query): void
     {
         $expiration = $this->currentTime() - ($this->retryAfter * 1000);
 
@@ -97,7 +99,7 @@ class DatabaseQueueMillis extends DatabaseQueue
      * @param  string|null  $queue
      * @return DatabaseJobRecordMillis|null
      */
-    protected function getNextAvailableJob($queue)
+    protected function getNextAvailableJob($queue): ?DatabaseJobRecordMillis
     {
         $job = $this->database->table($this->table)
             ->lock($this->getLockForPopping())
@@ -106,7 +108,7 @@ class DatabaseQueueMillis extends DatabaseQueue
                 $this->isAvailable($query);
                 $this->isReservedButExpired($query);
             })
-            ->orderBy('id', 'asc')
+            ->orderBy('id')
             ->first();
 
         return $job ? new DatabaseJobRecordMillis((object) $job) : null;

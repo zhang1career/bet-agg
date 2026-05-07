@@ -12,16 +12,12 @@ use Throwable;
 
 /**
  * XXL-Job handlers for bet order lifecycle maintenance.
- *
- * The legacy {@code closeExpiredOrders} handler is gone with the two-step
- * checkout flow: {@code POST /api/bet/place} is single-step atomic so there
- * are no draft orders to time out.
  */
 final class BetOrderMaintenance
 {
     /**
-     * Apply result + settle stakes for {@code biz_game}. {@code executorParams} JSON example:
-     * {@code {"game_id":12,"winning_selection_ids":[101,102],"voided_selection_ids":[103]}}.
+     * Apply result + settle stakes. {@code executorParams} JSON example:
+     * {@code {"game_id":12,"winning_outcomes":["home_win"],"void_outcomes":[]}}.
      *
      * @return array{0: bool, 1: array<string, int|string>|null, 2: string|null}
      */
@@ -42,8 +38,8 @@ final class BetOrderMaintenance
             }
 
             $gameId = isset($decoded['game_id']) ? (int) $decoded['game_id'] : 0;
-            $winners = self::intList($decoded['winning_selection_ids'] ?? []);
-            $voids = self::intList($decoded['voided_selection_ids'] ?? []);
+            $winners = self::stringList($decoded['winning_outcomes'] ?? []);
+            $voids = self::stringList($decoded['void_outcomes'] ?? []);
 
             $result = app(BetSettlementService::class)->applyGameResult($gameId, $winners, $voids);
             Log::debug('[xxljob] applyGameSettlement', [
@@ -80,18 +76,24 @@ final class BetOrderMaintenance
     }
 
     /**
-     * @return list<int>
+     * @return list<string>
      */
-    private static function intList(mixed $raw): array
+    private static function stringList(mixed $raw): array
     {
         if (! is_array($raw)) {
             return [];
         }
-        $out = [];
+        $seen = [];
         foreach ($raw as $v) {
-            $out[] = (int) $v;
+            if (! is_string($v)) {
+                continue;
+            }
+            $t = trim($v);
+            if ($t !== '') {
+                $seen[$t] = true;
+            }
         }
 
-        return $out;
+        return array_keys($seen);
     }
 }

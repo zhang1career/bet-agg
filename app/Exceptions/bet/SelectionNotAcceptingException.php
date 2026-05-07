@@ -7,17 +7,21 @@ namespace App\Exceptions\bet;
 use Paganini\Constants\ResponseConstant;
 
 /**
- * Selection / market / parent game is not in an open state at place-time.
- * 409 Conflict because the resource exists but is not in a state that accepts
- * the action.
+ * Market / outcome leg or parent game is not in an open state at place-time.
  */
 final class SelectionNotAcceptingException extends BetDomainException
 {
     public function __construct(
-        public readonly int $kid,
+        public readonly int $marketId,
+        public readonly string $outcomeCode,
         string $reason,
     ) {
-        parent::__construct(sprintf('Selection %d is not accepting bets: %s', $kid, $reason));
+        parent::__construct(sprintf(
+            'Market %d outcome %s is not accepting bets: %s',
+            $marketId,
+            $outcomeCode,
+            $reason,
+        ));
     }
 
     public function httpStatus(): int

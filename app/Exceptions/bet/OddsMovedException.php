@@ -7,24 +7,23 @@ namespace App\Exceptions\bet;
 use Paganini\Constants\ResponseConstant;
 
 /**
- * Odds for a selection differ from the {@code expected_odds_millis} the agent
- * supplied. Agent should re-read /api/bet/markets and re-place if still desired.
+ * Odds for a synthetic leg differ from {@code expected_odds_millis}.
  */
 final class OddsMovedException extends BetDomainException
 {
     public function __construct(
-        public readonly int $kid,
+        public readonly int $marketId,
+        public readonly string $outcomeCode,
         public readonly int $expectedMillis,
         public readonly int $actualMillis,
     ) {
-        parent::__construct(
-            sprintf(
-                'Odds moved for selection %d (expected=%d, actual=%d).',
-                $kid,
-                $expectedMillis,
-                $actualMillis,
-            )
-        );
+        parent::__construct(sprintf(
+            'Odds moved for market %d outcome %s (expected=%d, actual=%d).',
+            $marketId,
+            $outcomeCode,
+            $expectedMillis,
+            $actualMillis,
+        ));
     }
 
     public function httpStatus(): int

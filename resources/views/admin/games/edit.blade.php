@@ -40,6 +40,7 @@
             'banner_path' => old('banner_path', $defBanner),
             'main_image_path' => old('main_image_path', $defMain),
         ])
+        @include('admin.games.partials.groups-and-sides')
         <div class="mb-3">
             <label class="form-label" for="status">Status</label>
             <select name="status" id="status" class="form-select" required

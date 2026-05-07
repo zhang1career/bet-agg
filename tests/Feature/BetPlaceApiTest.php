@@ -5,13 +5,13 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Enums\BetOrderStatus;
+use App\Enums\MatchOutcomeCode;
 use App\Enums\PointsHoldState;
 use App\Models\BetOrder;
 use App\Models\Game;
 use App\Models\Market;
 use App\Models\PointsBalance;
 use App\Models\PointsFlow;
-use App\Models\Selection;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Testing\TestResponse;
@@ -61,10 +61,23 @@ final class BetPlaceApiTest extends TestCase
         return $req->postJson('/api/bet/place', $body);
     }
 
+    /**
+     * @return array{market_id: int, outcome_code: string, stake_points: int, expected_odds_millis: int}
+     */
+    private function line(int $marketId, string $outcomeCode, int $stake, int $oddsMillis): array
+    {
+        return [
+            'market_id' => $marketId,
+            'outcome_code' => $outcomeCode,
+            'stake_points' => $stake,
+            'expected_odds_millis' => $oddsMillis,
+        ];
+    }
+
     public function test_requires_authentication(): void
     {
         $this->postJson('/api/bet/place', [
-            'lines' => [['kid' => 1, 'stake_points' => 100, 'expected_odds_millis' => 2000]],
+            'lines' => [$this->line(1, MatchOutcomeCode::HomeWin->value, 100, 2000)],
         ])->assertStatus(401)
             ->assertJsonPath('errorCode', ResponseConstant::RET_UNAUTHORIZED);
     }
@@ -72,10 +85,10 @@ final class BetPlaceApiTest extends TestCase
     public function test_requires_x_request_id_header(): void
     {
         $this->fakeUserMe(42);
-        $sid = CatalogSeeder::openSelection(2000);
+        $cat = CatalogSeeder::openHomeWinMarket(2000);
 
         $this->place(
-            ['lines' => [['kid' => $sid, 'stake_points' => 100, 'expected_odds_millis' => 2000]]],
+            ['lines' => [$this->line($cat['market_id'], $cat['outcome_code'], 100, 2000)]],
             ['X-User-Access-Token' => 'tok'],
         )
             ->assertStatus(400)
@@ -85,10 +98,10 @@ final class BetPlaceApiTest extends TestCase
     public function test_rejects_non_numeric_x_request_id(): void
     {
         $this->fakeUserMe(42);
-        $sid = CatalogSeeder::openSelection(2000);
+        $cat = CatalogSeeder::openHomeWinMarket(2000);
 
         $this->place(
-            ['lines' => [['kid' => $sid, 'stake_points' => 100, 'expected_odds_millis' => 2000]]],
+            ['lines' => [$this->line($cat['market_id'], $cat['outcome_code'], 100, 2000)]],
             ['X-User-Access-Token' => 'tok', 'X-Request-Id' => 'not-a-number'],
         )
             ->assertStatus(400)
@@ -98,10 +111,10 @@ final class BetPlaceApiTest extends TestCase
     public function test_requires_expected_odds_millis(): void
     {
         $this->fakeUserMe(42);
-        $sid = CatalogSeeder::openSelection(2000);
+        $cat = CatalogSeeder::openHomeWinMarket(2000);
 
         $this->place(
-            ['lines' => [['kid' => $sid, 'stake_points' => 100]]],
+            ['lines' => [['market_id' => $cat['market_id'], 'outcome_code' => $cat['outcome_code'], 'stake_points' => 100]]],
             ['X-User-Access-Token' => 'tok', 'X-Request-Id' => (string) self::SNOWFLAKE_BASE],
         )
             ->assertStatus(422)
@@ -113,11 +126,11 @@ final class BetPlaceApiTest extends TestCase
         $this->fakeUserMe(42);
         PointsBalance::query()->create(['uid' => 42, 'balance' => 500]);
         PointsBalance::query()->create(['uid' => self::BOOKMAKER_UID, 'balance' => 1_000_000]);
-        $sid = CatalogSeeder::openSelection(2000);
+        $cat = CatalogSeeder::openHomeWinMarket(2000);
         $idem = self::SNOWFLAKE_BASE + 1;
 
         $res = $this->place(
-            ['lines' => [['kid' => $sid, 'stake_points' => 100, 'expected_odds_millis' => 2000]]],
+            ['lines' => [$this->line($cat['market_id'], $cat['outcome_code'], 100, 2000)]],
             ['X-User-Access-Token' => 'tok', 'X-Request-Id' => (string) $idem],
         );
 
@@ -154,47 +167,46 @@ final class BetPlaceApiTest extends TestCase
         $this->fakeUserMe(42);
         PointsBalance::query()->create(['uid' => 42, 'balance' => 500]);
         PointsBalance::query()->create(['uid' => self::BOOKMAKER_UID, 'balance' => 1_000_000]);
-        $sid = CatalogSeeder::openSelection(2000);
+        $cat = CatalogSeeder::openHomeWinMarket(2000);
         $idem = self::SNOWFLAKE_BASE + 2;
 
         $first = $this->place(
-            ['lines' => [['kid' => $sid, 'stake_points' => 100, 'expected_odds_millis' => 2000]]],
+            ['lines' => [$this->line($cat['market_id'], $cat['outcome_code'], 100, 2000)]],
             ['X-User-Access-Token' => 'tok', 'X-Request-Id' => (string) $idem],
         )->assertCreated();
 
         $orderId = (int) $first->json('data.order.id');
 
         $second = $this->place(
-            ['lines' => [['kid' => $sid, 'stake_points' => 100, 'expected_odds_millis' => 2000]]],
+            ['lines' => [$this->line($cat['market_id'], $cat['outcome_code'], 100, 2000)]],
             ['X-User-Access-Token' => 'tok', 'X-Request-Id' => (string) $idem],
         );
         $second->assertOk()
             ->assertJsonPath('data.is_replay', true)
             ->assertJsonPath('data.order.id', $orderId);
 
-        // Balance unchanged from after the first call.
         $this->assertSame(400, (int) PointsBalance::query()->where('uid', 42)->value('balance'));
         $this->assertSame(1_000_100, (int) PointsBalance::query()->where('uid', self::BOOKMAKER_UID)->value('balance'));
         $this->assertSame(1, BetOrder::query()->where('uid', 42)->count());
     }
 
-    public function test_two_distinct_keys_create_two_orders_on_the_same_selection(): void
+    public function test_two_distinct_keys_create_two_orders_on_the_same_leg(): void
     {
         $this->fakeUserMe(42);
         PointsBalance::query()->create(['uid' => 42, 'balance' => 500]);
         PointsBalance::query()->create(['uid' => self::BOOKMAKER_UID, 'balance' => 1_000_000]);
-        $sid = CatalogSeeder::openSelection(2000);
+        $cat = CatalogSeeder::openHomeWinMarket(2000);
 
         $idemA = self::SNOWFLAKE_BASE + 100;
         $idemB = self::SNOWFLAKE_BASE + 101;
 
         $this->place(
-            ['lines' => [['kid' => $sid, 'stake_points' => 50, 'expected_odds_millis' => 2000]]],
+            ['lines' => [$this->line($cat['market_id'], $cat['outcome_code'], 50, 2000)]],
             ['X-User-Access-Token' => 'tok', 'X-Request-Id' => (string) $idemA],
         )->assertCreated();
 
         $this->place(
-            ['lines' => [['kid' => $sid, 'stake_points' => 70, 'expected_odds_millis' => 2000]]],
+            ['lines' => [$this->line($cat['market_id'], $cat['outcome_code'], 70, 2000)]],
             ['X-User-Access-Token' => 'tok', 'X-Request-Id' => (string) $idemB],
         )->assertCreated();
 
@@ -211,10 +223,10 @@ final class BetPlaceApiTest extends TestCase
         $this->fakeUserMe(42);
         PointsBalance::query()->create(['uid' => 42, 'balance' => 500]);
         PointsBalance::query()->create(['uid' => self::BOOKMAKER_UID, 'balance' => 1_000_000]);
-        $sid = CatalogSeeder::openSelection(2000);
+        $cat = CatalogSeeder::openHomeWinMarket(2000);
 
         $res = $this->place(
-            ['lines' => [['kid' => $sid, 'stake_points' => 100, 'expected_odds_millis' => 1900]]],
+            ['lines' => [$this->line($cat['market_id'], $cat['outcome_code'], 100, 1900)]],
             ['X-User-Access-Token' => 'tok', 'X-Request-Id' => (string) (self::SNOWFLAKE_BASE + 200)],
         );
         $res->assertStatus(409)
@@ -224,18 +236,18 @@ final class BetPlaceApiTest extends TestCase
         $this->assertSame(500, (int) PointsBalance::query()->where('uid', 42)->value('balance'));
     }
 
-    public function test_selection_not_accepting_when_parent_game_closed(): void
+    public function test_line_not_accepting_when_parent_game_closed(): void
     {
         $this->fakeUserMe(42);
         PointsBalance::query()->create(['uid' => 42, 'balance' => 500]);
         PointsBalance::query()->create(['uid' => self::BOOKMAKER_UID, 'balance' => 1_000_000]);
-        $sid = CatalogSeeder::openSelection(2000);
-        $sel = Selection::query()->findOrFail($sid);
-        $sel->market->game->status = Game::STATUS_CLOSED;
-        $sel->market->game->save();
+        $cat = CatalogSeeder::openHomeWinMarket(2000);
+        $game = Game::query()->findOrFail($cat['game_local_id']);
+        $game->status = Game::STATUS_CLOSED;
+        $game->save();
 
         $res = $this->place(
-            ['lines' => [['kid' => $sid, 'stake_points' => 100, 'expected_odds_millis' => 2000]]],
+            ['lines' => [$this->line($cat['market_id'], $cat['outcome_code'], 100, 2000)]],
             ['X-User-Access-Token' => 'tok', 'X-Request-Id' => (string) (self::SNOWFLAKE_BASE + 300)],
         );
         $res->assertStatus(409)
@@ -243,18 +255,18 @@ final class BetPlaceApiTest extends TestCase
         $this->assertSame(0, BetOrder::query()->count());
     }
 
-    public function test_selection_not_accepting_when_market_suspended(): void
+    public function test_line_not_accepting_when_market_suspended(): void
     {
         $this->fakeUserMe(42);
         PointsBalance::query()->create(['uid' => 42, 'balance' => 500]);
         PointsBalance::query()->create(['uid' => self::BOOKMAKER_UID, 'balance' => 1_000_000]);
-        $sid = CatalogSeeder::openSelection(2000);
-        $sel = Selection::query()->findOrFail($sid);
-        $sel->market->status = Market::STATUS_SUSPENDED;
-        $sel->market->save();
+        $cat = CatalogSeeder::openHomeWinMarket(2000);
+        $market = Market::query()->findOrFail($cat['market_id']);
+        $market->status = Market::STATUS_SUSPENDED;
+        $market->save();
 
         $res = $this->place(
-            ['lines' => [['kid' => $sid, 'stake_points' => 100, 'expected_odds_millis' => 2000]]],
+            ['lines' => [$this->line($cat['market_id'], $cat['outcome_code'], 100, 2000)]],
             ['X-User-Access-Token' => 'tok', 'X-Request-Id' => (string) (self::SNOWFLAKE_BASE + 301)],
         );
         $res->assertStatus(409);
@@ -266,10 +278,10 @@ final class BetPlaceApiTest extends TestCase
         $this->fakeUserMe(42);
         PointsBalance::query()->create(['uid' => 42, 'balance' => 50]);
         PointsBalance::query()->create(['uid' => self::BOOKMAKER_UID, 'balance' => 1_000_000]);
-        $sid = CatalogSeeder::openSelection(2000);
+        $cat = CatalogSeeder::openHomeWinMarket(2000);
 
         $res = $this->place(
-            ['lines' => [['kid' => $sid, 'stake_points' => 100, 'expected_odds_millis' => 2000]]],
+            ['lines' => [$this->line($cat['market_id'], $cat['outcome_code'], 100, 2000)]],
             ['X-User-Access-Token' => 'tok', 'X-Request-Id' => (string) (self::SNOWFLAKE_BASE + 400)],
         );
         $res->assertStatus(422)
@@ -284,10 +296,10 @@ final class BetPlaceApiTest extends TestCase
         $this->fakeUserMe(42);
         PointsBalance::query()->create(['uid' => 42, 'balance' => 500]);
         PointsBalance::query()->create(['uid' => self::BOOKMAKER_UID, 'balance' => 1_000_000]);
-        $sid = CatalogSeeder::openSelection(2000);
+        $cat = CatalogSeeder::openHomeWinMarket(2000);
 
         $this->place(
-            ['lines' => [['kid' => $sid, 'stake_points' => 100, 'expected_odds_millis' => 2000]]],
+            ['lines' => [$this->line($cat['market_id'], $cat['outcome_code'], 100, 2000)]],
             ['X-User-Access-Token' => 'tok', 'X-Request-Id' => (string) (self::SNOWFLAKE_BASE + 500)],
         )->assertCreated();
 

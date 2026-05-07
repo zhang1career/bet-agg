@@ -9,11 +9,14 @@ use App\Exceptions\FoundationAuthRequiredException;
 use App\Providers\AppServiceProvider;
 use App\Services\api_gw\ResolvedApiGatewayBaseUrl;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
+use Illuminate\Contracts\Container\BindingResolutionException;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response as ClientResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Paganini\Aggregation\Exceptions\DownstreamServiceException;
 use Paganini\Aggregation\Support\DownstreamPayload;
+use Psr\SimpleCache\InvalidArgumentException;
 
 /**
  * Resolves the current user from the foundation user service.
@@ -39,8 +42,9 @@ class UserFoundationGateway
 
     public function __construct(
         private readonly ResolvedApiGatewayBaseUrl $resolvedFoundationBaseUrl,
-        private readonly CacheRepository $cache,
-    ) {}
+        private readonly CacheRepository           $cache)
+    {
+    }
 
     /**
      * @return array<string, mixed>
@@ -48,10 +52,13 @@ class UserFoundationGateway
      * @throws ConfigurationMissingException
      * @throws DownstreamServiceException
      * @throws FoundationAuthRequiredException
+     * @throws InvalidArgumentException
+     * @throws BindingResolutionException
+     * @throws ConnectionException
      */
     public function fetchCurrentUser(Request $request): array
     {
-        $token = trim((string) $request->header('X-User-Access-Token', ''));
+        $token = trim((string)$request->header('X-User-Access-Token', ''));
         if ($token === '') {
             throw new FoundationAuthRequiredException(
                 'Authentication required. Send header: X-User-Access-Token: <access_token> (raw JWT, no Bearer prefix).'
@@ -63,7 +70,7 @@ class UserFoundationGateway
             return $this->memo[$tokenHash];
         }
 
-        $cacheKey = self::CACHE_KEY_PREFIX.$tokenHash;
+        $cacheKey = self::CACHE_KEY_PREFIX . $tokenHash;
         $cached = $this->cache->get($cacheKey);
         if (is_array($cached)) {
             $this->memo[$tokenHash] = $cached;
@@ -84,6 +91,8 @@ class UserFoundationGateway
      * @throws ConfigurationMissingException
      * @throws DownstreamServiceException
      * @throws FoundationAuthRequiredException
+     * @throws BindingResolutionException
+     * @throws ConnectionException
      */
     private function callFoundationService(string $token, string $tokenHash, string $cacheKey): array
     {
@@ -92,15 +101,15 @@ class UserFoundationGateway
             throw new ConfigurationMissingException('Missing user foundation base_url configuration.');
         }
 
-        $timeout = (int) config('bet_agg.foundation.timeout_seconds', 3);
-        $endpoint = (string) config('bet_agg.foundation.me_endpoint', '/api/user/me');
+        $timeout = (int)config('bet_agg.foundation.timeout_seconds', 3);
+        $endpoint = (string)config('bet_agg.foundation.me_endpoint', '/api/user/me');
 
         $response = Http::timeout($timeout)
             ->withHeaders(['X-User-Access-Token' => $token])
             ->acceptJson()
-            ->get($baseUrl.$endpoint);
+            ->get($baseUrl . $endpoint);
 
-        if (! $response->successful()) {
+        if (!$response->successful()) {
             $status = $response->status();
             if ($status === 401 || $status === 403) {
                 $this->forgetCachedUser($tokenHash, $cacheKey);
@@ -131,7 +140,7 @@ class UserFoundationGateway
 
     private function cacheTtlSeconds(): int
     {
-        $ttl = (int) config('bet_agg.foundation.cache_ttl_seconds', 60);
+        $ttl = (int)config('bet_agg.foundation.cache_ttl_seconds', 60);
 
         return $ttl < 1 ? 60 : $ttl;
     }
@@ -145,7 +154,7 @@ class UserFoundationGateway
         }
 
         return new FoundationAuthRequiredException(
-            'Downstream error from foundation user service: '.$detail
+            'Downstream error from foundation user service: ' . $detail
         );
     }
 }

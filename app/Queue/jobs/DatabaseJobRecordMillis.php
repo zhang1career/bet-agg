@@ -11,7 +11,7 @@ class DatabaseJobRecordMillis extends DatabaseJobRecord
      *
      * @return int
      */
-    protected function currentTime()
+    protected function currentTime(): int
     {
         return (int) floor(microtime(true) * 1000);
     }

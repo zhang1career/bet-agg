@@ -11,9 +11,10 @@ class DatabaseMillisConnector extends DatabaseConnector
     /**
      * Establish a queue connection.
      *
-     * @return Queue
+     * @param array $config
+     * @return Queue|DatabaseQueueMillis
      */
-    public function connect(array $config)
+    public function connect(array $config): Queue|DatabaseQueueMillis
     {
         return new DatabaseQueueMillis(
             $this->connections->connection($config['connection'] ?? null),

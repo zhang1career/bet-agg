@@ -6,6 +6,7 @@ namespace App\Http\Controllers\api;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
+use JsonException;
 use RuntimeException;
 
 /**
@@ -20,6 +21,9 @@ use RuntimeException;
  */
 class OpenApiController extends Controller
 {
+    /**
+     * @throws JsonException
+     */
     public function __invoke(): JsonResponse
     {
         $path = base_path('docs/api.json');

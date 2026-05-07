@@ -153,16 +153,7 @@ final class ApiJsonExceptionHandler
     ): JsonResponse {
         if ($isInternal) {
             return response()->json(
-                ApiResponse::error(ResponseConstant::RET_DEPENDENCY_ERROR, $exception->getMessage(), $reqId),
-                200
-            );
-        }
-
-        if ($request->is('api/bet/points')
-            || $request->is('api/bet/points/*')) {
-            return response()->json(
-                ApiResponse::error(ResponseConstant::RET_DEPENDENCY_ERROR, $exception->getMessage(), $reqId),
-                502
+                ApiResponse::error(ResponseConstant::RET_DEPENDENCY_ERROR, $exception->getMessage(), $reqId)
             );
         }
 
@@ -170,6 +161,7 @@ final class ApiJsonExceptionHandler
             ApiResponse::error(ResponseConstant::RET_DEPENDENCY_ERROR, $exception->getMessage(), $reqId),
             502
         );
+
     }
 
     private static function modelNotFoundMessage(Request $request): string

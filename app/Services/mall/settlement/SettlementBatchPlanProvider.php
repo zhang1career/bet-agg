@@ -8,32 +8,25 @@ use App\Enums\BetOrderStatus;
 use App\Models\BetOrder;
 use App\Models\Game;
 use App\Models\Market;
-use App\Models\Selection;
 use Paganini\Batch\Contracts\BatchPlanProviderContract;
 use Paganini\Batch\DTO\BatchItem;
 use Paganini\Batch\DTO\BatchPlan;
-use Paganini\Batch\Execution\BatchExecutor;
 use RuntimeException;
 
 /**
- * Outer-phase work: lock the game, mark game / markets / selections settled,
- * and emit the list of accepted-state {@see BetOrder} ids that need an
- * inner-phase payout/refund/lose pass.
- *
- * Runs inside the outer transaction owned by
- * {@see BatchExecutor}; raises on already-settled
- * games so the executor rolls everything back atomically.
+ * Outer-phase work: lock the game, mark game / markets settled,
+ * persist {@code winning_outcomes}, emit accepted {@see BetOrder} ids.
  */
 final readonly class SettlementBatchPlanProvider implements BatchPlanProviderContract
 {
     /**
-     * @param  list<int>  $winningSelectionIds
-     * @param  list<int>  $voidedSelectionIds
+     * @param  list<string>  $winningOutcomeCodes
+     * @param  list<string>  $voidOutcomeCodes
      */
     public function __construct(
         private int $gameId,
-        private array $winningSelectionIds,
-        private array $voidedSelectionIds,
+        private array $winningOutcomeCodes,
+        private array $voidOutcomeCodes,
     ) {}
 
     public function makePlan(): BatchPlan
@@ -43,38 +36,29 @@ final readonly class SettlementBatchPlanProvider implements BatchPlanProviderCon
             throw new RuntimeException('Game not found.');
         }
 
-        // First-time settlement: mutate game / market / selection state. Subsequent calls (e.g.
-        // retry after SettlementFailed) skip these mutations and only re-pick up the orders that
-        // still need money movement, so applyGameResult is idempotent on top-level state.
         if ($game->status !== Game::STATUS_SETTLED) {
             $now = Game::nowMillis();
             Market::query()
                 ->where('game_id', $this->gameId)
                 ->update(['status' => Market::STATUS_SETTLED, 'ut' => $now]);
 
-            Selection::query()
-                ->whereIn('market_id', Market::query()->where('game_id', $this->gameId)->select('id'))
-                ->update(['status' => Selection::STATUS_SETTLED, 'ut' => $now]);
-
             $game->status = Game::STATUS_SETTLED;
-            $game->winning_selection_ids = $this->winningSelectionIds;
+            $game->winning_outcomes = $this->winningOutcomeCodes;
             $game->save();
         }
 
-        $selectionIds = Selection::query()
-            ->whereIn('market_id', Market::query()->where('game_id', $this->gameId)->select('id'))
+        $marketIds = Market::query()
+            ->where('game_id', $this->gameId)
             ->pluck('id')
             ->all();
 
         $orderIds = BetOrder::query()
             ->whereIn('status', [
                 BetOrderStatus::Accepted->value,
-                // Pull SettlementFailed orders along too so retrying applyGameResult
-                // re-tries those (after the operator topped up bookmaker liquidity etc.).
                 BetOrderStatus::SettlementFailed->value,
             ])
-            ->whereHas('lines', static function ($q) use ($selectionIds): void {
-                $q->whereIn('kid', $selectionIds);
+            ->whereHas('lines', static function ($q) use ($marketIds): void {
+                $q->whereIn('market_id', $marketIds);
             })
             ->orderBy('id')
             ->pluck('id')
@@ -91,8 +75,8 @@ final readonly class SettlementBatchPlanProvider implements BatchPlanProviderCon
         return new BatchPlan(
             payload: [
                 'game_id' => $this->gameId,
-                'winners' => $this->winningSelectionIds,
-                'voids' => $this->voidedSelectionIds,
+                'winners' => $this->winningOutcomeCodes,
+                'voids' => $this->voidOutcomeCodes,
             ],
             items: $items,
         );

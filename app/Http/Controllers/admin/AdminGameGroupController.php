@@ -5,15 +5,20 @@ declare(strict_types=1);
 namespace App\Http\Controllers\admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Game;
 use App\Models\GameGroup;
+use App\Services\mall\serv_fd\CmsGameClient;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use Throwable;
 
 class AdminGameGroupController extends Controller
 {
+    public function __construct(
+        private readonly CmsGameClient $cmsGameClient,
+    ) {}
+
     public function index(Request $request): View
     {
         $perPage = min(50, max(1, (int) $request->query('per_page', 20)));
@@ -51,15 +56,23 @@ class AdminGameGroupController extends Controller
             'games' => static fn ($q) => $q->orderBy('biz_game.id'),
         ]);
 
-        $linkedIds = $gameGroup->games->pluck('id');
-        $availableGames = Game::query()
-            ->when($linkedIds->isNotEmpty(), static fn ($q) => $q->whereNotIn('id', $linkedIds->all()))
-            ->orderByDesc('id')
-            ->get();
+        $cmsByRawId = [];
+        try {
+            $rawIds = $gameGroup->games
+                ->map(static fn ($g): int => (int) $g->raw_id)
+                ->unique()
+                ->filter(static fn (int $r): bool => $r >= 1)
+                ->values()
+                ->all();
+            if ($rawIds !== []) {
+                $cmsByRawId = $this->cmsGameClient->findManyById($rawIds);
+            }
+        } catch (Throwable) {
+        }
 
         return view('admin.game-groups.show', [
             'gameGroup' => $gameGroup,
-            'availableGames' => $availableGames,
+            'cmsByRawId' => $cmsByRawId,
         ]);
     }
 
@@ -91,39 +104,9 @@ class AdminGameGroupController extends Controller
     public function destroy(GameGroup $gameGroup): RedirectResponse
     {
         $gameGroup->games()->detach();
+        $gameGroup->subjects()->detach();
         $gameGroup->delete();
 
         return redirect()->route('admin.game-groups.index')->with('status', '分组已删除。');
-    }
-
-    public function storeGame(Request $request, GameGroup $gameGroup): RedirectResponse
-    {
-        $v = $request->validate([
-            'game_id' => ['required', 'integer', Rule::exists('biz_game', 'id')],
-        ]);
-        $gameId = (int) $v['game_id'];
-
-        if ($gameGroup->games()->whereKey($gameId)->exists()) {
-            return redirect()
-                ->route('admin.game-groups.show', $gameGroup)
-                ->withErrors(['game_id' => '该赛事已在当前分组中。']);
-        }
-
-        $gameGroup->games()->attach($gameId);
-
-        return redirect()->route('admin.game-groups.show', $gameGroup)->with('status', '已添加赛事。');
-    }
-
-    public function destroyGame(GameGroup $gameGroup, Game $game): RedirectResponse
-    {
-        if (! $gameGroup->games()->whereKey($game->id)->exists()) {
-            return redirect()
-                ->route('admin.game-groups.show', $gameGroup)
-                ->withErrors(['detach' => '该赛事未关联到此分组。']);
-        }
-
-        $gameGroup->games()->detach($game->id);
-
-        return redirect()->route('admin.game-groups.show', $gameGroup)->with('status', '已移除赛事。');
     }
 }

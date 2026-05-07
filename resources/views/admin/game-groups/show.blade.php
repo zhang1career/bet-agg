@@ -15,11 +15,13 @@
             <button type="button" class="btn btn-outline-danger btn-sm"
                     title="Delete" aria-label="Delete"
                     data-mall-delete-url="{{ route('admin.game-groups.destroy', $gameGroup) }}"
-                    data-mall-delete-message="删除分组 {{ $gameGroup->code }}？关联的赛事将仅解除映射，不会被删除。">
+                    data-mall-delete-message="删除分组 {{ $gameGroup->code }}？将解除 biz_x / biz_y 关联，不删除赛事或主体。">
                 Delete group
             </button>
         </div>
     </div>
+
+    <p class="text-muted small mb-3">关联赛事请在 <a href="{{ route('admin.games.index') }}">Games</a> 新建 / 编辑页通过多选分组维护；此页仅查看。</p>
 
     <div class="mall-console-card card shadow-sm mb-4">
         <div class="card-body">
@@ -39,44 +41,6 @@
         <h3 class="h6 mb-0">关联赛事</h3>
     </div>
 
-    @error('detach')
-        <div class="alert alert-danger">{{ $message }}</div>
-    @enderror
-
-    @if($availableGames->isNotEmpty())
-        <div class="mall-console-card card shadow-sm mb-4">
-            <div class="card-body">
-                <h4 class="h6 mb-3">添加赛事到此分组</h4>
-                <form method="post" action="{{ route('admin.game-groups.games.store', $gameGroup) }}"
-                      class="row g-2 align-items-end">
-                    @csrf
-                    <div class="col-md-8">
-                        <label class="form-label" for="game_id">本地 Game</label>
-                        <select name="game_id" id="game_id" class="form-select @error('game_id') is-invalid @enderror" required>
-                            @foreach($availableGames as $g)
-                                <option value="{{ $g->id }}" @selected((int) old('game_id') === $g->id)>
-                                    Local #{{ $g->id }} · raw {{ $g->raw_id }}
-                                </option>
-                            @endforeach
-                        </select>
-                        @error('game_id')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
-                    <div class="col-md-4">
-                        <button type="submit" class="btn btn-primary">添加</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    @else
-        @if($gameGroup->games->isEmpty())
-            <p class="text-muted small mb-3">暂无可用赛事可添加（请先在 Games 创建本地赛事）；当前分组下也没有关联赛事。</p>
-        @else
-            <p class="text-muted small mb-3">当前分组已包含列表中的全部本地赛事。</p>
-        @endif
-    @endif
-
     <div class="mall-console-card card shadow-sm">
         <div class="card-body p-0">
             <div class="table-responsive">
@@ -85,28 +49,27 @@
                     <tr>
                         <th>Local ID</th>
                         <th>raw id</th>
+                        <th>Title</th>
                         <th>Status</th>
-                        <th class="text-end text-nowrap">Actions</th>
                     </tr>
                     </thead>
                     <tbody>
                     @forelse($gameGroup->games as $game)
+                        @php
+                            $cmsRow = $cmsByRawId[(int) $game->raw_id] ?? null;
+                            $title = is_array($cmsRow) && isset($cmsRow['title']) && is_string($cmsRow['title'])
+                                ? trim($cmsRow['title'])
+                                : '';
+                        @endphp
                         <tr>
                             <td>
                                 <a href="{{ route('admin.games.show', $game) }}" class="font-monospace">{{ $game->id }}</a>
                             </td>
                             <td class="font-monospace">{{ $game->raw_id }}</td>
+                            <td>{{ $title !== '' ? $title : '—' }}</td>
                             <td>
                                 @include('admin.partials.status_label', ['kind' => 'game', 'value' => $game->status])
                                 <span class="text-muted">({{ $game->status }})</span>
-                            </td>
-                            <td class="text-end text-nowrap">
-                                <button type="button" class="mall-icon-btn d-inline-flex p-1 rounded text-danger"
-                                        title="移出分组" aria-label="移除"
-                                        data-mall-delete-url="{{ route('admin.game-groups.games.destroy', [$gameGroup, $game]) }}"
-                                        data-mall-delete-message="从当前分组移除 Game #{{ $game->id }}？（不会删除赛事本身）">
-                                    @include('admin.partials.icon_trash')
-                                </button>
                             </td>
                         </tr>
                     @empty

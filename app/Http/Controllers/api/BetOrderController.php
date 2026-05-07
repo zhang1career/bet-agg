@@ -5,12 +5,15 @@ declare(strict_types=1);
 namespace App\Http\Controllers\api;
 
 use App\Components\ApiResponse;
+use App\Exceptions\ConfigurationMissingException;
 use App\Exceptions\FoundationAuthRequiredException;
+use App\Http\Concerns\RequiresFoundationUser;
 use App\Http\Controllers\Controller;
 use App\Models\BetOrder;
 use App\Services\mall\FoundationUser;
 use App\Services\MallDictionaryService;
 use App\Services\user\UserFoundationGateway;
+use App\Support\BetOrderApiArray;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -21,11 +24,17 @@ use Illuminate\Http\Request;
  */
 class BetOrderController extends Controller
 {
+    use RequiresFoundationUser;
+
     public function __construct(
         private readonly UserFoundationGateway $foundationGateway,
         private readonly MallDictionaryService $dict,
     ) {}
 
+    /**
+     * @throws FoundationAuthRequiredException
+     * @throws ConfigurationMissingException
+     */
     public function index(Request $request): JsonResponse
     {
         $user = $this->requireAuthenticatedUser($request);
@@ -55,6 +64,10 @@ class BetOrderController extends Controller
         ]));
     }
 
+    /**
+     * @throws FoundationAuthRequiredException
+     * @throws ConfigurationMissingException
+     */
     public function show(Request $request, int $id): JsonResponse
     {
         $user = $this->requireAuthenticatedUser($request);
@@ -71,57 +84,9 @@ class BetOrderController extends Controller
         $this->logHandledApiRequest($request, ['handler' => 'bet.orders.show', 'order_id' => $id]);
 
         return response()->json(ApiResponse::ok([
-            'order' => $this->serializeOrder($order),
+            'order' => BetOrderApiArray::detail($order),
             '_dict' => $this->dict->resolve(['bet_order_status']),
         ]));
-    }
-
-    /**
-     * @return array<string, mixed>
-     *
-     * @throws FoundationAuthRequiredException
-     */
-    private function requireAuthenticatedUser(Request $request): array
-    {
-        $token = trim((string) $request->header('X-User-Access-Token', ''));
-        if ($token === '') {
-            throw new FoundationAuthRequiredException(
-                'Authentication required. Send header: X-User-Access-Token: <access_token> (raw JWT, no Bearer prefix).'
-            );
-        }
-
-        return $this->foundationGateway->fetchCurrentUser($request);
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function serializeOrder(BetOrder $order): array
-    {
-        $order->loadMissing('lines');
-
-        $lines = [];
-        foreach ($order->lines as $item) {
-            $lines[] = [
-                'kid' => $item->kid,
-                'stake_points' => $item->stake_points,
-                'decimal_odds_millis' => $item->decimal_odds_millis,
-                'potential_return_points' => $item->potential_return_points,
-                'odds_snapshot' => $item->odds_snapshot,
-                'result' => $item->result->value,
-            ];
-        }
-
-        return [
-            'id' => $order->id,
-            'uid' => $order->uid,
-            'status' => $order->status->value,
-            'total_price' => $order->total_price,
-            'points_held' => $order->points_held,
-            'ct' => $order->ct,
-            'ut' => $order->ut,
-            'lines' => $lines,
-        ];
     }
 
     /**

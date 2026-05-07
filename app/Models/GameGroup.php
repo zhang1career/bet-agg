@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Models\concerns\HasMillisTimestamps;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
@@ -15,6 +16,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
  * @property string $code Stable external identifier (e.g. fifa-2026-group)
  * @property int $ct
  * @property int $ut
+ * @property-read Collection<int, Game> $games
+ * @property-read Collection<int, GameSubject> $subjects
  */
 class GameGroup extends Model
 {
@@ -43,5 +46,13 @@ class GameGroup extends Model
     public function games(): BelongsToMany
     {
         return $this->belongsToMany(Game::class, 'biz_x', 'group_id', 'gid');
+    }
+
+    /**
+     * @return BelongsToMany<GameSubject, $this>
+     */
+    public function subjects(): BelongsToMany
+    {
+        return $this->belongsToMany(GameSubject::class, 'biz_y', 'group_id', 'subject_id');
     }
 }

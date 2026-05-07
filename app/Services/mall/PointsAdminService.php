@@ -22,7 +22,7 @@ final class PointsAdminService
             return 0;
         }
 
-        return (int) $row->balance;
+        return $row->balance;
     }
 
     public function openAccount(int $uid, int $initialBalance = 0): PointsBalance
@@ -74,27 +74,6 @@ final class PointsAdminService
         });
     }
 
-    /** @return array{balance: PointsBalance, flow: PointsFlow} */
-    public function adjustBalanceByBalanceId(int $balanceId, int $deltaPoints, int $oid = 0): array
-    {
-        if ($balanceId < 1) {
-            throw new RuntimeException('Invalid balance id.');
-        }
-        if ($deltaPoints === 0) {
-            throw new RuntimeException('Adjustment amount must be non-zero.');
-        }
-        if ($oid < 0) {
-            throw new RuntimeException('Invalid order id.');
-        }
-
-        return DB::transaction(function () use ($balanceId, $deltaPoints, $oid): array {
-            $balance = PointsBalance::query()->where('id', $balanceId)->lockForUpdate()->first();
-            $uid = $balance === null ? 0 : (int) $balance->uid;
-
-            return $this->applyAdjustmentToBalance($balance, $uid, $deltaPoints, $oid);
-        });
-    }
-
     /**
      * @return array{balance: PointsBalance, flow: PointsFlow}
      */
@@ -104,7 +83,7 @@ final class PointsAdminService
             throw new RuntimeException('Points account does not exist. Open an account first.');
         }
 
-        $next = (int) $balance->balance + $deltaPoints;
+        $next = $balance->balance + $deltaPoints;
         if ($next < 0) {
             throw new RuntimeException('Insufficient points for this adjustment.');
         }
@@ -124,16 +103,11 @@ final class PointsAdminService
             if ($row === null) {
                 throw new RuntimeException('Account not found.');
             }
-            if ((int) $row->balance !== 0) {
+            if ($row->balance !== 0) {
                 throw new RuntimeException('Balance must be zero before delete.');
             }
             $row->delete();
         });
-    }
-
-    public function deleteFlowById(int $id): void
-    {
-        throw new RuntimeException('Points flow is append-only for audit; deletion is disabled.');
     }
 
     /**
@@ -277,7 +251,7 @@ final class PointsAdminService
                 throw new RuntimeException('Bookmaker points account missing.');
             }
 
-            $balance->balance = (int) $balance->balance + $stakePoints;
+            $balance->balance = $balance->balance + $stakePoints;
             $balance->save();
 
             $flow = new PointsFlow([
@@ -287,45 +261,6 @@ final class PointsAdminService
                 'state' => PointsHoldState::BookStakeCredit,
             ]);
             $flow->save();
-        });
-    }
-
-    /**
-     * Immutable ledger append (settlement payouts/refunds). Application-layer audit guarantee.
-     */
-    public function appendImmutableLedger(int $uid, int $deltaPoints, int $oid, PointsHoldState $state): PointsFlow
-    {
-        if ($uid < 1) {
-            throw new RuntimeException('Invalid user id.');
-        }
-        if ($deltaPoints < 1) {
-            throw new RuntimeException('Ledger amount must be positive.');
-        }
-        if ($oid < 1) {
-            throw new RuntimeException('Invalid bet order id.');
-        }
-        if ($state !== PointsHoldState::SettlementPayout && $state !== PointsHoldState::SettlementRefund) {
-            throw new RuntimeException('Invalid ledger state for settlement posting.');
-        }
-
-        return DB::transaction(function () use ($uid, $deltaPoints, $oid, $state): PointsFlow {
-            $balance = PointsBalance::query()->where('uid', $uid)->lockForUpdate()->first();
-            if ($balance === null) {
-                throw new RuntimeException('Points account does not exist.');
-            }
-
-            $balance->balance = (int) $balance->balance + $deltaPoints;
-            $balance->save();
-
-            $flow = new PointsFlow([
-                'uid' => $uid,
-                'oid' => $oid,
-                'amount' => $deltaPoints,
-                'state' => $state,
-            ]);
-            $flow->save();
-
-            return $flow;
         });
     }
 

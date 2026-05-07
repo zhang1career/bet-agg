@@ -14,24 +14,15 @@ use Illuminate\Support\Facades\Log;
 use Paganini\Batch\DTO\BatchRunResult;
 use Paganini\Batch\Execution\BatchExecutor;
 use RuntimeException;
+use Throwable;
 
 /**
  * Big-task / small-task settlement orchestrator.
  *
  * Outer transaction (one per game):
- *   - lock biz_game and mark it + its markets + selections as SETTLED,
- *   - persist {@code winning_selection_ids},
- *   - emit the list of accepted-state orders that need money movement.
- * The outer transaction commits BEFORE any per-order work runs, so a crash
- * mid-settlement leaves the game irreversibly settled and the per-order
- * inner transactions can be retried independently (paganini\batch tracks
- * per-order outcomes on {@code settle_job}).
- *
- * Inner transactions (one per order):
- *   - delegated to {@see SettlementBatchItemHandler}, each is independent.
- *   - on rollback the order stays {@code Accepted} on the first attempt; this
- *     orchestrator then marks it {@code SettlementFailed} in a separate
- *     transaction so it surfaces to operators.
+ *   - lock biz_game and mark it + its markets as SETTLED (胜平负 options are synthetic),
+ *   - persist {@code winning_outcomes} (synthetic keys e.g. {@code home_win}),
+ *   - emit accepted-state orders that need money movement.
  *
  * @see SettlementBatchPlanProvider
  * @see SettlementBatchItemHandler
@@ -44,32 +35,29 @@ final readonly class BetSettlementService
     ) {}
 
     /**
-     * @param  list<int>  $winningSelectionIds
-     * @param  list<int>  $voidedSelectionIds  Selections whose bets refund the stake (e.g. match abandoned, market settled void).
+     * @param list<string> $winningOutcomeCodes e.g. {@code home_win}, {@code draw}
+     * @param list<string> $voidOutcomeCodes legs that refund (e.g. all three for void_all)
+     * @throws Throwable
      */
     public function applyGameResult(
         int $gameId,
-        array $winningSelectionIds,
-        array $voidedSelectionIds = [],
+        array $winningOutcomeCodes,
+        array $voidOutcomeCodes = [],
     ): BatchRunResult {
         if ($gameId < 1) {
             throw new RuntimeException('Invalid game_id.');
         }
-        $winners = $this->normalizeIds($winningSelectionIds);
-        $voids = $this->normalizeIds($voidedSelectionIds);
+        $winners = self::normalizeOutcomeCodes($winningOutcomeCodes);
+        $voids = self::normalizeOutcomeCodes($voidOutcomeCodes);
 
         $overlap = array_intersect($winners, $voids);
         if ($overlap !== []) {
             throw new RuntimeException(sprintf(
-                'Selection ids cannot appear in both winners and voids: %s',
+                'Outcome codes cannot appear in both winners and voids: %s',
                 implode(',', $overlap),
             ));
         }
 
-        // One settle_job row per attempt: we suffix the millis-precision attempt timestamp
-        // so retries (e.g. after topping up bookmaker liquidity for SettlementFailed orders) get
-        // their own audit row. Once paganini\batch grows native resume support (project todo 9)
-        // this can collapse back to a per-game bizKey that the executor resumes by cursor.
         $bizKey = self::bizKeyForGame($gameId).':'.Game::nowMillis();
         $plan = new SettlementBatchPlanProvider($gameId, $winners, $voids);
 
@@ -88,15 +76,24 @@ final readonly class BetSettlementService
     }
 
     /**
-     * @param  list<int|string>  $rawIds
-     * @return list<int>
+     * @param  list<string>  $raw
+     * @return list<string>
      */
-    private function normalizeIds(array $rawIds): array
+    private static function normalizeOutcomeCodes(array $raw): array
     {
-        $ids = array_map(static fn (mixed $v): int => (int) $v, $rawIds);
-        $ids = array_filter($ids, static fn (int $v): bool => $v > 0);
+        $out = [];
+        foreach ($raw as $v) {
+            if (! is_string($v)) {
+                continue;
+            }
+            $t = trim($v);
+            if ($t === '') {
+                continue;
+            }
+            $out[$t] = true;
+        }
 
-        return array_values(array_unique($ids));
+        return array_keys($out);
     }
 
     private function parkFailedOrdersAsSettlementFailed(BatchRunResult $result, int $gameId): void
@@ -115,13 +112,12 @@ final readonly class BetSettlementService
                         return;
                     }
                     if ($order->status !== BetOrderStatus::Accepted) {
-                        // Already terminal (Won/Lost/Void) or already SettlementFailed — leave as-is.
                         return;
                     }
                     $order->status = BetOrderStatus::SettlementFailed;
                     $order->save();
                 });
-            } catch (\Throwable $e) {
+            } catch (Throwable $e) {
                 Log::error('[bet-settle] failed to park order in SettlementFailed', [
                     'game_id' => $gameId,
                     'order_id' => $orderId,
@@ -129,15 +125,5 @@ final readonly class BetSettlementService
                 ]);
             }
         }
-    }
-
-    /**
-     * Convenience accessor used by call sites that previously expected a {@see Game}
-     * back from {@code applyGameResult}. Returns the freshly-settled row (or {@code null}
-     * if the game was deleted in the meantime, which should not happen).
-     */
-    public function loadGame(int $gameId): ?Game
-    {
-        return Game::query()->whereKey($gameId)->first();
     }
 }

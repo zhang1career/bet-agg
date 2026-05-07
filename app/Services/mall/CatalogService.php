@@ -8,30 +8,30 @@ use App\Http\Controllers\api\BetGameController;
 use App\Http\Controllers\api\BetMarketController;
 use App\Models\Game;
 use App\Models\Market;
-use App\Models\Selection;
 use App\Services\mall\serv_fd\CmsGameClient;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Http\Client\ConnectionException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
- * Read-side catalog: {@code biz_game} betting state plus {@code biz_market} / {@code biz_selection}.
- * CMS fields merged via {@see CmsGameClient::findManyById} using {@code biz_game.raw_id}.
+ * Read-side catalog: {@code biz_game} + {@code biz_market}; 胜平负选项由 {@see SyntheticMatchMarket} 合成。
  */
-final class CatalogService
+final readonly class CatalogService
 {
     public function __construct(
-        private readonly CmsGameClient $cmsGames,
+        private CmsGameClient        $cmsGames,
+        private SyntheticMatchMarket $synthetic,
     ) {}
 
     /**
-     * @param  GameListFilter  $filter  Validated filter inputs from {@see BetGameController}.
+     * @param GameListFilter $filter Validated filter inputs from {@see BetGameController}.
      * @return array{items: list<array<string, mixed>>, pagination: array<string, mixed>}
+     * @throws ConnectionException
      */
     public function listGames(GameListFilter $filter, int $page, int $perPage): array
     {
-        $query = Game::query();
+        $query = Game::query()->with(['sideASubject', 'sideBSubject']);
         $this->applyGameFilter($query, $filter);
         $this->applyGameSort($query, $filter);
 
@@ -44,7 +44,7 @@ final class CatalogService
 
         $items = [];
         foreach ($games as $game) {
-            $cmsRow = $cmsByRawId[(int) $game->raw_id] ?? null;
+            $cmsRow = $cmsByRawId[$game->raw_id] ?? null;
             $items[] = $this->serializeGameRow($game, $cmsRow, false);
         }
 
@@ -56,15 +56,19 @@ final class CatalogService
 
     /**
      * @return array<string, mixed>
+     * @throws ConnectionException
      */
     public function getGameDetail(int $localId): array
     {
-        $game = Game::query()->whereKey($localId)->with(['groups'])->first();
+        $game = Game::query()
+            ->whereKey($localId)
+            ->with(['groups', 'sideASubject', 'sideBSubject'])
+            ->first();
         if ($game === null) {
             throw new NotFoundHttpException('Game not found.');
         }
 
-        $cmsByRawId = $this->cmsGamesByRawIds([(int) $game->raw_id]);
+        $cmsByRawId = $this->cmsGamesByRawIds([$game->raw_id]);
 
         /** @var list<array{id: int, code: string}> $groupRows */
         $groupRows = [];
@@ -72,16 +76,20 @@ final class CatalogService
             $groupRows[] = ['id' => (int) $gr->id, 'code' => (string) $gr->code];
         }
 
-        return $this->serializeGameRow($game, $cmsByRawId[(int) $game->raw_id] ?? null, true, $groupRows);
+        return $this->serializeGameRow($game, $cmsByRawId[$game->raw_id] ?? null, true, $groupRows);
     }
 
     /**
-     * @param  MarketListFilter  $filter  Validated filter inputs from {@see BetMarketController}.
+     * @param MarketListFilter $filter Validated filter inputs from {@see BetMarketController}.
      * @return array{items: list<array<string, mixed>>, pagination: array<string, mixed>}
+     * @throws ConnectionException
      */
     public function listMarkets(MarketListFilter $filter, int $page, int $perPage): array
     {
-        $query = Market::query()->with(['game']);
+        $query = Market::query()->with([
+            'game.sideASubject',
+            'game.sideBSubject',
+        ]);
         $this->applyMarketFilter($query, $filter);
         $query->orderByDesc('id');
 
@@ -91,14 +99,14 @@ final class CatalogService
         $marketsOnPage = $p->items();
         $cmsByRawId = $this->cmsGamesByRawIds($this->uniqueRawIdsFromMarkets($marketsOnPage));
         $selectionsByMarket = $filter->includeSelections
-            ? $this->selectionsForMarkets(array_map(static fn (Market $m): int => (int) $m->id, $marketsOnPage))
+            ? $this->selectionsForMarkets(array_map(static fn (Market $m): int => $m->id, $marketsOnPage))
             : [];
 
         $items = [];
         foreach ($marketsOnPage as $market) {
             $items[] = $this->serializeMarketRow(
                 $market,
-                $filter->includeSelections ? ($selectionsByMarket[(int) $market->id] ?? []) : null,
+                $filter->includeSelections ? ($selectionsByMarket[$market->id] ?? []) : null,
                 $cmsByRawId,
             );
         }
@@ -111,18 +119,19 @@ final class CatalogService
 
     /**
      * @return array<string, mixed>
+     * @throws ConnectionException
      */
     public function getMarketDetail(int $id): array
     {
         $market = Market::query()
-            ->with(['game'])
+            ->with(['game.sideASubject', 'game.sideBSubject'])
             ->whereKey($id)
             ->first();
         if ($market === null) {
             throw new NotFoundHttpException('Market not found.');
         }
 
-        $selections = $this->selectionsForMarkets([(int) $market->id])[(int) $market->id] ?? [];
+        $selections = $this->selectionsForMarkets([$market->id])[$market->id] ?? [];
 
         $cmsByRawId = $this->cmsGamesByRawIds(
             $market->game !== null ? [(int) $market->game->raw_id] : [],
@@ -194,33 +203,41 @@ final class CatalogService
             return [];
         }
 
-        /** @var Collection<int, Selection> $rows */
-        $rows = Selection::query()
-            ->whereIn('market_id', $marketIds)
-            ->orderBy('id')
-            ->get();
+        $markets = Market::query()
+            ->whereIn('id', $marketIds)
+            ->with(['game.sideASubject', 'game.sideBSubject'])
+            ->get()
+            ->keyBy(static fn (Market $m): int => $m->id);
 
         $byMarket = [];
-        foreach ($rows as $sel) {
-            $byMarket[(int) $sel->market_id][] = $this->serializeSelectionRow($sel);
+        foreach ($marketIds as $mid) {
+            $m = $markets->get($mid);
+            if ($m === null) {
+                continue;
+            }
+            $byMarket[$mid] = $this->synthetic->legsForApi($m, $m->game);
         }
 
         return $byMarket;
     }
 
     /**
-     * @param  array<string, mixed>|null  $cmsRow  CMS batch/detail row keyed like API columns.
-     * @param  list<array{id: int, code: string}>|null  $groups  Embedded on detail responses only; omit on list paths.
+     * @param  array<string, mixed>|null  $cmsRow
+     * @param  list<array{id: int, code: string}>|null  $groups
      * @return array<string, mixed>
      */
     private function serializeGameRow(Game $game, ?array $cmsRow, bool $detail, ?array $groups = null): array
     {
         $row = [
-            'id' => (int) $game->id,
-            'cms_id' => (int) $game->raw_id,
-            'status' => (int) $game->status,
-            'winning_selection_ids' => $game->winning_selection_ids ?? [],
-            'ut' => (int) $game->ut,
+            'id' => $game->id,
+            'cms_id' => $game->raw_id,
+            'status' => $game->status,
+            'side_a_subject_id' => $game->side_a_subject_id !== null ? (int) $game->side_a_subject_id : null,
+            'side_b_subject_id' => $game->side_b_subject_id !== null ? (int) $game->side_b_subject_id : null,
+            'side_a_name' => $game->sideASubject !== null ? (string) $game->sideASubject->name : null,
+            'side_b_name' => $game->sideBSubject !== null ? (string) $game->sideBSubject->name : null,
+            'winning_outcomes' => $game->winning_outcomes ?? [],
+            'ut' => $game->ut,
         ];
 
         $row['title'] = $cmsRow !== null ? $this->cmsStringOrNull($cmsRow['title'] ?? null) : null;
@@ -248,11 +265,13 @@ final class CatalogService
         $nestedCms = $game === null ? null : ($cmsByRawId[(int) $game->raw_id] ?? null);
 
         $row = [
-            'id' => (int) $market->id,
-            'game_id' => $game === null ? 0 : (int) $game->id,
-            'name' => (string) $market->name,
-            'status' => (int) $market->status,
-            'ut' => (int) $market->ut,
+            'id' => $market->id,
+            'game_id' => (int)$game?->id,
+            'type' => $market->type->value,
+            'name' => $market->name,
+            'status' => $market->status,
+            'odds_millis' => $market->outcomeOddsMillisMap(),
+            'ut' => $market->ut,
             'game' => $game === null ? null : $this->serializeNestedGame($game, $nestedCms),
         ];
 
@@ -264,28 +283,13 @@ final class CatalogService
     }
 
     /**
-     * @return array<string, mixed>
-     */
-    private function serializeSelectionRow(Selection $sel): array
-    {
-        return [
-            'id' => (int) $sel->id,
-            'market_id' => (int) $sel->market_id,
-            'label' => (string) $sel->label,
-            'current_odds_millis' => (int) $sel->current_odds_millis,
-            'status' => (int) $sel->status,
-            'ut' => (int) $sel->ut,
-        ];
-    }
-
-    /**
      * @param  array<string, mixed>|null  $cmsRow
      * @return array<string, mixed>
      */
     private function serializeNestedGame(Game $game, ?array $cmsRow): array
     {
         $merged = $this->serializeGameRow($game, $cmsRow, false);
-        unset($merged['winning_selection_ids']);
+        unset($merged['winning_outcomes']);
 
         return $merged;
     }
@@ -298,7 +302,7 @@ final class CatalogService
     {
         $seen = [];
         foreach ($games as $game) {
-            $rid = (int) $game->raw_id;
+            $rid = $game->raw_id;
             if ($rid >= 1) {
                 $seen[$rid] = true;
             }
@@ -329,8 +333,9 @@ final class CatalogService
     }
 
     /**
-     * @param  list<int>  $rawIds
+     * @param list<int> $rawIds
      * @return array<int, array<string, mixed>>
+     * @throws ConnectionException
      */
     private function cmsGamesByRawIds(array $rawIds): array
     {
@@ -343,7 +348,7 @@ final class CatalogService
 
     private function cmsStringOrNull(mixed $value): ?string
     {
-        if ($value === null || ! is_string($value)) {
+        if (! is_string($value)) {
             return null;
         }
 

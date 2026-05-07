@@ -77,12 +77,4 @@ final class MallDictionaryService
 
         return $case->name;
     }
-
-    /**
-     * @return list<string>
-     */
-    public static function registeredCodes(): array
-    {
-        return array_keys(self::CODE_TO_ENUM);
-    }
 }

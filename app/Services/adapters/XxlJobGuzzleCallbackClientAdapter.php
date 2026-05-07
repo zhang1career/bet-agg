@@ -13,13 +13,13 @@ use Throwable;
 /**
  * Guzzle callback to XXL-Job admin (same contract as job-executor).
  */
-final class XxlJobGuzzleCallbackClientAdapter implements CallbackClientInterface
+final readonly class XxlJobGuzzleCallbackClientAdapter implements CallbackClientInterface
 {
     public function __construct(
-        private readonly string $adminAddress,
-        private readonly string $accessToken,
-        private readonly int $logDateTim,
-        private readonly int $timeout = 10,
+        private string $adminAddress,
+        private string $accessToken,
+        private int    $logDateTim,
+        private int    $timeout = 10,
     ) {}
 
     public function sendCallback(int $logId, int $handleCode, string $handleMsg): bool

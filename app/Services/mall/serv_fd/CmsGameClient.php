@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\mall\serv_fd;
 
 use App\Services\api_gw\ResolvedApiGatewayBaseUrl;
+use Illuminate\Contracts\Container\BindingResolutionException;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
@@ -26,6 +27,9 @@ final readonly class CmsGameClient
         private int $timeoutSeconds,
     ) {}
 
+    /**
+     * @throws BindingResolutionException
+     */
     public static function fromConfig(): self
     {
         /** @var ResolvedApiGatewayBaseUrl $foundationBase */

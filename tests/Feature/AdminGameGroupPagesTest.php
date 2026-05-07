@@ -27,16 +27,11 @@ final class AdminGameGroupPagesTest extends TestCase
 
         $game = new Game(['raw_id' => 909, 'status' => Game::STATUS_OPEN]);
         $game->save();
+        $group->games()->attach((int) $game->id);
 
-        $attach = $this->post('/admin/game-groups/'.$group->id.'/games', [
-            'game_id' => $game->id,
-        ]);
-        $attach->assertRedirect();
-        $this->assertTrue($group->fresh()->games()->whereKey($game->id)->exists());
-
-        $this->delete('/admin/game-groups/'.$group->id.'/games/'.$game->id)
-            ->assertRedirect();
-        $this->assertFalse($group->fresh()->games()->whereKey($game->id)->exists());
+        $show = $this->get('/admin/game-groups/'.$group->id);
+        $show->assertOk();
+        $show->assertSee('909', false);
 
         $this->put('/admin/game-groups/'.$group->id, ['code' => 'fixture-renamed'])
             ->assertRedirect();

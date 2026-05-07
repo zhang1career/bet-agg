@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "bet-agg HTTP API",
-    "description": "Laravel bet aggregation service: public `/api/*` JSON APIs and health check. User profile is **not** served here—call the Foundation (or API gateway) user API; bet-agg only **outbounds** to that service to resolve `X-User-Access-Token`. JSON responses use the `ApiResponse` envelope (`data`, `errorCode`, `message`, `_req_id`). Local catalog betting state is in `biz_game` (status + settlement payload), optional many-to-many links to `biz_game_group` (`code` is a stable grouping key), `biz_market`, and `biz_selection`; game copy/media/kickoff are merged from CMS (`GET /api/cms/game?ids=…`) using `biz_game.raw_id` as the CMS id—not duplicated in `biz_game`. Bet order lines reference a selection via `kid`.\n\n**Internal infrastructure** (XXL-Job HTTP callbacks) lives under `/internal/*` and is intentionally NOT documented here.\n\n**Examples:** Reusable request/response samples are under `components.examples` and referenced from operations. **Contract tests:** `Tests\\Feature\\OpenApiRoutesContractTest` asserts every path/method in this file is registered in the app.",
+    "description": "Laravel bet aggregation service: public `/api/*` JSON APIs and health check. User profile is **not** served here—call the Foundation (or API gateway) user API; bet-agg only **outbounds** to that service to resolve `X-User-Access-Token`. JSON responses use the `ApiResponse` envelope (`data`, `errorCode`, `message`, `_req_id`). Local catalog is `biz_game` (status, `side_a_subject_id` / `side_b_subject_id`, `winning_outcomes` JSON array of synthetic keys), `biz_game_group` + `biz_x` / `biz_game_subject` + `biz_y`, and `biz_market` (`type` int + `odds_millis`: outcome_code → quoted odds ×1000). 胜平负 legs are **synthetic** (`outcome_code`: `home_win`, `draw`, `away_win`). Game copy/media/kickoff are merged from CMS (`GET /api/cms/game?ids=\u2026`). Persisted **order_item** rows use `market_id` + `selection` (JSON blob; 1X2 uses `{ \"code\": \"home_win\" }`). **`POST /api/bet/place`** lines still carry `outcome_code` as the 1X2 leg key.\n\n**Internal infrastructure** (XXL-Job HTTP callbacks) lives under `/internal/*` and is intentionally NOT documented here.\n\n**Examples:** Reusable request/response samples are under `components.examples` and referenced from operations. **Contract tests:** `Tests\\Feature\\OpenApiRoutesContractTest` asserts every path/method in this file is registered in the app.",
     "version": "1.8.0"
   },
   "servers": [
@@ -60,9 +60,14 @@
       "BetOrderLine": {
         "type": "object",
         "properties": {
-          "kid": {
+          "market_id": {
             "type": "integer",
-            "description": "biz_selection.id"
+            "description": "biz_market.id"
+          },
+          "selection": {
+            "type": "object",
+            "description": "Stored pick (JSON shape follows market `type`; 1X2 contains `code`: home_win | draw | away_win).",
+            "additionalProperties": true
           },
           "stake_points": {
             "type": "integer"
@@ -188,12 +193,28 @@
             "type": "integer",
             "description": "1 = open, 2 = closed, 3 = settled"
           },
-          "winning_selection_ids": {
+          "winning_outcomes": {
             "type": "array",
             "items": {
-              "type": "integer"
+              "type": "string"
             },
-            "description": "Set when status is settled; empty array otherwise"
+            "description": "Synthetic outcome keys after settle; empty when not settled"
+          },
+          "side_a_subject_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "side_b_subject_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "side_a_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "side_b_name": {
+            "type": "string",
+            "nullable": true
           },
           "ut": {
             "type": "integer",
@@ -235,7 +256,7 @@
       },
       "Market": {
         "type": "object",
-        "description": "Public `biz_market` row with nested local game summary. GET /api/bet/markets/{market_id} always embeds `selections`. GET /api/bet/markets list includes `selections` when `include_selections` is true (default); when false the key is omitted.",
+        "description": "Public `biz_market` row with nested local game summary. GET /api/bet/markets/{market_id} always embeds `selections` (synthetic 胜平负 legs). GET /api/bet/markets list includes `selections` when `include_selections` is true (default); when false the key is omitted.",
         "properties": {
           "id": {
             "type": "integer"
@@ -243,6 +264,17 @@
           "game_id": {
             "type": "integer",
             "description": "Local `biz_game.id`"
+          },
+          "type": {
+            "type": "integer",
+            "description": "MarketType int; 1 = 胜平负"
+          },
+          "odds_millis": {
+            "type": "object",
+            "description": "Outcome code → quoted decimal odds ×1000; keys depend on `type` (1 = `home_win`, `draw`, `away_win`).",
+            "additionalProperties": {
+              "type": "integer"
+            }
           },
           "name": {
             "type": "string",
@@ -257,7 +289,7 @@
           },
           "selections": {
             "type": "array",
-            "description": "Options under this market (`biz_selection` rows), ordered by id. Omitted on list when `include_selections=0`.",
+            "description": "Synthetic legs for this market type; omitted on list when `include_selections=0`.",
             "items": {
               "$ref": "#/components/schemas/Selection"
             }
@@ -298,14 +330,11 @@
       },
       "Selection": {
         "type": "object",
-        "description": "Selection row as embedded in a market payload (`GET /api/bet/markets`, `GET /api/bet/markets/{id}`). No nested market/game objects — parent market carries `game`.",
+        "description": "Synthetic leg embedded in a market payload (no `biz_selection` table).",
         "properties": {
-          "id": {
-            "type": "integer"
-          },
-          "market_id": {
-            "type": "integer",
-            "description": "Local `biz_market.id`"
+          "outcome_code": {
+            "type": "string",
+            "description": "e.g. home_win, draw, away_win"
           },
           "label": {
             "type": "string"
@@ -313,13 +342,6 @@
           "current_odds_millis": {
             "type": "integer",
             "description": "Decimal odds × 1000 (e.g. 2000 = 2.00)"
-          },
-          "status": {
-            "type": "integer"
-          },
-          "ut": {
-            "type": "integer",
-            "description": "Last update time (milliseconds)"
           }
         }
       },
@@ -378,7 +400,8 @@
         "value": {
           "lines": [
             {
-              "kid": 1,
+              "market_id": 1,
+              "outcome_code": "home_win",
               "stake_points": 100,
               "expected_odds_millis": 2000
             }
@@ -948,14 +971,19 @@
                     "items": {
                       "type": "object",
                       "required": [
-                        "kid",
+                        "market_id",
+                        "outcome_code",
                         "stake_points",
                         "expected_odds_millis"
                       ],
                       "properties": {
-                        "kid": {
+                        "market_id": {
                           "type": "integer",
                           "minimum": 1
+                        },
+                        "outcome_code": {
+                          "type": "string",
+                          "minLength": 1
                         },
                         "stake_points": {
                           "type": "integer",

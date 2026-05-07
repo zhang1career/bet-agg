@@ -10,10 +10,10 @@ use Paganini\ServiceDiscovery\Contracts\RedisStringClient;
 /**
  * Laravel Redis connection adapter for {@see RedisStringClient} (phpredis semantics).
  */
-final class LaravelRedisStringClient implements RedisStringClient
+final readonly class LaravelRedisStringClient implements RedisStringClient
 {
     public function __construct(
-        private readonly Connection $connection,
+        private Connection $connection,
     ) {}
 
     public function get(string $key): string|false

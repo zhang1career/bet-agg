@@ -26,8 +26,9 @@
                         <th>ID</th>
                         <th>Game</th>
                         <th>Name</th>
+                        <th>Type</th>
+                        <th class="text-end">Odds ×1000</th>
                         <th>Status</th>
-                        <th class="text-end">Selections</th>
                         <th class="text-end text-nowrap">Actions</th>
                     </tr>
                     </thead>
@@ -41,11 +42,14 @@
                                 <a href="{{ route('admin.games.show', $m->game_id) }}">Game #{{ $m->game_id }}</a>
                             </td>
                             <td>{{ $m->name }}</td>
+                            <td class="small font-monospace">{{ $m->type->value }}</td>
+                            <td class="text-end font-monospace small">
+                                {{ json_encode($m->outcomeOddsMillisMap(), JSON_UNESCAPED_UNICODE) }}
+                            </td>
                             <td>
                                 @include('admin.partials.status_label', ['kind' => 'market', 'value' => $m->status])
                                 <span class="text-muted">({{ $m->status }})</span>
                             </td>
-                            <td class="text-end font-monospace">{{ $m->selections_count }}</td>
                             <td class="text-end text-nowrap">
                                 <a href="{{ route('admin.markets.edit', $m) }}" class="mall-icon-btn d-inline-flex p-1 rounded text-decoration-none" title="Edit">
                                     @include('admin.partials.icon_pencil')
@@ -53,7 +57,7 @@
                                 <button type="button" class="mall-icon-btn d-inline-flex p-1 rounded text-danger"
                                         title="Delete" aria-label="Delete"
                                         data-mall-delete-url="{{ route('admin.markets.destroy', $m) }}"
-                                        data-mall-delete-message="Delete market #{{ $m->id }} and all selections?">
+                                        data-mall-delete-message="Delete market #{{ $m->id }}?">
                                     @include('admin.partials.icon_trash')
                                 </button>
                             </td>

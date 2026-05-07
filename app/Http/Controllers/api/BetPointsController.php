@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\api;
 
 use App\Components\ApiResponse;
+use App\Exceptions\ConfigurationMissingException;
 use App\Exceptions\FoundationAuthRequiredException;
 use App\Http\Controllers\Controller;
 use App\Services\mall\FoundationUser;
@@ -24,6 +25,7 @@ class BetPointsController extends Controller
      * Current user's available points balance (integer game points).
      *
      * @throws FoundationAuthRequiredException
+     * @throws ConfigurationMissingException
      */
     public function show(Request $request): JsonResponse
     {
@@ -42,6 +44,7 @@ class BetPointsController extends Controller
      * @return array<string, mixed>
      *
      * @throws FoundationAuthRequiredException
+     * @throws ConfigurationMissingException
      */
     private function requireAuthenticatedUser(Request $request): array
     {

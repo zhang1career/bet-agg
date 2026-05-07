@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Enums\MarketType;
 use App\Models\Game;
 use App\Models\GameGroup;
 use App\Models\Market;
-use App\Models\Selection;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\CatalogSeeder;
 use Tests\TestCase;
@@ -65,7 +65,7 @@ final class BetCatalogApiTest extends TestCase
         $this->assertSame('cms/cover.png', $res->json('data.main_media'));
         $this->assertSame(1_700_000_000_000, $res->json('data.start_at'));
         $this->assertArrayNotHasKey('name', $res->json('data'));
-        $this->assertSame([], $res->json('data.winning_selection_ids'));
+        $this->assertSame([], $res->json('data.winning_outcomes'));
         $this->assertSame([], $res->json('data.groups'));
     }
 
@@ -107,7 +107,6 @@ final class BetCatalogApiTest extends TestCase
         $laterGrp = new GameGroup(['code' => 'later-group']);
         $laterGrp->save();
 
-        // Attach pivot in reverse id order — response must still sort by group id ascending.
         $g->groups()->attach([(int) $laterGrp->id, (int) $earlyGrp->id]);
 
         $res = $this->getJson('/api/bet/games/'.$g->id);
@@ -141,12 +140,12 @@ final class BetCatalogApiTest extends TestCase
         $this->assertSame($sorted, $ids);
     }
 
-    public function test_markets_list_embeds_selections_by_default_and_filters_by_local_game_id(): void
+    public function test_markets_list_embeds_synthetic_selections_by_default_and_filters_by_local_game_id(): void
     {
-        CatalogSeeder::openSelection(2000);
-        $other = CatalogSeeder::openSelection(1700);
-        $otherSelection = Selection::query()->findOrFail($other);
-        $otherMarket = $otherSelection->market;
+        CatalogSeeder::openHomeWinMarket(2000);
+        $otherPayload = CatalogSeeder::openHomeWinMarket(1700);
+        $otherMarketId = $otherPayload['market_id'];
+        $otherMarket = Market::query()->findOrFail($otherMarketId);
 
         $resAll = $this->getJson('/api/bet/markets?per_page=50');
         $resAll->assertOk();
@@ -156,10 +155,11 @@ final class BetCatalogApiTest extends TestCase
             $this->assertArrayHasKey('selections', $row);
             $this->assertNotEmpty($row['selections']);
             $this->assertArrayHasKey('current_odds_millis', $row['selections'][0]);
+            $this->assertArrayHasKey('outcome_code', $row['selections'][0]);
         }
         $this->assertArrayHasKey('_dict', $resAll->json('data'));
 
-        $localGameId = (int) $otherMarket->game->id;
+        $localGameId = (int) $otherMarket->game_id;
         $resOne = $this->getJson('/api/bet/markets?game_id='.$localGameId);
         $resOne->assertOk();
         $filtered = $resOne->json('data.items');
@@ -169,7 +169,7 @@ final class BetCatalogApiTest extends TestCase
 
     public function test_markets_list_can_disable_selections_inlining(): void
     {
-        CatalogSeeder::openSelection(2000);
+        CatalogSeeder::openHomeWinMarket(2000);
 
         $res = $this->getJson('/api/bet/markets?include_selections=0');
         $res->assertOk();
@@ -180,36 +180,36 @@ final class BetCatalogApiTest extends TestCase
         }
     }
 
-    public function test_market_show_includes_selections_and_nested_game(): void
+    public function test_market_show_includes_synthetic_selections_and_nested_game(): void
     {
-        $sid = CatalogSeeder::openSelection(2000);
-        $sel = Selection::query()->findOrFail($sid);
-        $marketId = (int) $sel->market_id;
+        $cat = CatalogSeeder::openHomeWinMarket(2000);
+        $marketId = $cat['market_id'];
+        $market = Market::query()->findOrFail($marketId);
 
         $res = $this->getJson('/api/bet/markets/'.$marketId);
         $res->assertOk();
         $this->assertSame($marketId, $res->json('data.id'));
         $this->assertSame('Full-time 1X2', $res->json('data.name'));
+        $this->assertSame(MarketType::OneX2->value, $res->json('data.type'));
         $this->assertArrayHasKey('game', $res->json('data'));
-        $this->assertSame((int) $sel->market->game->id, $res->json('data.game.id'));
-        $rawId = (int) $sel->market->game->raw_id;
+        $this->assertSame((int) $market->game_id, $res->json('data.game.id'));
+        $rawId = (int) $market->game->raw_id;
         $this->assertSame('CMS game '.$rawId, $res->json('data.game.title'));
         $this->assertArrayNotHasKey('main_media', $res->json('data.game'));
         $this->assertArrayNotHasKey('start_at', $res->json('data.game'));
         $this->assertArrayHasKey('selections', $res->json('data'));
         $selections = $res->json('data.selections');
-        $this->assertCount(1, $selections);
-        $this->assertSame($sid, $selections[0]['id']);
+        $this->assertCount(3, $selections);
+        $this->assertSame('home_win', $selections[0]['outcome_code']);
         $this->assertSame(2000, $selections[0]['current_odds_millis']);
     }
 
     public function test_markets_list_only_under_open_games_when_no_filters_passed(): void
     {
-        $sid = CatalogSeeder::openSelection(2000);
-        $sel = Selection::query()->findOrFail($sid);
-        // Close the parent game; the market should be hidden by default.
-        $sel->market->game->status = Game::STATUS_CLOSED;
-        $sel->market->game->save();
+        $cat = CatalogSeeder::openHomeWinMarket(2000);
+        $market = Market::query()->findOrFail($cat['market_id']);
+        $market->game->status = Game::STATUS_CLOSED;
+        $market->game->save();
 
         $res = $this->getJson('/api/bet/markets');
         $res->assertOk();
@@ -218,18 +218,16 @@ final class BetCatalogApiTest extends TestCase
 
     public function test_market_can_be_filtered_by_status_even_under_closed_game(): void
     {
-        // When agent passes an explicit status filter, parent-game gating is skipped so settled
-        // markets remain visible for history/replay.
-        $sid = CatalogSeeder::openSelection(2000);
-        $sel = Selection::query()->findOrFail($sid);
-        $sel->market->status = Market::STATUS_SETTLED;
-        $sel->market->save();
-        $sel->market->game->status = Game::STATUS_SETTLED;
-        $sel->market->game->save();
+        $cat = CatalogSeeder::openHomeWinMarket(2000);
+        $market = Market::query()->findOrFail($cat['market_id']);
+        $market->status = Market::STATUS_SETTLED;
+        $market->save();
+        $market->game->status = Game::STATUS_SETTLED;
+        $market->game->save();
 
         $res = $this->getJson('/api/bet/markets?status=3');
         $res->assertOk();
         $this->assertCount(1, $res->json('data.items'));
-        $this->assertSame((int) $sel->market->id, $res->json('data.items.0.id'));
+        $this->assertSame((int) $market->id, $res->json('data.items.0.id'));
     }
 }
