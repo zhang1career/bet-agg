@@ -6,8 +6,8 @@ namespace App\Enums;
 
 enum MarketType: int
 {
-    /** 胜平负（程序 synthetic 三个 outcome） */
-    case OneX2 = 1;
+    /** 胜平负（程序 synthetic 三个 outcome）；持久化 {@code biz_market.type} = 0 */
+    case OneX2 = 0;
 
     public function label(): string
     {

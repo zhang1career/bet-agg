@@ -267,7 +267,7 @@
           },
           "type": {
             "type": "integer",
-            "description": "MarketType int; 1 = 胜平负"
+            "description": "MarketType int; 0 = 胜平负 (1X2)"
           },
           "odds_millis": {
             "type": "object",

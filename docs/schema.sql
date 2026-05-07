@@ -59,10 +59,10 @@ CREATE TABLE IF NOT EXISTS `biz_x` (
 CREATE TABLE IF NOT EXISTS `biz_market` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `game_id` bigint unsigned NOT NULL,
-  `type` tinyint unsigned NOT NULL DEFAULT '1' COMMENT 'MarketType: 1 = 胜平负',
+  `type` tinyint unsigned NOT NULL DEFAULT '0' COMMENT 'MarketType: 0 = 胜平负',
   `name` varchar(256) NOT NULL DEFAULT '' COMMENT '盘口展示名称',
   `status` tinyint unsigned NOT NULL DEFAULT '1' COMMENT '1 open, 2 suspended, 3 settled',
-  `odds_millis` text DEFAULT NULL COMMENT 'JSON：outcome_code -> 欧洲盘×1000；type=1 时为 home_win / draw / away_win',
+  `odds_millis` text DEFAULT NULL COMMENT 'JSON：outcome_code -> 欧洲盘×1000；胜平负(type=0)时为 home_win / draw / away_win',
   `ct` bigint unsigned NOT NULL DEFAULT '0',
   `ut` bigint unsigned NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
