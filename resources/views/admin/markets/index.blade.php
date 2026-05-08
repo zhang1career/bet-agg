@@ -31,8 +31,8 @@
                             <td>
                                 <a href="{{ route('admin.markets.show', $m) }}" class="font-monospace">{{ $m->id }}</a>
                             </td>
-                            <td>
-                                <a href="{{ route('admin.games.show', $m->game_id) }}">{{ __('console.markets.game_number', ['id' => $m->game_id]) }}</a>
+                            <td class="small">
+                                <a href="{{ route('admin.games.show', $m->game_id) }}">{{ ($cmsByRawId[(int) ($m->game?->raw_id ?? 0)] ?? [])['title'] ?? '—' }}</a>
                             </td>
                             <td>{{ $m->name }}</td>
                             <td class="small font-monospace">{{ $m->type->value }}</td>

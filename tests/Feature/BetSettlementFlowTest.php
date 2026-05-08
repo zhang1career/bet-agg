@@ -15,6 +15,7 @@ use App\Services\mall\BetPlaceService;
 use App\Services\mall\BetSettlementService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Paganini\Batch\DTO\BatchRunResult;
 use Paganini\Batch\Enums\JobStatus;
 use Paganini\Constants\ResponseConstant;
 use Tests\Support\CatalogSeeder;
@@ -87,6 +88,18 @@ final class BetSettlementFlowTest extends TestCase
         return (int) $result['order']->id;
     }
 
+    /**
+     * @param  list<string>  $winners
+     * @param  list<string>  $voids
+     */
+    private function recordAndSettle(int $gameId, array $winners, array $voids = []): BatchRunResult
+    {
+        $svc = app(BetSettlementService::class);
+        $svc->recordPendingSettlement($gameId, $winners, $voids);
+
+        return $svc->applyGameResult($gameId);
+    }
+
     public function test_winner_bet_pays_stake_times_odds_and_book_stays_solvent(): void
     {
         PointsBalance::query()->create(['uid' => $this->bookUid(), 'balance' => 1_000_000]);
@@ -101,7 +114,7 @@ final class BetSettlementFlowTest extends TestCase
         $this->assertSame(400, (int) PointsBalance::query()->where('uid', 42)->value('balance'));
         $this->assertSame(1_000_100, (int) PointsBalance::query()->where('uid', $this->bookUid())->value('balance'));
 
-        $result = app(BetSettlementService::class)->applyGameResult($ids['game_local_id'], [MatchOutcomeCode::HomeWin->value]);
+        $result = $this->recordAndSettle($ids['game_local_id'], [MatchOutcomeCode::HomeWin->value]);
         $this->assertSame(JobStatus::Completed, $result->status);
         $this->assertSame(1, $result->successCount);
         $this->assertSame(0, $result->failureCount);
@@ -131,7 +144,7 @@ final class BetSettlementFlowTest extends TestCase
         $ids = CatalogSeeder::oneXTwoSettlement(2500, 2000, 2000);
         $orderId = $this->placeBet(42, $ids, 100, 2500, 2, MatchOutcomeCode::HomeWin->value);
 
-        $result = app(BetSettlementService::class)->applyGameResult($ids['game_local_id'], [MatchOutcomeCode::AwayWin->value]);
+        $result = $this->recordAndSettle($ids['game_local_id'], [MatchOutcomeCode::AwayWin->value]);
         $this->assertSame(JobStatus::Completed, $result->status);
         $this->assertBookNonNegative();
 
@@ -150,11 +163,7 @@ final class BetSettlementFlowTest extends TestCase
         $ids = CatalogSeeder::oneXTwoSettlement(2500, 2000, 2000);
         $orderId = $this->placeBet(42, $ids, 100, 2500, 3, MatchOutcomeCode::HomeWin->value);
 
-        $result = app(BetSettlementService::class)->applyGameResult(
-            $ids['game_local_id'],
-            [],
-            MatchOutcomeCode::allValues(),
-        );
+        $result = $this->recordAndSettle($ids['game_local_id'], [], MatchOutcomeCode::allValues());
         $this->assertSame(JobStatus::Completed, $result->status);
         $this->assertBookNonNegative();
 
@@ -184,7 +193,7 @@ final class BetSettlementFlowTest extends TestCase
         $ids = CatalogSeeder::oneXTwoSettlement(5000, 2000, 2000);
         $orderId = $this->placeBet(42, $ids, 100, 5000, 4, MatchOutcomeCode::HomeWin->value);
 
-        $result = app(BetSettlementService::class)->applyGameResult($ids['game_local_id'], [MatchOutcomeCode::HomeWin->value]);
+        $result = $this->recordAndSettle($ids['game_local_id'], [MatchOutcomeCode::HomeWin->value]);
         $this->assertSame(JobStatus::Partial, $result->status);
         $this->assertSame(0, $result->successCount);
         $this->assertSame(1, $result->failureCount);
@@ -206,13 +215,15 @@ final class BetSettlementFlowTest extends TestCase
         $ids = CatalogSeeder::oneXTwoSettlement(5000, 2000, 2000);
         $orderId = $this->placeBet(42, $ids, 100, 5000, 5, MatchOutcomeCode::HomeWin->value);
 
-        $first = app(BetSettlementService::class)->applyGameResult($ids['game_local_id'], [MatchOutcomeCode::HomeWin->value]);
+        $svc = app(BetSettlementService::class);
+        $svc->recordPendingSettlement($ids['game_local_id'], [MatchOutcomeCode::HomeWin->value], []);
+        $first = $svc->applyGameResult($ids['game_local_id']);
         $this->assertSame(JobStatus::Partial, $first->status);
         $this->assertSame(BetOrderStatus::SettlementFailed, BetOrder::query()->whereKey($orderId)->firstOrFail()->status);
 
         PointsBalance::query()->where('uid', $this->bookUid())->update(['balance' => 1_000_000]);
 
-        $second = app(BetSettlementService::class)->applyGameResult($ids['game_local_id'], [MatchOutcomeCode::HomeWin->value]);
+        $second = $svc->applyGameResult($ids['game_local_id']);
         $this->assertSame(JobStatus::Completed, $second->status);
         $this->assertSame(1, $second->successCount);
 
@@ -228,14 +239,14 @@ final class BetSettlementFlowTest extends TestCase
         $ids = CatalogSeeder::oneXTwoSettlement(2500, 2000, 2000);
         $this->placeBet(42, $ids, 100, 2500, 6, MatchOutcomeCode::HomeWin->value);
 
-        $first = app(BetSettlementService::class)->applyGameResult($ids['game_local_id'], [MatchOutcomeCode::HomeWin->value]);
+        $first = $this->recordAndSettle($ids['game_local_id'], [MatchOutcomeCode::HomeWin->value]);
         $this->assertSame(JobStatus::Completed, $first->status);
         $this->assertSame(1, $first->successCount);
 
         $userBalanceAfterFirst = (int) PointsBalance::query()->where('uid', 42)->value('balance');
         $bookBalanceAfterFirst = (int) PointsBalance::query()->where('uid', $this->bookUid())->value('balance');
 
-        $second = app(BetSettlementService::class)->applyGameResult($ids['game_local_id'], [MatchOutcomeCode::HomeWin->value]);
+        $second = app(BetSettlementService::class)->applyGameResult($ids['game_local_id']);
         $this->assertSame(JobStatus::Completed, $second->status);
         $this->assertSame(0, $second->total, 'second pass should have zero items to process');
 
@@ -254,17 +265,17 @@ final class BetSettlementFlowTest extends TestCase
         $this->placeBet(42, $ids, 100, 3000, 7, MatchOutcomeCode::HomeWin->value);
         $expectedPayout = intdiv(100 * 3000, 1000);
 
-        $params = json_encode([
-            'game_id' => $ids['game_local_id'],
-            'winning_outcomes' => [MatchOutcomeCode::HomeWin->value],
-            'void_outcomes' => [],
-        ], JSON_THROW_ON_ERROR);
+        app(BetSettlementService::class)->recordPendingSettlement(
+            $ids['game_local_id'],
+            [MatchOutcomeCode::HomeWin->value],
+            [],
+        );
 
         $this->withHeader('XXL-JOB-ACCESS-TOKEN', 'xxl-test-token')
             ->postJson('/internal/xxl-job/run', [
                 'jobId' => 9101,
                 'executorHandler' => 'applyGameSettlement',
-                'executorParams' => $params,
+                'executorParams' => '',
                 'logId' => 56_001,
                 'logDateTime' => 1_700_000_000_000,
             ])

@@ -9,6 +9,7 @@ use App\Http\Controllers\api\BetMarketController;
 use App\Models\Game;
 use App\Models\Market;
 use App\Services\mall\serv_fd\CmsGameClient;
+use App\Support\SettleOutcomes;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Client\ConnectionException;
@@ -236,7 +237,9 @@ final readonly class CatalogService
             'side_b_subject_id' => $game->side_b_subject_id !== null ? (int) $game->side_b_subject_id : null,
             'side_a_name' => $game->sideASubject !== null ? (string) $game->sideASubject->name : null,
             'side_b_name' => $game->sideBSubject !== null ? (string) $game->sideBSubject->name : null,
-            'winning_outcomes' => $game->winning_outcomes ?? [],
+            'settle_outcomes' => SettleOutcomes::forApi(
+                is_array($game->settle_outcomes) ? $game->settle_outcomes : null,
+            ),
             'ut' => $game->ut,
         ];
 
@@ -289,7 +292,7 @@ final readonly class CatalogService
     private function serializeNestedGame(Game $game, ?array $cmsRow): array
     {
         $merged = $this->serializeGameRow($game, $cmsRow, false);
-        unset($merged['winning_outcomes']);
+        unset($merged['settle_outcomes']);
 
         return $merged;
     }

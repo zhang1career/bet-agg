@@ -9,16 +9,19 @@ use App\Enums\MarketType;
 use App\Http\Controllers\Controller;
 use App\Models\Game;
 use App\Models\Market;
+use App\Services\mall\serv_fd\CmsGameClient;
 use App\Support\AdminGameSelectOptionLabels;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use Throwable;
 
 class AdminMarketController extends Controller
 {
     public function __construct(
         private readonly AdminGameSelectOptionLabels $gameSelectLabels,
+        private readonly CmsGameClient $cmsGameClient,
     ) {}
 
     public function index(Request $request): View
@@ -29,6 +32,21 @@ class AdminMarketController extends Controller
             ->orderByDesc('id')
             ->paginate($perPage)
             ->withQueryString();
+
+        $cmsByRawId = [];
+        try {
+            $rawIds = $markets
+                ->getCollection()
+                ->map(static fn (Market $m): int => (int) ($m->game?->raw_id ?? 0))
+                ->unique()
+                ->filter(static fn (int $r): bool => $r >= 1)
+                ->values()
+                ->all();
+            if ($rawIds !== []) {
+                $cmsByRawId = $this->cmsGameClient->findManyById($rawIds);
+            }
+        } catch (Throwable) {
+        }
 
         $games = Game::query()->orderByDesc('id')->limit(500)->get();
         $gameSelectLabels = $this->gameSelectLabels->mapByLocalId($games);
@@ -44,6 +62,7 @@ class AdminMarketController extends Controller
 
         return view('admin.markets.index', [
             'markets' => $markets,
+            'cmsByRawId' => $cmsByRawId,
             'games' => $games,
             'gameSelectLabels' => $gameSelectLabels,
             'mallCreate' => $mallCreate,

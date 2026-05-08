@@ -223,7 +223,12 @@ class AdminGameController extends Controller
             'group_ids.*' => ['integer', Rule::exists('biz_game_group', 'id')],
             'side_a_subject_id' => ['nullable', 'integer', Rule::exists('biz_game_subject', 'id')],
             'side_b_subject_id' => ['nullable', 'integer', Rule::exists('biz_game_subject', 'id')],
-            'status' => ['required', 'integer', Rule::in([Game::STATUS_OPEN, Game::STATUS_CLOSED, Game::STATUS_SETTLED])],
+            'status' => ['required', 'integer', Rule::in([
+                Game::STATUS_OPEN,
+                Game::STATUS_CLOSED,
+                Game::STATUS_SETTLED,
+                Game::STATUS_PENDING_SETTLEMENT,
+            ])],
         ];
         if ($forCreate) {
             $rules['name'] = ['required', 'string', 'max:500'];

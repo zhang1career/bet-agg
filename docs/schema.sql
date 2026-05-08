@@ -29,15 +29,15 @@ CREATE TABLE IF NOT EXISTS `biz_y` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =============================================================================
--- biz_game：local key；raw_id = CMS id；双方为赛事主体 FK；结算写入 winning_outcomes（TEXT 存 JSON 数组，synthetic keys）
+-- biz_game：local key；raw_id = CMS id；双方为赛事主体 FK；结算写入 settle_outcomes（TEXT JSON：winners / voids）
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS `biz_game` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `raw_id` bigint unsigned NOT NULL COMMENT '外部/CMS game 主键',
   `side_a_subject_id` bigint unsigned DEFAULT NULL COMMENT '主场侧 → biz_game_subject.id',
   `side_b_subject_id` bigint unsigned DEFAULT NULL COMMENT '客场侧 → biz_game_subject.id',
-  `status` tinyint unsigned NOT NULL DEFAULT '1' COMMENT '1 open, 2 closed, 3 settled',
-  `winning_outcomes` text DEFAULT NULL COMMENT 'JSON 编码的字符串数组，元素如 home_win / draw / away_win',
+  `status` tinyint unsigned NOT NULL DEFAULT '1' COMMENT '1 open, 2 closed, 3 settled, 4 pending settlement',
+  `settle_outcomes` text DEFAULT NULL COMMENT 'JSON：{"winners":["home_win"],"voids":[]}；派彩/走水 legs',
   `ct` bigint unsigned NOT NULL DEFAULT '0',
   `ut` bigint unsigned NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),

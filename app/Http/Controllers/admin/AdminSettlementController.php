@@ -13,12 +13,14 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use RuntimeException;
+use Throwable;
 
 class AdminSettlementController extends Controller
 {
     public function __construct(
         private readonly AdminGameSelectOptionLabels $gameSelectLabels,
         private readonly SettlementPayloadResolver $payloadResolver,
+        private readonly BetSettlementService $settlementService,
     ) {}
 
     public function create(): View
@@ -57,7 +59,7 @@ class AdminSettlementController extends Controller
             return redirect()
                 ->route('admin.settlement.create')
                 ->withInput()
-                ->withErrors(['game_id' => 'Only open games can be queued for settlement.']);
+                ->withErrors(['game_id' => __('console.settlement.only_open')]);
         }
 
         try {
@@ -76,13 +78,23 @@ class AdminSettlementController extends Controller
         $winners = $resolved['winners'];
         $voids = $resolved['voids'];
 
-        dispatch(static function () use ($gameId, $winners, $voids): void {
-            app(BetSettlementService::class)->applyGameResult($gameId, $winners, $voids);
-        });
+        try {
+            $this->settlementService->recordPendingSettlement($gameId, $winners, $voids);
+        } catch (RuntimeException $e) {
+            return redirect()
+                ->route('admin.settlement.create')
+                ->withInput()
+                ->withErrors(['result_payload' => $e->getMessage()]);
+        } catch (Throwable $e) {
+            return redirect()
+                ->route('admin.settlement.create')
+                ->withInput()
+                ->withErrors(['game_id' => $e->getMessage()]);
+        }
 
         return redirect()
             ->route('admin.settlement.create')
-            ->with('status', 'Settlement queued for processing.');
+            ->with('status', __('console.settlement.status_recorded'));
     }
 
     /**

@@ -19,7 +19,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int|null $side_a_subject_id
  * @property int|null $side_b_subject_id
  * @property int $status
- * @property list<string>|null $winning_outcomes 1X2 synthetic keys ({@code home_win} / {@code draw} / {@code away_win}); persisted as JSON in {@code biz_game.winning_outcomes} (TEXT)
+ * @property array{winners?: list<string>, voids?: list<string>}|null $settle_outcomes JSON: {@code winners} = payout legs, {@code voids} = refund legs.
  * @property int $ct
  * @property int $ut
  */
@@ -33,6 +33,9 @@ class Game extends Model
 
     public const STATUS_SETTLED = 3;
 
+    /** Result recorded; scheduler should run {@see BetSettlementService::applyGameResult}. */
+    public const STATUS_PENDING_SETTLEMENT = 4;
+
     public $timestamps = false;
 
     protected $table = 'biz_game';
@@ -42,7 +45,7 @@ class Game extends Model
         'side_a_subject_id',
         'side_b_subject_id',
         'status',
-        'winning_outcomes',
+        'settle_outcomes',
         'ct',
         'ut',
     ];
@@ -53,7 +56,7 @@ class Game extends Model
         'side_a_subject_id' => 'integer',
         'side_b_subject_id' => 'integer',
         'status' => 'integer',
-        'winning_outcomes' => 'array',
+        'settle_outcomes' => 'array',
         'ct' => 'integer',
         'ut' => 'integer',
     ];

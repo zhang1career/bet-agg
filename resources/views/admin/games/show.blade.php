@@ -97,9 +97,9 @@
                     <span class="text-muted">{{ __('console.games.vs') }}</span>
                     {{ $game->sideBSubject?->name ?? '—' }}
                 </dd>
-                @if(filled($game->winning_outcomes))
-                    <dt class="col-sm-3">{{ __('console.games.winning_outcomes') }}</dt>
-                    <dd class="col-sm-9 font-monospace small">{{ json_encode($game->winning_outcomes) }}</dd>
+                @if(filled($game->settle_outcomes))
+                    <dt class="col-sm-3">{{ __('console.games.settle_outcomes') }}</dt>
+                    <dd class="col-sm-9 font-monospace small">{{ json_encode(\App\Support\SettleOutcomes::forApi(is_array($game->settle_outcomes) ? $game->settle_outcomes : null), JSON_UNESCAPED_UNICODE) }}</dd>
                 @endif
                 <dt class="col-sm-3">{{ __('console.games.timestamps') }}</dt>
                 <dd class="col-sm-9 text-muted small">ct {{ \App\Support\MillisTimestampDisplay::format($game->ct) }}

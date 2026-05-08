@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "bet-agg HTTP API",
-    "description": "Laravel bet aggregation service: public `/api/*` JSON APIs and health check. User profile is **not** served here—call the Foundation (or API gateway) user API; bet-agg only **outbounds** to that service to resolve `X-User-Access-Token`. JSON responses use the `ApiResponse` envelope (`data`, `errorCode`, `message`, `_req_id`). Local catalog is `biz_game` (status, `side_a_subject_id` / `side_b_subject_id`, `winning_outcomes` JSON array of synthetic keys), `biz_game_group` + `biz_x` / `biz_game_subject` + `biz_y`, and `biz_market` (`type` int + `odds_millis`: outcome_code → quoted odds ×1000). 胜平负 legs are **synthetic** (`outcome_code`: `home_win`, `draw`, `away_win`). Game copy/media/kickoff are merged from CMS (`GET /api/cms/game?ids=\u2026`). Persisted **order_item** rows use `market_id` + `selection` (JSON blob; 1X2 uses `{ \"code\": \"home_win\" }`). **`POST /api/bet/place`** lines still carry `outcome_code` as the 1X2 leg key.\n\n**Internal infrastructure** (XXL-Job HTTP callbacks) lives under `/internal/*` and is intentionally NOT documented here.\n\n**Examples:** Reusable request/response samples are under `components.examples` and referenced from operations. **Contract tests:** `Tests\\Feature\\OpenApiRoutesContractTest` asserts every path/method in this file is registered in the app.",
+    "description": "Laravel bet aggregation service: public `/api/*` JSON APIs and health check. User profile is **not** served here—call the Foundation (or API gateway) user API; bet-agg only **outbounds** to that service to resolve `X-User-Access-Token`. JSON responses use the `ApiResponse` envelope (`data`, `errorCode`, `message`, `_req_id`). Local catalog is `biz_game` (status, `side_a_subject_id` / `side_b_subject_id`, `settle_outcomes` JSON with `winners` / `voids` string arrays), `biz_game_group` + `biz_x` / `biz_game_subject` + `biz_y`, and `biz_market` (`type` int + `odds_millis`: outcome_code → quoted odds ×1000). 胜平负 legs are **synthetic** (`outcome_code`: `home_win`, `draw`, `away_win`). Game copy/media/kickoff are merged from CMS (`GET /api/cms/game?ids=\u2026`). Persisted **order_item** rows use `market_id` + `selection` (JSON blob; 1X2 uses `{ \"code\": \"home_win\" }`). **`POST /api/bet/place`** lines still carry `outcome_code` as the 1X2 leg key.\n\n**Internal infrastructure** (XXL-Job HTTP callbacks) lives under `/internal/*` and is intentionally NOT documented here.\n\n**Examples:** Reusable request/response samples are under `components.examples` and referenced from operations. **Contract tests:** `Tests\\Feature\\OpenApiRoutesContractTest` asserts every path/method in this file is registered in the app.",
     "version": "1.8.0"
   },
   "servers": [
@@ -191,14 +191,24 @@
           },
           "status": {
             "type": "integer",
-            "description": "1 = open, 2 = closed, 3 = settled"
+            "description": "1 = open, 2 = closed, 3 = settled, 4 = pending settlement"
           },
-          "winning_outcomes": {
-            "type": "array",
-            "items": {
-              "type": "string"
+          "settle_outcomes": {
+            "type": "object",
+            "required": ["winners", "voids"],
+            "properties": {
+              "winners": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "Outcome codes that pay at quoted odds"
+              },
+              "voids": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "Outcome codes that refund stake"
+              }
             },
-            "description": "Synthetic outcome keys after settle; empty when not settled"
+            "description": "Settlement payload; empty arrays when not recorded"
           },
           "side_a_subject_id": {
             "type": "integer",

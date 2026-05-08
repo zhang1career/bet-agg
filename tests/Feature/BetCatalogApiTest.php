@@ -65,7 +65,7 @@ final class BetCatalogApiTest extends TestCase
         $this->assertSame('cms/cover.png', $res->json('data.main_media'));
         $this->assertSame(1_700_000_000_000, $res->json('data.start_at'));
         $this->assertArrayNotHasKey('name', $res->json('data'));
-        $this->assertSame([], $res->json('data.winning_outcomes'));
+        $this->assertSame(['winners' => [], 'voids' => []], $res->json('data.settle_outcomes'));
         $this->assertSame([], $res->json('data.groups'));
     }
 
