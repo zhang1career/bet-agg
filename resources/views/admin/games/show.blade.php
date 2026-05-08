@@ -108,6 +108,21 @@
         </div>
     </div>
 
+    <div class="mall-console-card card shadow-sm mb-4">
+        <div class="card-body">
+            <div class="mall-list-toolbar d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+                <h3 class="h6 mb-0">{{ __('console.settlement_overview.section_title') }}</h3>
+                <a href="{{ route('admin.settlement.create') }}" class="btn btn-outline-secondary btn-sm">{{ __('console.sidebar.settlement') }}</a>
+            </div>
+            <p class="small text-muted">{{ __('console.settlement_overview.intro') }}</p>
+            @include('admin.partials.settlement_counts', [
+                'orderCounts' => $settlementOrderCounts,
+                'lineCounts' => $settlementLineCounts,
+            ])
+            @include('admin.partials.settlement_jobs', ['jobs' => $settlementJobs])
+        </div>
+    </div>
+
     <div class="mall-list-toolbar d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
         <h3 class="h6 mb-0">{{ __('console.list.markets_section') }}</h3>
         <a href="{{ route('admin.markets.index', ['mall_create' => 1, 'game_id' => $game->id]) }}" class="btn btn-primary btn-sm">{{ __('console.btn.new') }}</a>

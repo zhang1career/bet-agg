@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Game;
 use App\Models\GameGroup;
 use App\Models\GameSubject;
+use App\Services\mall\SettlementConsoleOverviewService;
 use App\Services\mall\serv_fd\CmsGameClient;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -20,6 +21,7 @@ class AdminGameController extends Controller
 {
     public function __construct(
         private readonly CmsGameClient $cmsGameClient,
+        private readonly SettlementConsoleOverviewService $settlementOverview,
     ) {}
 
     public function index(Request $request): View
@@ -140,9 +142,14 @@ class AdminGameController extends Controller
 
         $cmsGame = $this->fetchCmsGameOrNull((int) $game->raw_id);
 
+        $gid = (int) $game->id;
+
         return view('admin.games.show', [
             'game' => $game,
             'cms_game' => $cmsGame,
+            'settlementOrderCounts' => $this->settlementOverview->distinctOrderCountsByStatusForGame($gid),
+            'settlementLineCounts' => $this->settlementOverview->lineResultCountsForGame($gid),
+            'settlementJobs' => $this->settlementOverview->recentJobsForGame($gid),
         ]);
     }
 

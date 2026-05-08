@@ -57,4 +57,16 @@
             </dl>
         </div>
     </div>
+
+    <div class="mall-console-card card shadow-sm mb-4">
+        <div class="card-body">
+            <h3 class="h6 mb-3">{{ __('console.settlement_overview.section_title_market') }}</h3>
+            <p class="small text-muted">{{ __('console.settlement_overview.intro_market') }}</p>
+            @include('admin.partials.settlement_counts', [
+                'orderCounts' => $settlementOrderCounts,
+                'lineCounts' => $settlementLineCounts,
+            ])
+            @include('admin.partials.settlement_jobs', ['jobs' => $settlementJobs])
+        </div>
+    </div>
 @endsection

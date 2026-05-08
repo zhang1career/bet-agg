@@ -9,6 +9,7 @@ use App\Enums\MarketType;
 use App\Http\Controllers\Controller;
 use App\Models\Game;
 use App\Models\Market;
+use App\Services\mall\SettlementConsoleOverviewService;
 use App\Services\mall\serv_fd\CmsGameClient;
 use App\Support\AdminGameSelectOptionLabels;
 use Illuminate\Http\RedirectResponse;
@@ -22,6 +23,7 @@ class AdminMarketController extends Controller
     public function __construct(
         private readonly AdminGameSelectOptionLabels $gameSelectLabels,
         private readonly CmsGameClient $cmsGameClient,
+        private readonly SettlementConsoleOverviewService $settlementOverview,
     ) {}
 
     public function index(Request $request): View
@@ -105,7 +107,15 @@ class AdminMarketController extends Controller
     {
         $market->load(['game.sideASubject', 'game.sideBSubject']);
 
-        return view('admin.markets.show', ['market' => $market]);
+        $mid = (int) $market->id;
+        $gid = (int) $market->game_id;
+
+        return view('admin.markets.show', [
+            'market' => $market,
+            'settlementOrderCounts' => $this->settlementOverview->distinctOrderCountsByStatusForMarket($mid),
+            'settlementLineCounts' => $this->settlementOverview->lineResultCountsForMarket($mid),
+            'settlementJobs' => $this->settlementOverview->recentJobsForGame($gid),
+        ]);
     }
 
     public function update(Request $request, Market $market): RedirectResponse

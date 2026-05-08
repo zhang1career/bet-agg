@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Contracts\HasDictionaryLabel;
+use App\Enums\BetLineResult;
 use App\Enums\BetOrderStatus;
 use App\Enums\GameStatus;
 use App\Enums\MarketStatus;
 use App\Enums\PointsHoldState;
+use App\Enums\SettleJobStatus;
 use BackedEnum;
 use InvalidArgumentException;
 use UnitEnum;
@@ -21,6 +23,8 @@ final class MallDictionaryService
         'bet_order_status' => BetOrderStatus::class,
         'market_status' => MarketStatus::class,
         'game_status' => GameStatus::class,
+        'bet_line_result' => BetLineResult::class,
+        'settle_job_status' => SettleJobStatus::class,
     ];
 
     /**

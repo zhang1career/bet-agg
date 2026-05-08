@@ -108,6 +108,20 @@ final readonly class BetSettlementService
     }
 
     /**
+     * Inverse of {@see bizKeyForGame} for persisted batch rows ({@code biz_key} may include a millis suffix).
+     */
+    public static function gameIdFromSettleBizKey(string $bizKey): ?int
+    {
+        if (preg_match('/^settle:game:(\d+):/', $bizKey, $m) !== 1) {
+            return null;
+        }
+
+        $id = (int) $m[1];
+
+        return $id >= 1 ? $id : null;
+    }
+
+    /**
      * @param  list<string>  $raw
      * @return list<string>
      */
