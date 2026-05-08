@@ -7,8 +7,12 @@ namespace App\Services\mall;
 use App\Enums\BetOrderStatus;
 use App\Models\BetOrder;
 use App\Models\Game;
+use App\Repos\mall\BetOrderRepo;
+use App\Repos\mall\GameRepo;
+use App\Repos\mall\MarketRepo;
 use App\Services\mall\settlement\SettlementBatchItemHandler;
 use App\Services\mall\settlement\SettlementBatchPlanProvider;
+use App\Support\SettlementBizKey;
 use App\Support\SettleOutcomes;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -33,14 +37,17 @@ final readonly class BetSettlementService
     public function __construct(
         private BatchExecutor $batchExecutor,
         private SettlementBatchItemHandler $itemHandler,
+        private GameRepo $games,
+        private MarketRepo $markets,
+        private BetOrderRepo $orders,
     ) {}
 
     /**
      * Operator submits the sports result: persist {@see SettleOutcomes} on the game only,
      * set game status to pending settlement. The scheduler calls {@see applyGameResult}.
      *
-     * @param list<string> $winningOutcomeCodes e.g. {@code home_win}, {@code draw}
-     * @param list<string> $voidOutcomeCodes legs that refund (e.g. all three for void_all)
+     * @param  list<string>  $winningOutcomeCodes  e.g. {@code home_win}, {@code draw}
+     * @param  list<string>  $voidOutcomeCodes  legs that refund (e.g. all three for void_all)
      */
     public function recordPendingSettlement(
         int $gameId,
@@ -62,7 +69,7 @@ final readonly class BetSettlementService
 
         DB::transaction(function () use ($gameId, $winners, $voids): void {
             /** @var Game|null $game */
-            $game = Game::query()->whereKey($gameId)->lockForUpdate()->first();
+            $game = $this->games->lockForUpdate($gameId);
             if ($game === null) {
                 throw new RuntimeException('Game not found.');
             }
@@ -91,7 +98,12 @@ final readonly class BetSettlementService
         }
 
         $bizKey = self::bizKeyForGame($gameId).':'.Game::nowMillis();
-        $plan = new SettlementBatchPlanProvider($gameId);
+        $plan = new SettlementBatchPlanProvider(
+            $gameId,
+            $this->games,
+            $this->markets,
+            $this->orders,
+        );
 
         $result = $this->batchExecutor->execute($bizKey, $plan, $this->itemHandler);
 
@@ -104,7 +116,7 @@ final readonly class BetSettlementService
 
     public static function bizKeyForGame(int $gameId): string
     {
-        return 'settle:game:'.$gameId;
+        return SettlementBizKey::prefixForGame($gameId);
     }
 
     /**
@@ -112,13 +124,7 @@ final readonly class BetSettlementService
      */
     public static function gameIdFromSettleBizKey(string $bizKey): ?int
     {
-        if (preg_match('/^settle:game:(\d+):/', $bizKey, $m) !== 1) {
-            return null;
-        }
-
-        $id = (int) $m[1];
-
-        return $id >= 1 ? $id : null;
+        return SettlementBizKey::gameIdFromBizKey($bizKey);
     }
 
     /**
@@ -153,7 +159,7 @@ final readonly class BetSettlementService
             try {
                 DB::transaction(function () use ($orderId): void {
                     /** @var BetOrder|null $order */
-                    $order = BetOrder::query()->whereKey($orderId)->lockForUpdate()->first();
+                    $order = $this->orders->findLocked($orderId);
                     if ($order === null) {
                         return;
                     }

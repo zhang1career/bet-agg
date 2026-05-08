@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Services\mall\settlement;
 
-use App\Enums\BetOrderStatus;
-use App\Models\BetOrder;
 use App\Models\Game;
-use App\Models\Market;
+use App\Repos\mall\BetOrderRepo;
+use App\Repos\mall\GameRepo;
+use App\Repos\mall\MarketRepo;
 use App\Support\SettleOutcomes;
 use Paganini\Batch\Contracts\BatchPlanProviderContract;
 use Paganini\Batch\DTO\BatchItem;
@@ -24,11 +24,14 @@ final readonly class SettlementBatchPlanProvider implements BatchPlanProviderCon
 {
     public function __construct(
         private int $gameId,
+        private GameRepo $games,
+        private MarketRepo $markets,
+        private BetOrderRepo $orders,
     ) {}
 
     public function makePlan(): BatchPlan
     {
-        $game = Game::query()->whereKey($this->gameId)->lockForUpdate()->first();
+        $game = $this->games->lockForUpdate($this->gameId);
         if ($game === null) {
             throw new RuntimeException('Game not found.');
         }
@@ -44,36 +47,21 @@ final readonly class SettlementBatchPlanProvider implements BatchPlanProviderCon
 
         if ($game->status !== Game::STATUS_SETTLED) {
             $now = Game::nowMillis();
-            Market::query()
-                ->where('game_id', $this->gameId)
-                ->update(['status' => Market::STATUS_SETTLED, 'ut' => $now]);
+            $this->markets->markAllSettledForGame($this->gameId, $now);
 
             $game->status = Game::STATUS_SETTLED;
             $game->settle_outcomes = SettleOutcomes::pack($winners, $voids);
             $game->save();
         }
 
-        $marketIds = Market::query()
-            ->where('game_id', $this->gameId)
-            ->pluck('id')
-            ->all();
+        $marketIds = $this->markets->idsForGame($this->gameId);
 
-        $orderIds = BetOrder::query()
-            ->whereIn('status', [
-                BetOrderStatus::Accepted->value,
-                BetOrderStatus::SettlementFailed->value,
-            ])
-            ->whereHas('lines', static function ($q) use ($marketIds): void {
-                $q->whereIn('market_id', $marketIds);
-            })
-            ->orderBy('id')
-            ->pluck('id')
-            ->all();
+        $orderIds = $this->orders->idsPendingSettlementTouchingMarkets($marketIds);
 
         $items = [];
         foreach ($orderIds as $orderId) {
             $items[] = new BatchItem(
-                ref: (string) (int) $orderId,
+                ref: (string)$orderId,
                 payload: [],
             );
         }

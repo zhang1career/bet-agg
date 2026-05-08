@@ -7,17 +7,22 @@ namespace App\Services\mall;
 use App\Enums\PointsHoldState;
 use App\Models\PointsBalance;
 use App\Models\PointsFlow;
+use App\Repos\mall\PointsBalanceRepo;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
-final class PointsAdminService
+final readonly class PointsAdminService
 {
+    public function __construct(
+        private PointsBalanceRepo $balances,
+    ) {}
+
     /**
      * Available points balance for {@code uid}; missing row yields 0.
      */
     public function availableBalance(int $uid): int
     {
-        $row = PointsBalance::query()->where('uid', $uid)->first();
+        $row = $this->balances->findByUid($uid);
         if ($row === null) {
             return 0;
         }
@@ -35,7 +40,7 @@ final class PointsAdminService
         }
 
         return DB::transaction(function () use ($uid, $initialBalance): PointsBalance {
-            $exists = PointsBalance::query()->where('uid', $uid)->lockForUpdate()->exists();
+            $exists = $this->balances->existsLockedByUid($uid);
             if ($exists) {
                 throw new RuntimeException('Points account already exists for this user.');
             }
@@ -68,7 +73,7 @@ final class PointsAdminService
         }
 
         return DB::transaction(function () use ($uid, $deltaPoints, $oid): array {
-            $balance = PointsBalance::query()->where('uid', $uid)->lockForUpdate()->first();
+            $balance = $this->balances->findLockedByUid($uid);
 
             return $this->applyAdjustmentToBalance($balance, $uid, $deltaPoints, $oid);
         });
@@ -99,7 +104,7 @@ final class PointsAdminService
     public function deleteBalanceById(int $id): void
     {
         DB::transaction(function () use ($id): void {
-            $row = PointsBalance::query()->where('id', $id)->lockForUpdate()->first();
+            $row = $this->balances->findLockedById($id);
             if ($row === null) {
                 throw new RuntimeException('Account not found.');
             }
@@ -190,14 +195,14 @@ final class PointsAdminService
         }
 
         DB::transaction(function () use ($bookUid, $stakePoints, $betOrderId): void {
-            $balance = PointsBalance::query()->where('uid', $bookUid)->lockForUpdate()->first();
+            $balance = $this->balances->findLockedByUid($bookUid);
             if ($balance === null) {
                 $balance = new PointsBalance([
                     'uid' => $bookUid,
                     'balance' => 0,
                 ]);
                 $balance->save();
-                $balance = PointsBalance::query()->where('uid', $bookUid)->lockForUpdate()->first();
+                $balance = $this->balances->findLockedByUid($bookUid);
             }
             if ($balance === null) {
                 throw new RuntimeException('Bookmaker points account missing.');
@@ -231,20 +236,20 @@ final class PointsAdminService
         PointsHoldState $userCreditState,
         string $insufficientBookLiquidityMessage,
     ): array {
-        $bookBal = PointsBalance::query()->where('uid', $bookUid)->lockForUpdate()->first();
-        if ($bookBal === null || (int) $bookBal->balance < $points) {
+        $bookBal = $this->balances->findLockedByUid($bookUid);
+        if ($bookBal === null || $bookBal->balance < $points) {
             throw new RuntimeException($insufficientBookLiquidityMessage);
         }
 
-        $userBal = PointsBalance::query()->where('uid', $userUid)->lockForUpdate()->first();
+        $userBal = $this->balances->findLockedByUid($userUid);
         if ($userBal === null) {
             throw new RuntimeException('Points account does not exist.');
         }
 
-        $bookBal->balance = (int) $bookBal->balance - $points;
+        $bookBal->balance = $bookBal->balance - $points;
         $bookBal->save();
 
-        $userBal->balance = (int) $userBal->balance + $points;
+        $userBal->balance = $userBal->balance + $points;
         $userBal->save();
 
         $bookFlow = new PointsFlow([

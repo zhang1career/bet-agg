@@ -8,6 +8,7 @@ use App\Enums\BetLineResult;
 use App\Enums\BetOrderStatus;
 use App\Models\BetOrder;
 use App\Models\BetOrderLine;
+use App\Repos\mall\BetOrderRepo;
 use App\Services\mall\PointsAdminService;
 use Paganini\Batch\Contracts\BatchItemHandlerContract;
 use Paganini\Batch\DTO\BatchItem;
@@ -20,6 +21,7 @@ final readonly class SettlementBatchItemHandler implements BatchItemHandlerContr
 {
     public function __construct(
         private PointsAdminService $pointsAdmin,
+        private BetOrderRepo $orders,
     ) {}
 
     public function handle(BatchItem $item, array $jobPayload): void
@@ -37,7 +39,7 @@ final readonly class SettlementBatchItemHandler implements BatchItemHandlerContr
         $voidSet = array_fill_keys($voids, true);
 
         /** @var BetOrder|null $order */
-        $order = BetOrder::query()->whereKey($orderId)->lockForUpdate()->first();
+        $order = $this->orders->findLocked($orderId);
         if ($order === null) {
             throw new RuntimeException('Order disappeared mid-settlement: '.$orderId);
         }

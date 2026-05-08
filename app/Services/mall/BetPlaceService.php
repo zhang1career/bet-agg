@@ -16,6 +16,9 @@ use App\Models\Game;
 use App\Models\Market;
 use App\Models\PointsBalance;
 use App\Models\PointsFlow;
+use App\Repos\mall\BetOrderRepo;
+use App\Repos\mall\MarketRepo;
+use App\Repos\mall\PointsBalanceRepo;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -28,6 +31,9 @@ final readonly class BetPlaceService
     public function __construct(
         private PointsAdminService $pointsAdmin,
         private SyntheticMatchMarket $synthetic,
+        private BetOrderRepo $orders,
+        private MarketRepo $markets,
+        private PointsBalanceRepo $balances,
     ) {}
 
     /**
@@ -102,21 +108,13 @@ final readonly class BetPlaceService
 
     private function findExistingByIdemKey(int $uid, int $idemKey): ?BetOrder
     {
-        return BetOrder::query()
-            ->with('lines')
-            ->where('uid', $uid)
-            ->where('idem_key', $idemKey)
-            ->first();
+        return $this->orders->findWithLinesByUserIdem($uid, $idemKey);
     }
 
     private function loadAndValidateMarketLeg(int $marketId, string $outcomeCode, int $expectedOddsMillis): Market
     {
         /** @var Market|null $market */
-        $market = Market::query()
-            ->with(['game.sideASubject', 'game.sideBSubject'])
-            ->whereKey($marketId)
-            ->lockForUpdate()
-            ->first();
+        $market = $this->markets->lockWithGameAndSubjectsForBet($marketId);
         if ($market === null) {
             throw new SelectionNotAcceptingException($marketId, $outcomeCode, 'market not found');
         }
@@ -146,11 +144,11 @@ final readonly class BetPlaceService
 
     private function debitUserBalance(int $uid, int $stake): void
     {
-        $balance = PointsBalance::query()->where('uid', $uid)->lockForUpdate()->first();
+        $balance = $this->balances->findLockedByUid($uid);
         if ($balance === null) {
             $created = new PointsBalance(['uid' => $uid, 'balance' => 0]);
             $created->save();
-            $balance = PointsBalance::query()->where('uid', $uid)->lockForUpdate()->first();
+            $balance = $this->balances->findLockedByUid($uid);
         }
         if ($balance === null) {
             throw new RuntimeException('Points balance row missing.');
@@ -186,8 +184,7 @@ final readonly class BetPlaceService
         int $stake,
         int $oddsMillis,
         int $potentialReturn,
-    ): void
-    {
+    ): void {
         $game = $market->game;
         $labels = $this->synthetic->legsForApi($market, $game);
         $label = $outcomeCode;
@@ -202,8 +199,8 @@ final readonly class BetPlaceService
         $snapshot = [
             'market_id' => $market->id,
             'selection' => ['code' => $outcomeCode],
-            'game_id' => (int)$game?->id,
-            'cms_game_id' => (int)$game?->raw_id,
+            'game_id' => (int) $game?->id,
+            'cms_game_id' => (int) $game?->raw_id,
             'label' => $label,
             'decimal_odds_millis' => $oddsMillis,
         ];

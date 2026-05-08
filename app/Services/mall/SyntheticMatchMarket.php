@@ -31,17 +31,17 @@ final class SyntheticMatchMarket
             [
                 'outcome_code' => MatchOutcomeCode::HomeWin->value,
                 'label' => $a.'胜',
-                'current_odds_millis' => (int) ($map[MatchOutcomeCode::HomeWin->value] ?? 0),
+                'current_odds_millis' => ($map[MatchOutcomeCode::HomeWin->value] ?? 0),
             ],
             [
                 'outcome_code' => MatchOutcomeCode::Draw->value,
                 'label' => '平局',
-                'current_odds_millis' => (int) ($map[MatchOutcomeCode::Draw->value] ?? 0),
+                'current_odds_millis' => ($map[MatchOutcomeCode::Draw->value] ?? 0),
             ],
             [
                 'outcome_code' => MatchOutcomeCode::AwayWin->value,
                 'label' => $b.'胜',
-                'current_odds_millis' => (int) ($map[MatchOutcomeCode::AwayWin->value] ?? 0),
+                'current_odds_millis' => ($map[MatchOutcomeCode::AwayWin->value] ?? 0),
             ],
         ];
     }
@@ -57,6 +57,6 @@ final class SyntheticMatchMarket
         }
         $map = $market->outcomeOddsMillisMap();
 
-        return (int) ($map[$code->value] ?? 0);
+        return ($map[$code->value] ?? 0);
     }
 }
