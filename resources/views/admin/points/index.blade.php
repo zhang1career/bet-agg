@@ -142,7 +142,9 @@
         </div>
         {{ $flows->appends(['tab' => 'flows'])->links() }}
     @endif
+@endsection
 
+@push('modals')
     {{-- Open account --}}
     <div class="modal fade" id="mallModalOpenAccount" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
@@ -258,7 +260,7 @@
             </div>
         </div>
     </div>
-@endsection
+@endpush
 
 @push('scripts')
     <script>

@@ -176,6 +176,8 @@
     </main>
 </div>
 
+@stack('modals')
+
 {{-- Global confirm delete (form action set via data-mall-delete-url on open button) --}}
 <div class="modal fade" id="mallModalDelete" tabindex="-1" aria-labelledby="mallModalDeleteLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
