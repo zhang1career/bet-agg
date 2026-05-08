@@ -99,17 +99,10 @@ final readonly class CatalogService
 
         $marketsOnPage = $p->items();
         $cmsByRawId = $this->cmsGamesByRawIds($this->uniqueRawIdsFromMarkets($marketsOnPage));
-        $selectionsByMarket = $filter->includeSelections
-            ? $this->selectionsForMarkets(array_map(static fn (Market $m): int => $m->id, $marketsOnPage))
-            : [];
 
         $items = [];
         foreach ($marketsOnPage as $market) {
-            $items[] = $this->serializeMarketRow(
-                $market,
-                $filter->includeSelections ? ($selectionsByMarket[$market->id] ?? []) : null,
-                $cmsByRawId,
-            );
+            $items[] = $this->serializeMarketRow($market, null, $cmsByRawId);
         }
 
         return [

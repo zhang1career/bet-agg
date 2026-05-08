@@ -266,7 +266,7 @@
       },
       "Market": {
         "type": "object",
-        "description": "Public `biz_market` row with nested local game summary. GET /api/bet/markets/{market_id} always embeds `selections` (synthetic 胜平负 legs). GET /api/bet/markets list includes `selections` when `include_selections` is true (default); when false the key is omitted.",
+        "description": "Public `biz_market` row with nested local game summary. `selections` (synthetic 胜平负 legs) are returned only on `GET /api/bet/markets/{market_id}`; the list endpoint omits them.",
         "properties": {
           "id": {
             "type": "integer"
@@ -299,7 +299,7 @@
           },
           "selections": {
             "type": "array",
-            "description": "Synthetic legs for this market type; omitted on list when `include_selections=0`.",
+            "description": "Synthetic legs for this market type; only on `GET /api/bet/markets/{market_id}`.",
             "items": {
               "$ref": "#/components/schemas/Selection"
             }
@@ -615,7 +615,7 @@
         "tags": [
           "Bet"
         ],
-        "summary": "Paginated open markets (biz_market); optional filter by game",
+        "summary": "Paginated markets (biz_market); optional filters by game and market status",
         "parameters": [
           {
             "name": "game_id",
@@ -624,6 +624,26 @@
             "schema": {
               "type": "integer",
               "minimum": 1
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "description": "Comma-separated `biz_market.status` ids: 1=open, 2=suspended, 3=settled. Invalid ids yield 422. When set (including empty), relaxed parent-game visibility rules apply.",
+            "schema": {
+              "type": "string",
+              "example": "1,2"
+            }
+          },
+          {
+            "name": "updated_after",
+            "in": "query",
+            "required": false,
+            "description": "Return only markets with `ut` >= this millisecond timestamp.",
+            "schema": {
+              "type": "integer",
+              "minimum": 0
             }
           },
           {

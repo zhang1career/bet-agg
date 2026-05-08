@@ -19,6 +19,5 @@ final readonly class MarketListFilter
         public ?int $localGameId,
         public ?int $updatedAfterMillis,
         public bool $onlyMarketsUnderOpenGame,
-        public bool $includeSelections,
     ) {}
 }
