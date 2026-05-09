@@ -41,7 +41,7 @@ final readonly class MallOssUploadService
 
         if ($base === '' || $bucket === '') {
             throw new RuntimeException(
-                'OSS upload is not configured: set API_GATEWAY_BASE_URL and BET_OSS_BUCKET.'
+                'OSS upload is not configured: set API_GATEWAY_BASE_URL and SF_OSS_BUCKET.'
             );
         }
 
