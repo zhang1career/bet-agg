@@ -2,8 +2,8 @@
   "openapi": "3.0.3",
   "info": {
     "title": "bet-agg HTTP API",
-    "description": "Laravel bet aggregation service: public `/api/*` JSON APIs and health check. User profile is **not** served here—call the Foundation (or API gateway) user API; bet-agg only **outbounds** to that service to resolve `X-User-Access-Token`. JSON responses use the `ApiResponse` envelope (`data`, `errorCode`, `message`, `_req_id`). Local catalog is `biz_game` (status, `side_a_subject_id` / `side_b_subject_id`, `settle_outcomes` JSON with `winners` / `voids` string arrays), `biz_game_group` + `biz_x` / `biz_game_subject` + `biz_y`, and `biz_market` (`type` int + `odds_millis`: outcome_code → quoted odds ×1000). 胜平负 legs are **synthetic** (`outcome_code`: `home_win`, `draw`, `away_win`). Game copy/media/kickoff are merged from CMS (`GET /api/cms/game?ids=\u2026`). Persisted **order_item** rows use `market_id` + `selection` (JSON blob; 1X2 uses `{ \"code\": \"home_win\" }`). **`POST /api/bet/place`** lines still carry `outcome_code` as the 1X2 leg key.\n\n**Internal infrastructure** (XXL-Job HTTP callbacks) lives under `/internal/*` and is intentionally NOT documented here.\n\n**Examples:** Reusable request/response samples are under `components.examples` and referenced from operations. **Contract tests:** `Tests\\Feature\\OpenApiRoutesContractTest` asserts every path/method in this file is registered in the app.",
-    "version": "1.8.0"
+    "description": "Laravel bet aggregation service: public `/api/*` JSON APIs and health check. User profile is **not** served here—call the Foundation (or API gateway) user API; bet-agg only **outbounds** to that service to resolve `X-User-Access-Token`. JSON responses use the `ApiResponse` envelope (`data`, `errorCode`, `message`, `_req_id`). Local catalog is `biz_game` (status, `side_a_subject_id` / `side_b_subject_id`, `settle_outcomes` JSON with `winners` / `voids` string arrays), `biz_game_group` + `biz_x` / `biz_game_subject` + `biz_y`, and `biz_market` (`type` int + `odds_millis`: outcome_code → quoted odds ×1000). 胜平负 legs are **synthetic** (`outcome_code`: `home_win`, `draw`, `away_win`). Game copy/media/kickoff are merged from CMS (`GET /api/cms/game?ids=\u2026`). Persisted **order_item** rows use `market_id` + `selection` (JSON blob; 1X2 uses `{ \"code\": \"home_win\" }`). **`POST /api/bet/place`** lines still carry `outcome_code` as the 1X2 leg key.\n\n**Authentication (agents):** After login, clients hold an `access_token`. In the usual deployment, send `Authorization: Bearer <access_token>` to the **API gateway**; the gateway forwards to bet-agg as header `X-User-Access-Token` (raw JWT, no `Bearer` prefix). **bet-agg only validates `X-User-Access-Token`** and does not parse `Authorization`. Secured operations declare **two** security schemes (`BearerAuth` vs `UserAccessToken`) as an **OR**: use the one that matches your hop—Bearer at the gateway edge, or `X-User-Access-Token` when calling bet-agg directly (e.g. integration tests).\n\n**Snowflake ids:** `POST /api/bet/snowflake` (requires `X-User-Access-Token`) proxies to service_foundation (default gateway path `POST /api/snowflake/id`) using `SF_SNOWFLAKE_ACCESS_KEY` (never sent by clients). Use the returned `data.id` as `X-Request-Id` when placing bets.\n\n**Internal infrastructure** (XXL-Job HTTP callbacks) lives under `/internal/*` and is intentionally NOT documented here.\n\n**Examples:** Reusable request/response samples are under `components.examples` and referenced from operations. **Contract tests:** `Tests\\Feature\\OpenApiRoutesContractTest` asserts every path/method in this file is registered in the app.",
+    "version": "1.9.4"
   },
   "servers": [
     {
@@ -14,7 +14,7 @@
   "tags": [
     {
       "name": "Bet",
-      "description": "Betting catalog, orders, points, atomic placement"
+      "description": "Betting catalog, orders, points, snowflake mint, atomic placement"
     },
     {
       "name": "Meta",
@@ -27,11 +27,17 @@
   ],
   "components": {
     "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "User login `access_token`. Send as `Authorization: Bearer <access_token>` to your **API gateway**; the gateway forwards to bet-agg as `X-User-Access-Token` (raw JWT). bet-agg application code does **not** read `Authorization`."
+      },
       "UserAccessToken": {
         "type": "apiKey",
         "in": "header",
         "name": "X-User-Access-Token",
-        "description": "Raw JWT from the Foundation (or BFF) auth service; not issued by bet-agg. Send on bet APIs that require a logged-in user."
+        "description": "Raw JWT on requests that **reach bet-agg** (no `Bearer` prefix). Set by the gateway after translating `Authorization: Bearer`, or by direct callers hitting bet-agg without that gateway."
       }
     },
     "schemas": {
@@ -54,6 +60,68 @@
           },
           "_req_id": {
             "type": "string"
+          }
+        }
+      },
+      "SnowflakeMintData": {
+        "type": "object",
+        "required": ["id"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[0-9]+$",
+            "description": "Positive decimal snowflake from POST /api/bet/snowflake; send as header X-Request-Id on POST /api/bet/place."
+          }
+        }
+      },
+      "BetPlaceResult": {
+        "type": "object",
+        "required": ["order", "is_replay", "_dict"],
+        "properties": {
+          "order": {
+            "$ref": "#/components/schemas/BetOrderFull"
+          },
+          "is_replay": {
+            "type": "boolean"
+          },
+          "_dict": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Includes bet_order_status entries."
+          }
+        }
+      },
+      "BetOrderDetailData": {
+        "type": "object",
+        "required": ["order", "_dict"],
+        "properties": {
+          "order": {
+            "$ref": "#/components/schemas/BetOrderFull"
+          },
+          "_dict": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Includes bet_order_status entries."
+          }
+        }
+      },
+      "BetOrderListData": {
+        "type": "object",
+        "required": ["items", "pagination", "_dict"],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BetOrderSummary"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/ListPagination"
+          },
+          "_dict": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Includes bet_order_status entries."
           }
         }
       },
@@ -443,6 +511,77 @@
         }
       }
     },
+    "/api/bet/snowflake": {
+      "post": {
+        "tags": [
+          "Bet"
+        ],
+        "summary": "Mint decimal snowflake id",
+        "description": "Requires a logged-in user (see **Authentication (agents)** in `info.description`). Proxies to service_foundation snowflake mint (default gateway path `POST /api/snowflake/id`) using server-side `SF_SNOWFLAKE_ACCESS_KEY` (never accepted from clients). Use `data.id` as `X-Request-Id` on `POST /api/bet/place`. On success, `_req_id` is an empty string.",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "UserAccessToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Minted id",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/SnowflakeMintData"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Foundation snowflake or gateway error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Missing gateway URL or SF_SNOWFLAKE_ACCESS_KEY",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/bet/dict": {
       "get": {
         "tags": [
@@ -455,23 +594,26 @@
             "in": "query",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 512
             },
-            "description": "Comma-separated MallDictionaryService codes (unknown codes ignored). Examples: `game_status`, `market_status`.",
+            "description": "Comma-separated MallDictionaryService codes (unknown codes ignored). Examples: `game_status`, `market_status`. Maximum 512 characters.",
             "example": "points_hold_state,game_status"
-          },
-          {
-            "name": "X-Request-Id",
-            "in": "header",
-            "schema": {
-              "type": "string"
-            },
-            "required": false
           }
         ],
         "responses": {
           "200": {
             "description": "Dictionary payload or validation error in envelope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error (e.g. codes too long)",
             "content": {
               "application/json": {
                 "schema": {
@@ -518,6 +660,36 @@
               "maxLength": 192
             },
             "description": "When set, returns only games linked to `biz_game_group` with this `code` (exact match)."
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "description": "Comma-separated `biz_game.status` ids (invalid tokens skipped). When empty/absent, no status filter is applied from this parameter.",
+            "schema": {
+              "type": "string",
+              "example": "1,4"
+            }
+          },
+          {
+            "name": "updated_after",
+            "in": "query",
+            "required": false,
+            "description": "Return only games with `ut` >= this millisecond timestamp.",
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "description": "Sort: `id` ascending or `-id` descending (default follows repository ordering when omitted).",
+            "schema": {
+              "type": "string",
+              "enum": ["id", "-id"]
+            }
           }
         ],
         "responses": {
@@ -544,6 +716,11 @@
                             },
                             "pagination": {
                               "$ref": "#/components/schemas/ListPagination"
+                            },
+                            "_dict": {
+                              "type": "object",
+                              "additionalProperties": true,
+                              "description": "Includes game_status entries."
                             }
                           }
                         }
@@ -588,7 +765,21 @@
                       "type": "object",
                       "properties": {
                         "data": {
-                          "$ref": "#/components/schemas/Game"
+                          "allOf": [
+                            {
+                              "$ref": "#/components/schemas/Game"
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "_dict": {
+                                  "type": "object",
+                                  "additionalProperties": true,
+                                  "description": "Includes game_status entries."
+                                }
+                              }
+                            }
+                          ]
                         }
                       }
                     }
@@ -774,10 +965,22 @@
         "summary": "List current user's orders",
         "security": [
           {
+            "BearerAuth": []
+          },
+          {
             "UserAccessToken": []
           }
         ],
         "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
           {
             "name": "per_page",
             "in": "query",
@@ -803,18 +1006,7 @@
                       "type": "object",
                       "properties": {
                         "data": {
-                          "type": "object",
-                          "properties": {
-                            "items": {
-                              "type": "array",
-                              "items": {
-                                "$ref": "#/components/schemas/BetOrderSummary"
-                              }
-                            },
-                            "pagination": {
-                              "$ref": "#/components/schemas/ListPagination"
-                            }
-                          }
+                          "$ref": "#/components/schemas/BetOrderListData"
                         }
                       }
                     }
@@ -844,6 +1036,9 @@
         "summary": "Order detail",
         "security": [
           {
+            "BearerAuth": []
+          },
+          {
             "UserAccessToken": []
           }
         ],
@@ -872,7 +1067,7 @@
                       "type": "object",
                       "properties": {
                         "data": {
-                          "$ref": "#/components/schemas/BetOrderFull"
+                          "$ref": "#/components/schemas/BetOrderDetailData"
                         }
                       }
                     }
@@ -912,6 +1107,9 @@
         "summary": "Current user's available points balance",
         "description": "`data.balance` is the spendable points integer (same unit as stake and `total_price`).",
         "security": [
+          {
+            "BearerAuth": []
+          },
           {
             "UserAccessToken": []
           }
@@ -967,8 +1165,11 @@
           "Bet"
         ],
         "summary": "Place a bet atomically (validate odds, debit stake, accept).",
-        "description": "Idempotent on `X-Request-Id` (decimal snowflake). Replay → 200 + `is_replay=true`; first accept → 201.",
+        "description": "Idempotent on `X-Request-Id` (positive decimal snowflake). Obtain a fresh id from `POST /api/bet/snowflake` on this service. Replay → HTTP 200 + `is_replay=true`; first accept → HTTP 201.",
         "security": [
+          {
+            "BearerAuth": []
+          },
           {
             "UserAccessToken": []
           }
@@ -981,7 +1182,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "Snowflake from POST /api/snowflake/id (digits only)."
+            "description": "Use `data.id` from `POST /api/bet/snowflake` (decimal digits only, same value stored as order idempotency key)."
           }
         ],
         "requestBody": {
@@ -1038,7 +1239,19 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiEnvelope"
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/BetPlaceResult"
+                        }
+                      }
+                    }
+                  ]
                 }
               }
             }
@@ -1048,7 +1261,19 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiEnvelope"
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/BetPlaceResult"
+                        }
+                      }
+                    }
+                  ]
                 }
               }
             }
@@ -1102,7 +1327,7 @@
           "Meta"
         ],
         "summary": "Public OpenAPI document",
-        "description": "Returns this document. Convenient for agents that want to discover the surface programmatically without HTTP-fetching repository sources. Internal infrastructure routes (XXL-Job callbacks under /internal/*) are deliberately excluded.",
+        "description": "Returns this document (includes **Authentication (agents)** in `info` for `Authorization: Bearer` vs `X-User-Access-Token` / gateway behaviour). Convenient for agents that want to discover the surface programmatically without HTTP-fetching repository sources. Internal infrastructure routes (XXL-Job callbacks under /internal/*) are deliberately excluded.",
         "responses": {
           "200": {
             "description": "OpenAPI 3 document",

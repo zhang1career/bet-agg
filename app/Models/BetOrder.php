@@ -21,7 +21,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  *
  * @property int $id
  * @property int $uid Foundation user id (from `UserFoundationGateway`)
- * @property int $idem_key Idempotency key (snowflake from foundation)
+ * @property int $idem_key Idempotency key (decimal snowflake; obtain via POST /api/bet/snowflake)
  * @property BetOrderStatus $status
  * @property int $total_price Total stake points (denormalized from lines)
  * @property int $points_held Stake removed from user's wallet (usually equals total_price)

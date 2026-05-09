@@ -55,4 +55,11 @@ class MallDictApiTest extends TestCase
             ->assertJsonPath('data.market_status.0.v', '1')
             ->assertJsonPath('data.market_status.0.k', 'Open');
     }
+
+    public function test_dict_codes_query_max_length(): void
+    {
+        $tooLong = str_repeat('a', 513);
+        $this->getJson('/api/bet/dict?codes='.$tooLong)
+            ->assertStatus(422);
+    }
 }

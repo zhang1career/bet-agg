@@ -1,0 +1,28 @@
+@startuml api-openapi-json
+title GET /api/openapi.json — logic swimlanes
+
+skinparam ActivityBackgroundColor #F8F8F8
+skinparam ActivityBorderColor #333333
+
+|Client|
+start
+:GET /api/openapi.json;
+
+|OpenApiController|
+:Resolve path **docs/api.json**;
+if (file missing or empty?) then (yes)
+  :throw RuntimeException;
+  stop
+endif
+:Read file; **json_decode** validate object;
+if (invalid JSON?) then (yes)
+  :throw RuntimeException;
+  stop
+endif
+:Build **JsonResponse** +\n**Cache-Control: public, max-age=300**;
+
+|Client|
+:200 JSON (OpenAPI document);
+stop
+
+@enduml

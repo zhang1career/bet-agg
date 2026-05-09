@@ -1,0 +1,37 @@
+@startuml api-bet-points
+title GET /api/bet/points — logic swimlanes
+
+skinparam ActivityBackgroundColor #F8F8F8
+skinparam ActivityBorderColor #333333
+
+|Client|
+start
+:GET /api/bet/points\nAuth (either):\n**Authorization: Bearer** login token\nor **X-User-Access-Token:** raw token\n(if both, **X-User-Access-Token** wins);
+
+|AcceptBearerAccessToken|
+:If **X-User-Access-Token** empty\nand **Authorization** is **Bearer** scheme,\ncopy Bearer token into **X-User-Access-Token**;
+
+|BetPointsController|
+:requireAuthenticatedUser() via **RequiresFoundationUser**;
+|UserFoundationGateway|
+:Memo / cache / GET **/api/user/me**;
+|BetPointsController|
+:Extract **uid** via **FoundationUser::id**;
+
+|PointsAdminService|
+:**PointsBalanceRepo** findByUid(uid);
+if (row missing?) then (yes)
+  :balance = 0;
+else (exists)
+  :balance = row.balance;
+endif
+
+|BetPointsController|
+:**logHandledApiRequest** (handler: bet.points.show);
+:Return **ApiResponse::ok**({ balance });
+
+|Client|
+:200 JSON;
+stop
+
+@enduml

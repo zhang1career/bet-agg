@@ -46,4 +46,19 @@ final class CoordinatorEnvelopeTest extends TestCase
 
         CoordinatorEnvelope::dataOrFail(['errorCode' => 0, 'data' => 'x'], 'tcc detail');
     }
+
+    public function test_data_or_fail_treats_missing_error_code_as_failure(): void
+    {
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('label: coordinator error (errorCode=-1)');
+
+        CoordinatorEnvelope::dataOrFail(['data' => []], 'label');
+    }
+
+    public function test_data_or_fail_defaults_empty_data_when_data_key_absent(): void
+    {
+        $data = CoordinatorEnvelope::dataOrFail(['errorCode' => 0], 'ok');
+
+        $this->assertSame([], $data);
+    }
 }

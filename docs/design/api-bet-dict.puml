@@ -1,0 +1,40 @@
+@startuml api-bet-dict
+title GET /api/bet/dict — logic swimlanes
+
+skinparam ActivityBackgroundColor #F8F8F8
+skinparam ActivityBorderColor #333333
+
+|Client|
+start
+:GET /api/bet/dict?codes=...;
+
+|BetDictController|
+if (**codes** missing / blank?) then (yes)
+  :**ApiResponse::error** RET_MISSING_PARAM;
+  |Client|
+  :4xx JSON error;
+  stop
+endif
+if (**codes** length > 512?) then (yes)
+  :throw **ValidationException**;
+  stop
+endif
+:Split **codes** by comma, trim, drop empties;
+if (no tokens?) then (yes)
+  :**ApiResponse::error** RET_MISSING_PARAM;
+  |Client|
+  :4xx JSON error;
+  stop
+endif
+
+|MallDictionaryService|
+:For each known code:\nmap to Backed Enum,\nbuild **{k, v}** rows\n(unknown codes ignored);
+
+|BetDictController|
+:Return **ApiResponse::ok**(data);
+
+|Client|
+:200 JSON;
+stop
+
+@enduml

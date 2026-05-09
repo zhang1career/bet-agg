@@ -1,0 +1,46 @@
+@startuml api-bet-orders
+title GET /api/bet/orders & GET /api/bet/orders/{id} — logic swimlanes
+
+skinparam ActivityBackgroundColor #F8F8F8
+skinparam ActivityBorderColor #333333
+
+|Client|
+start
+:GET /api/bet/orders\nor GET /api/bet/orders/{id}\nAuth (either):\n**Authorization: Bearer** login token\nor **X-User-Access-Token:** raw token (no Bearer prefix)\n(if both sent, **X-User-Access-Token** wins);
+
+|AcceptBearerAccessToken|
+:If **X-User-Access-Token** empty\nand **Authorization** is **Bearer** scheme,\ncopy Bearer token into **X-User-Access-Token**;
+
+|BetOrderController|
+:requireAuthenticatedUser() via **RequiresFoundationUser**;
+|UserFoundationGateway|
+:Memo / cache / GET **/api/user/me**;
+|BetOrderController|
+:Extract **uid** via **FoundationUser::id**;
+
+|BetOrderController|
+if (index?) then (yes)
+  :Clamp **per_page**;
+  |Eloquent **BetOrder**|
+  :Query **where uid**\n**orderByDesc id**\n**paginate**;
+  :Map items to summary DTOs;
+else (show)
+  |Eloquent **BetOrder**|
+  :**where id + uid**\n**with('lines')**\n**first**;
+  if (missing?) then (yes)
+    :throw **ModelNotFoundException**;
+    stop
+  endif
+  :**BetOrderApiArray::detail**;
+endif
+
+|BetOrderController|
+:Call **MallDictionaryService** resolve(['bet_order_status']);
+:**logHandledApiRequest**;
+:Return **ApiResponse::ok**;
+
+|Client|
+:200 JSON;
+stop
+
+@enduml

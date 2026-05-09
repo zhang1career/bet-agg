@@ -7,6 +7,7 @@ use App\Http\Controllers\api\BetOrderController;
 use App\Http\Controllers\api\BetPlaceController;
 use App\Http\Controllers\api\BetPointsController;
 use App\Http\Controllers\api\OpenApiController;
+use App\Http\Controllers\api\SnowflakeIdController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -27,4 +28,5 @@ Route::prefix('bet')->group(function () {
     Route::get('orders', [BetOrderController::class, 'index']);
     Route::get('orders/{id}', [BetOrderController::class, 'show'])->whereNumber('id');
     Route::get('points', [BetPointsController::class, 'show']);
+    Route::post('snowflake', SnowflakeIdController::class);
 });

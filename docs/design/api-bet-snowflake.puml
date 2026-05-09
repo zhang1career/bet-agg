@@ -1,0 +1,44 @@
+@startuml api-bet-snowflake
+title POST /api/bet/snowflake — logic swimlanes
+
+skinparam ActivityBackgroundColor #F8F8F8
+skinparam ActivityBorderColor #333333
+
+|Client|
+start
+:POST /api/bet/snowflake\nHeader **X-User-Access-Token** (raw JWT);
+
+|SnowflakeIdController|
+:requireAuthenticatedUser() via **RequiresFoundationUser**;
+|UserFoundationGateway|
+:GET **/api/user/me** (memo/cache by token);
+|SnowflakeIdController|
+:Inject **FoundationSnowflakeClient**;
+
+|FoundationSnowflakeClient|
+:Read **SF_SNOWFLAKE_ACCESS_KEY** via config;
+if (access key empty?) then (yes)
+  :throw **ConfigurationMissingException**;
+  stop
+endif
+:Resolve API gateway base URL\n(**ResolvedApiGatewayBaseUrl**);
+if (base URL missing?) then (yes)
+  :throw **ConfigurationMissingException**;
+  stop
+endif
+:POST {gateway}/api/snowflake/id\n(JSON body **access_key**; path overridable via **BET_FOUNDATION_SNOWFLAKE_MINT_PATH**);
+if (HTTP not successful?) then (yes)
+  :throw **DownstreamServiceException**;
+  stop
+endif
+:Parse numeric **id** from response **data**;
+
+|SnowflakeIdController|
+:**logHandledApiRequest** (handler: bet.snowflake.mint, uid);
+:Return **ApiResponse::ok**({ id });
+
+|Client|
+:200 JSON;
+stop
+
+@enduml

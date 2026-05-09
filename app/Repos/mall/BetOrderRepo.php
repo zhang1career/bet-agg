@@ -7,7 +7,7 @@ namespace App\Repos\mall;
 use App\Enums\BetOrderStatus;
 use App\Models\BetOrder;
 
-final class BetOrderRepo
+class BetOrderRepo
 {
     public function findWithLinesByUserIdem(int $uid, int $idemKey): ?BetOrder
     {

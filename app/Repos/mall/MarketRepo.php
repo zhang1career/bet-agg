@@ -6,7 +6,7 @@ namespace App\Repos\mall;
 
 use App\Models\Market;
 
-final class MarketRepo
+class MarketRepo
 {
     /**
      * Lock row for bet placement: needs parent game and synthetic leg subjects.

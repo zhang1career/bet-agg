@@ -10,7 +10,7 @@ use App\Exceptions\FoundationAuthRequiredException;
 use App\Http\Concerns\RequiresFoundationUser;
 use App\Http\Controllers\Controller;
 use App\Services\mall\FoundationUser;
-use App\Services\mall\PointsAdminService;
+use App\Services\user\FoundationSnowflakeClient;
 use App\Services\user\UserFoundationGateway;
 use Illuminate\Contracts\Container\BindingResolutionException;
 use Illuminate\Http\Client\ConnectionException;
@@ -19,18 +19,20 @@ use Illuminate\Http\Request;
 use Paganini\Aggregation\Exceptions\DownstreamServiceException;
 use Psr\SimpleCache\InvalidArgumentException;
 
-class BetPointsController extends Controller
+/**
+ * Authenticated snowflake mint at {@code POST /api/bet/snowflake}; proxies to service_foundation using {@code SF_SNOWFLAKE_ACCESS_KEY}.
+ * Use the returned {@code id} as {@code X-Request-Id} on {@code POST /api/bet/place}.
+ */
+final class SnowflakeIdController extends Controller
 {
     use RequiresFoundationUser;
 
     public function __construct(
         private readonly UserFoundationGateway $foundationGateway,
-        private readonly PointsAdminService $points,
+        private readonly FoundationSnowflakeClient $snowflake,
     ) {}
 
     /**
-     * Current user's available points balance (integer game points).
-     *
      * @throws BindingResolutionException
      * @throws ConfigurationMissingException
      * @throws ConnectionException
@@ -38,16 +40,19 @@ class BetPointsController extends Controller
      * @throws FoundationAuthRequiredException
      * @throws InvalidArgumentException
      */
-    public function show(Request $request): JsonResponse
+    public function __invoke(Request $request): JsonResponse
     {
         $user = $this->requireAuthenticatedUser($request);
 
-        $balance = $this->points->availableBalance(FoundationUser::id($user));
+        $id = $this->snowflake->mintNextId();
 
-        $this->logHandledApiRequest($request, ['handler' => 'bet.points.show']);
+        $this->logHandledApiRequest($request, [
+            'handler' => 'bet.snowflake.mint',
+            'uid' => FoundationUser::id($user),
+        ]);
 
         return response()->json(ApiResponse::ok([
-            'balance' => $balance,
+            'id' => $id,
         ]));
     }
 }

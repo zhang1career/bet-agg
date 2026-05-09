@@ -6,7 +6,7 @@ namespace App\Repos\mall;
 
 use App\Models\Game;
 
-final class GameRepo
+class GameRepo
 {
     public function lockForUpdate(int $gameId): ?Game
     {

@@ -1,0 +1,44 @@
+@startuml api-bet-games
+title GET /api/bet/games & GET /api/bet/games/{game_id} — logic swimlanes
+
+skinparam ActivityBackgroundColor #F8F8F8
+skinparam ActivityBorderColor #333333
+
+|Client|
+start
+:GET /api/bet/games\nor GET /api/bet/games/{game_id};
+
+|BetGameController|
+if (path is **games** index?) then (yes)
+  :Validate query:\n**status**, **updated_after**, **sort**, **group_code**;
+  :Clamp **page** / **per_page**;
+  :Build **GameListFilter**;
+  |CatalogService|
+  :**CatalogRepo::paginateGames**;
+else (detail by id)
+  |CatalogService|
+  :**CatalogRepo::findGameForDetail**(game_id);
+  if (not found?) then (yes)
+    :throw **NotFoundHttpException**;
+    stop
+  endif
+  :Build **groupRows** from **game->groups**;
+endif
+
+|CatalogService|
+:Collect **raw_id** values;
+|CmsGameClient|
+:HTTP fetch CMS metadata by **raw_id**;
+|CatalogService|
+:**serializeGameRow**(merge DB + CMS);
+
+|BetGameController|
+:Call **MallDictionaryService** resolve(['game_status']);
+:**logHandledApiRequest**;
+:Return **ApiResponse::ok**;
+
+|Client|
+:200 JSON;
+stop
+
+@enduml
