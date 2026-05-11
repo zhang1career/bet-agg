@@ -1,21 +1,24 @@
 {{--
-    Reusable table header: GET links for ascending / descending sort (full navigation, immediate effect).
+    Reusable table header: one GET link toggling sort for a column (full page, immediate effect).
 
     Expected variables (pass via @include second argument):
     - routeName (string): named route, e.g. 'admin.games.index'
-    - retainQuery (array<string, scalar>): base query string parameters to preserve (typically request()->except('page'))
-    - column (string): value for the `sort` query parameter for this column
+    - retainQuery (array<string, scalar>): base query parameters to preserve (typically request()->except('page'))
+    - column (string): value for the `sort` query parameter
     - currentSort (string): active list `sort` value
     - currentDir (string): active list `dir` value ('asc'|'desc')
     - label (string): column title (caller should pass translated text)
 
     Optional:
-    - ascTitle (string): `title` / `aria-label` on the ascending control
-    - descTitle (string): `title` / `aria-label` on the descending control
+    - ascTitle (string): `title` / `aria-label` when the control sorts ascending (first click or after desc)
+    - descTitle (string): `title` / `aria-label` when the control switches to descending
 
-    Filter forms on the same page should submit hidden inputs (or include sort/dir in retainQuery when building
-    hidden fields) so "Apply filters" keeps the current sort — usually by emitting request()->except('page') for
-    keys not overridden by explicit filter controls.
+    Behaviour:
+    - Not currently sorted by `column`: show ↑, links to this column ascending.
+    - This column ascending: show ↑, links to descending (toggle).
+    - This column descending: show ↓, links to ascending (toggle).
+
+    Filter forms should pass explicit hidden `sort` / `dir` (from controller) so Apply keeps sort.
 --}}
 @php
     /** @var string $routeName */
@@ -28,21 +31,33 @@
     $descTitle = $descTitle ?? __('console.partial_th_sort.desc');
     $linkAsc = route($routeName, array_merge($retainQuery, ['sort' => $column, 'dir' => 'asc', 'page' => 1]));
     $linkDesc = route($routeName, array_merge($retainQuery, ['sort' => $column, 'dir' => 'desc', 'page' => 1]));
-    $activeAsc = $currentSort === $column && $currentDir === 'asc';
-    $activeDesc = $currentSort === $column && $currentDir === 'desc';
+
+    $onColumn = $currentSort === $column;
+    if ($onColumn && $currentDir === 'desc') {
+        $sortHref = $linkAsc;
+        $glyph = '↓';
+        $controlTitle = $ascTitle;
+        $active = true;
+    } elseif ($onColumn && $currentDir === 'asc') {
+        $sortHref = $linkDesc;
+        $glyph = '↑';
+        $controlTitle = $descTitle;
+        $active = true;
+    } else {
+        $sortHref = $linkAsc;
+        $glyph = '↑';
+        $controlTitle = $ascTitle;
+        $active = false;
+    }
 @endphp
 <th scope="col">
     <div class="d-flex align-items-center flex-wrap gap-2">
         <span>{{ $label }}</span>
-        <span class="mall-th-sort d-inline-flex align-items-center gap-1">
-            <a href="{{ $linkAsc }}"
-               class="mall-th-sort-link text-decoration-none {{ $activeAsc ? 'mall-th-sort-active' : '' }}"
-               title="{{ $ascTitle }}"
-               aria-label="{{ $ascTitle }}">↑</a>
-            <a href="{{ $linkDesc }}"
-               class="mall-th-sort-link text-decoration-none {{ $activeDesc ? 'mall-th-sort-active' : '' }}"
-               title="{{ $descTitle }}"
-               aria-label="{{ $descTitle }}">↓</a>
+        <span class="mall-th-sort d-inline-flex align-items-center">
+            <a href="{{ $sortHref }}"
+               class="mall-th-sort-link text-decoration-none {{ $active ? 'mall-th-sort-active' : '' }}"
+               title="{{ $controlTitle }}"
+               aria-label="{{ $controlTitle }}">{{ $glyph }}</a>
         </span>
     </div>
 </th>
