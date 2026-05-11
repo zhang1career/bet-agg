@@ -112,7 +112,13 @@
         <div class="card-body">
             <div class="mall-list-toolbar d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
                 <h3 class="h6 mb-0">{{ __('console.settlement_overview.section_title') }}</h3>
-                <a href="{{ route('admin.settlement.create') }}" class="btn btn-outline-secondary btn-sm">{{ __('console.sidebar.settlement') }}</a>
+                @php
+                    $settlementGamesIndex = ['mall_settlement' => 1];
+                    if ($game->status === \App\Models\Game::STATUS_OPEN && $game->side_a_subject_id && $game->side_b_subject_id) {
+                        $settlementGamesIndex['mall_settlement_game'] = $game->id;
+                    }
+                @endphp
+                <a href="{{ route('admin.games.index', $settlementGamesIndex) }}" class="btn btn-outline-secondary btn-sm">{{ __('console.sidebar.settlement') }}</a>
             </div>
             <p class="small text-muted">{{ __('console.settlement_overview.intro') }}</p>
             @include('admin.partials.settlement_counts', [

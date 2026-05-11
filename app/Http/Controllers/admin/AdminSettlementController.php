@@ -7,43 +7,22 @@ namespace App\Http\Controllers\admin;
 use App\Http\Controllers\Controller;
 use App\Models\Game;
 use App\Services\mall\BetSettlementService;
-use App\Support\AdminGameSelectOptionLabels;
 use App\Support\SettlementPayloadResolver;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\View\View;
 use RuntimeException;
 use Throwable;
 
 class AdminSettlementController extends Controller
 {
     public function __construct(
-        private readonly AdminGameSelectOptionLabels $gameSelectLabels,
         private readonly SettlementPayloadResolver $payloadResolver,
         private readonly BetSettlementService $settlementService,
     ) {}
 
-    public function create(): View
+    public function create(): RedirectResponse
     {
-        $games = Game::query()
-            ->where('status', Game::STATUS_OPEN)
-            ->whereNotNull('side_a_subject_id')
-            ->whereNotNull('side_b_subject_id')
-            ->with(['sideASubject', 'sideBSubject'])
-            ->orderByDesc('id')
-            ->limit(500)
-            ->get();
-
-        $outcomesByGame = [];
-        foreach ($games as $game) {
-            $outcomesByGame[(string) $game->id] = $this->outcomeOptionsForGame($game);
-        }
-
-        return view('admin.settlement.create', [
-            'games' => $games,
-            'gameSelectLabels' => $this->gameSelectLabels->mapByLocalId($games),
-            'outcomesByGame' => $outcomesByGame,
-        ]);
+        return redirect()->route('admin.games.index', ['mall_settlement' => 1]);
     }
 
     public function store(Request $request): RedirectResponse
@@ -57,7 +36,7 @@ class AdminSettlementController extends Controller
 
         if ($game->status !== Game::STATUS_OPEN) {
             return redirect()
-                ->route('admin.settlement.create')
+                ->route('admin.games.index', ['mall_settlement' => 1])
                 ->withInput()
                 ->withErrors(['game_id' => __('console.settlement.only_open')]);
         }
@@ -69,7 +48,7 @@ class AdminSettlementController extends Controller
             );
         } catch (RuntimeException $e) {
             return redirect()
-                ->route('admin.settlement.create')
+                ->route('admin.games.index', ['mall_settlement' => 1])
                 ->withInput()
                 ->withErrors(['result_payload' => $e->getMessage()]);
         }
@@ -82,48 +61,18 @@ class AdminSettlementController extends Controller
             $this->settlementService->recordPendingSettlement($gameId, $winners, $voids);
         } catch (RuntimeException $e) {
             return redirect()
-                ->route('admin.settlement.create')
+                ->route('admin.games.index', ['mall_settlement' => 1])
                 ->withInput()
                 ->withErrors(['result_payload' => $e->getMessage()]);
         } catch (Throwable $e) {
             return redirect()
-                ->route('admin.settlement.create')
+                ->route('admin.games.index', ['mall_settlement' => 1])
                 ->withInput()
                 ->withErrors(['game_id' => $e->getMessage()]);
         }
 
         return redirect()
-            ->route('admin.settlement.create')
+            ->route('admin.games.index')
             ->with('status', __('console.settlement.status_recorded'));
-    }
-
-    /**
-     * @return list<array{value: string, label: string}>
-     */
-    private function outcomeOptionsForGame(Game $game): array
-    {
-        $aId = (int) $game->side_a_subject_id;
-        $bId = (int) $game->side_b_subject_id;
-        $aName = $game->sideASubject?->name ?? 'Side A';
-        $bName = $game->sideBSubject?->name ?? 'Side B';
-
-        return [
-            [
-                'value' => 'subject:'.$aId,
-                'label' => 'Home win — '.$aName,
-            ],
-            [
-                'value' => 'draw',
-                'label' => 'Draw',
-            ],
-            [
-                'value' => 'subject:'.$bId,
-                'label' => 'Away win — '.$bName,
-            ],
-            [
-                'value' => 'void_all',
-                'label' => 'Void all (refund)',
-            ],
-        ];
     }
 }

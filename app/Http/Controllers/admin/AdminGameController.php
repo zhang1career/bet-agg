@@ -8,10 +8,14 @@ use App\Http\Controllers\Controller;
 use App\Models\Game;
 use App\Models\GameGroup;
 use App\Models\GameSubject;
-use App\Services\mall\SettlementConsoleOverviewService;
+use App\Services\mall\AdminSettlementFormViewData;
 use App\Services\mall\serv_fd\CmsGameClient;
+use App\Services\mall\SettlementConsoleOverviewService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Paganini\Aggregation\Exceptions\DownstreamServiceException;
@@ -19,19 +23,49 @@ use Throwable;
 
 class AdminGameController extends Controller
 {
+    private const GAMES_LIST_CMS_MERGE_CAP = 2500;
+
     public function __construct(
         private readonly CmsGameClient $cmsGameClient,
         private readonly SettlementConsoleOverviewService $settlementOverview,
+        private readonly AdminSettlementFormViewData $settlementFormViewData,
     ) {}
 
     public function index(Request $request): View
     {
         $perPage = min(50, max(1, (int) $request->query('per_page', 20)));
-        $games = Game::query()
-            ->withCount('markets')
-            ->orderByDesc('id')
-            ->paginate($perPage)
-            ->withQueryString();
+        $sort = (string) $request->query('sort', 'id');
+        if (! in_array($sort, ['id', 'starts_at'], true)) {
+            $sort = 'id';
+        }
+        $dir = strtolower((string) $request->query('dir', ''));
+        if (! in_array($dir, ['asc', 'desc'], true)) {
+            $dir = $sort === 'starts_at' ? 'asc' : 'desc';
+        }
+        $statusFilter = $this->parseOptionalStatusFilter($request->query('status'));
+
+        $baseQuery = Game::query()->withCount('markets');
+        if ($statusFilter !== null) {
+            $baseQuery->where('status', $statusFilter);
+        }
+
+        $useCmsMergePath = $sort === 'starts_at';
+
+        $gamesListTruncated = false;
+        if ($useCmsMergePath) {
+            [$games, $gamesListTruncated] = $this->paginateGamesWithCmsStartsAt(
+                $request,
+                $baseQuery,
+                $sort,
+                $dir,
+                $perPage,
+            );
+        } else {
+            $games = (clone $baseQuery)
+                ->orderBy('id', $dir === 'asc' ? 'asc' : 'desc')
+                ->paginate($perPage)
+                ->withQueryString();
+        }
 
         $cmsByRawId = [];
         try {
@@ -50,6 +84,8 @@ class AdminGameController extends Controller
 
         $mallCreate = $request->boolean('mall_create');
         $mallEditId = (int) $request->query('mall_edit', 0);
+        $mallSettlement = $request->boolean('mall_settlement');
+        $mallSettlementGamePrefill = (int) $request->query('mall_settlement_game', 0);
 
         $modalEditGame = null;
         $modalEditCms = null;
@@ -72,16 +108,28 @@ class AdminGameController extends Controller
             }
         }
 
+        $settlementForm = $this->settlementFormViewData->build();
+
         return view('admin.games.index', [
             'games' => $games,
             'cmsByRawId' => $cmsByRawId,
             'mallCreate' => $mallCreate,
             'mallEditId' => $mallEditId,
+            'mallSettlement' => $mallSettlement,
+            'mallSettlementGamePrefill' => $mallSettlementGamePrefill >= 1 ? $mallSettlementGamePrefill : null,
             'modalEditGame' => $modalEditGame,
             'modalEditCms' => $modalEditCms,
             'modalEditSelectedGroups' => $modalEditSelectedGroups,
             'allGroups' => $allGroups,
             'allSubjects' => $allSubjects,
+            'listSort' => $sort,
+            'listDir' => $dir,
+            'listStatusFilter' => $statusFilter,
+            'gamesListTruncated' => $gamesListTruncated,
+            'gamesListCap' => self::GAMES_LIST_CMS_MERGE_CAP,
+            'settlementOpenGames' => $settlementForm['games'],
+            'settlementOutcomesByGame' => $settlementForm['outcomesByGame'],
+            'settlementGameSelectLabels' => $settlementForm['gameSelectLabels'],
         ]);
     }
 
@@ -216,6 +264,132 @@ class AdminGameController extends Controller
         $game->delete();
 
         return redirect()->route('admin.games.index')->with('status', 'Game deleted.');
+    }
+
+    /**
+     * Paginate games ordered by CMS {@code starts_at} (merge cap {@see GAMES_LIST_CMS_MERGE_CAP}).
+     *
+     * @param  Builder<Game>  $baseQuery
+     * @return array{0: LengthAwarePaginator<Game>, 1: bool}
+     */
+    private function paginateGamesWithCmsStartsAt(
+        Request $request,
+        Builder $baseQuery,
+        string $sort,
+        string $dir,
+        int $perPage,
+    ): array {
+        $totalMatching = (clone $baseQuery)->count();
+        $truncated = $totalMatching > self::GAMES_LIST_CMS_MERGE_CAP;
+
+        $rows = (clone $baseQuery)
+            ->orderByDesc('id')
+            ->limit(self::GAMES_LIST_CMS_MERGE_CAP)
+            ->get();
+
+        $rawIds = $rows
+            ->map(static fn (Game $g): int => (int) $g->raw_id)
+            ->unique()
+            ->filter(static fn (int $r): bool => $r >= 1)
+            ->values()
+            ->all();
+
+        $cmsByRawId = [];
+        try {
+            if ($rawIds !== []) {
+                $cmsByRawId = $this->cmsGameClient->findManyById($rawIds);
+            }
+        } catch (Throwable) {
+        }
+
+        $withMeta = $rows->map(function (Game $g) use ($cmsByRawId): array {
+            $ms = (int) (($cmsByRawId[(int) $g->raw_id] ?? [])['starts_at'] ?? 0);
+
+            return ['game' => $g, 'starts_ms' => $ms];
+        });
+
+        $sorted = $withMeta
+            ->sort(fn (array $a, array $b): int => $this->compareGameListRows($a, $b, $sort, $dir))
+            ->values();
+
+        /** @var Collection<int, Game> $gameModels */
+        $gameModels = $sorted->map(static fn (array $row): Game => $row['game']);
+        $total = $gameModels->count();
+        $currentPage = max(1, (int) $request->query('page', 1));
+        $slice = $gameModels->forPage($currentPage, $perPage)->values();
+
+        $paginator = new LengthAwarePaginator(
+            $slice,
+            $total,
+            $perPage,
+            $currentPage,
+            ['path' => $request->url(), 'pageName' => 'page'],
+        );
+        $paginator->withQueryString();
+
+        return [$paginator, $truncated];
+    }
+
+    /**
+     * @param  array{game: Game, starts_ms: int}  $a
+     * @param  array{game: Game, starts_ms: int}  $b
+     */
+    private function compareGameListRows(array $a, array $b, string $sort, string $dir): int
+    {
+        $ga = $a['game'];
+        $gb = $b['game'];
+        $ma = $a['starts_ms'];
+        $mb = $b['starts_ms'];
+        $asc = $dir !== 'desc';
+
+        if ($sort === 'starts_at') {
+            $aValid = $ma > 0;
+            $bValid = $mb > 0;
+            if ($aValid !== $bValid) {
+                if ($aValid) {
+                    return -1;
+                }
+                if ($bValid) {
+                    return 1;
+                }
+
+                return $gb->id <=> $ga->id;
+            }
+            if (! $aValid) {
+                return $gb->id <=> $ga->id;
+            }
+            $cmp = $ma <=> $mb;
+            if ($cmp === 0) {
+                return $gb->id <=> $ga->id;
+            }
+
+            return $asc ? $cmp : -$cmp;
+        }
+
+        $cmp = $ga->id <=> $gb->id;
+
+        return $asc ? $cmp : -$cmp;
+    }
+
+    private function parseOptionalStatusFilter(mixed $raw): ?int
+    {
+        if ($raw === null || $raw === '') {
+            return null;
+        }
+        if (! is_numeric($raw)) {
+            return null;
+        }
+        $n = (int) $raw;
+        if (! in_array($n, [
+            Game::STATUS_OPEN,
+            Game::STATUS_CLOSED,
+            Game::STATUS_SETTLED,
+            Game::STATUS_PENDING_SETTLEMENT,
+        ], true)) {
+            return null;
+        }
+
+        return $n;
     }
 
     /**

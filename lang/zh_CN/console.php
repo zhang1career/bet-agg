@@ -31,6 +31,10 @@ return [
         'toggle_sidebar' => '切换侧栏',
         'toggle_theme' => '切换主题',
     ],
+    'partial_th_sort' => [
+        'asc' => '升序',
+        'desc' => '降序',
+    ],
     'btn' => [
         'new' => '新建',
         'cancel' => '取消',
@@ -95,6 +99,7 @@ return [
         'title' => '标题',
         'status' => '状态',
         'markets' => '盘口数',
+        'starts_at' => '开赛时间',
         'game' => '赛事',
         'market' => '盘口',
         'name' => '名称',
@@ -150,9 +155,10 @@ return [
         'result' => '赛果',
         'status_recorded' => '赛果已保存，请执行 applyGameSettlement 进行兑奖。',
         'only_open' => '仅开放中的赛事可录入赛果。',
+        'modal_title' => '录入赛果',
     ],
     'orders' => [
-        'foot_note' => '订单状态由下单与结算驱动。请在「结算」中录入赛果，由定时任务完成兑奖。',
+        'foot_note' => '订单状态由下单与结算驱动。请在「赛事」列表中通过结算操作录入赛果，由定时任务完成兑奖。',
         'back_to_orders' => '返回订单列表',
     ],
     'settlement_overview' => [
@@ -218,6 +224,17 @@ return [
         'settle_outcomes' => '结算赛果',
         'timestamps' => '时间戳',
         'cms_unavailable_raw' => 'raw_id :raw_id 无法从 CMS 加载',
+        'filter_status_all' => '全部状态',
+        'filter_status_open' => '开放',
+        'filter_status_closed' => '已关闭',
+        'filter_status_pending_settlement' => '待结算',
+        'filter_status_settled' => '已结算',
+        'filter_apply' => '应用筛选',
+        'sort_starts_at_asc' => '按开赛时间升序',
+        'sort_starts_at_desc' => '按开赛时间降序',
+        'list_truncated' => '按 CMS 开赛时间排序时最多加载前 :cap 条赛事。可缩小状态筛选范围。',
+        'settlement_icon_title' => '录入赛果（结算）',
+        'settlement_icon_disabled' => '仅「开放」且已设置 A/B 双方的赛事可录入赛果。',
     ],
     'markets' => [
         'game_number' => '赛事 #:id',

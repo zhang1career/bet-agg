@@ -299,3 +299,8 @@ body.mall-admin .modal-dialog-scrollable .modal-content > .modal-body {
     min-height: 0;
     overflow-y: auto;
 }
+
+body.mall-admin .mall-th-sort-link.mall-th-sort-active {
+    font-weight: 700;
+    color: var(--bs-primary);
+}

@@ -31,6 +31,10 @@ return [
         'toggle_sidebar' => 'Toggle sidebar',
         'toggle_theme' => 'Toggle theme',
     ],
+    'partial_th_sort' => [
+        'asc' => 'Sort ascending',
+        'desc' => 'Sort descending',
+    ],
     'btn' => [
         'new' => 'New',
         'cancel' => 'Cancel',
@@ -95,6 +99,7 @@ return [
         'title' => 'Title',
         'status' => 'Status',
         'markets' => 'Markets',
+        'starts_at' => 'Starts at',
         'game' => 'Game',
         'market' => 'Market',
         'name' => 'Name',
@@ -150,9 +155,10 @@ return [
         'result' => 'Result',
         'status_recorded' => 'Result saved. Run applyGameSettlement to pay out.',
         'only_open' => 'Only open games can receive a result.',
+        'modal_title' => 'Record result',
     ],
     'orders' => [
-        'foot_note' => 'Order status is driven by placement and settlement. Record results under Settlement; the scheduler settles bets.',
+        'foot_note' => 'Order status is driven by placement and settlement. Record results from the games list (settlement action); the scheduler settles bets.',
         'back_to_orders' => 'Back to orders',
     ],
     'settlement_overview' => [
@@ -218,6 +224,17 @@ return [
         'settle_outcomes' => 'Settlement outcomes',
         'timestamps' => 'Timestamps',
         'cms_unavailable_raw' => 'CMS unavailable for raw_id :raw_id',
+        'filter_status_all' => 'All statuses',
+        'filter_status_open' => 'Open',
+        'filter_status_closed' => 'Closed',
+        'filter_status_pending_settlement' => 'Pending settlement',
+        'filter_status_settled' => 'Settled',
+        'filter_apply' => 'Apply filters',
+        'sort_starts_at_asc' => 'Sort by starts at: ascending',
+        'sort_starts_at_desc' => 'Sort by starts at: descending',
+        'list_truncated' => 'Only the first :cap games are loaded when sorting by CMS kick-off time. Narrow status filters if something is missing.',
+        'settlement_icon_title' => 'Record result (settlement)',
+        'settlement_icon_disabled' => 'Settlement is only available for open games with both sides set.',
     ],
     'markets' => [
         'game_number' => 'Game #:id',
