@@ -37,7 +37,7 @@
                         <option value="{{ \App\Models\Game::STATUS_SETTLED }}" @selected($listStatusFilter === \App\Models\Game::STATUS_SETTLED)>{{ __('console.games.filter_status_settled') }}</option>
                     </select>
                 </div>
-                <button type="submit" class="btn btn-outline-secondary btn-sm flex-shrink-0">{{ __('console.games.filter_apply') }}</button>
+                @include('admin.partials.btn_list_filter_submit')
             </form>
             <a href="{{ route('admin.games.index', ['mall_create' => 1]) }}" class="btn btn-primary btn-sm flex-shrink-0">{{ __('console.btn.new') }}</a>
         </div>

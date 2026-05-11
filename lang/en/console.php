@@ -47,6 +47,7 @@ return [
         'submit_settlement' => 'Save result',
         'delete_group' => 'Delete group',
         'edit_market' => 'Edit market',
+        'list_filter_apply' => 'Apply filters',
     ],
     'back' => 'Back',
     'delete_modal' => [
@@ -235,7 +236,6 @@ return [
         'filter_status_closed' => 'Closed',
         'filter_status_pending_settlement' => 'Pending settlement',
         'filter_status_settled' => 'Settled',
-        'filter_apply' => 'Apply filters',
         'sort_starts_at_asc' => 'Sort by starts at: ascending',
         'sort_starts_at_desc' => 'Sort by starts at: descending',
         'list_truncated' => 'Only the first :cap games are loaded when sorting by CMS kick-off time. Narrow status filters if something is missing.',

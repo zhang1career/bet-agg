@@ -47,6 +47,7 @@ return [
         'submit_settlement' => '保存赛果',
         'delete_group' => '删除分组',
         'edit_market' => '编辑盘口',
+        'list_filter_apply' => '应用筛选',
     ],
     'back' => '返回',
     'delete_modal' => [
@@ -235,7 +236,6 @@ return [
         'filter_status_closed' => '已关闭',
         'filter_status_pending_settlement' => '待结算',
         'filter_status_settled' => '已结算',
-        'filter_apply' => '应用筛选',
         'sort_starts_at_asc' => '按开赛时间升序',
         'sort_starts_at_desc' => '按开赛时间降序',
         'list_truncated' => '按 CMS 开赛时间排序时最多加载前 :cap 条赛事。可缩小状态筛选范围。',
