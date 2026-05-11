@@ -156,6 +156,12 @@ return [
         'status_recorded' => 'Result saved. Run applyGameSettlement to pay out.',
         'only_open' => 'Only open games can receive a result.',
         'modal_title' => 'Record result',
+        'side_a_placeholder' => 'Side A',
+        'side_b_placeholder' => 'Side B',
+        'outcome_a_win' => 'Side A wins — :name',
+        'outcome_draw' => 'Draw',
+        'outcome_b_win' => 'Side B wins — :name',
+        'outcome_void_all' => 'Void all (refund)',
     ],
     'orders' => [
         'foot_note' => 'Order status is driven by placement and settlement. Record results from the games list (settlement action); the scheduler settles bets.',
@@ -255,8 +261,8 @@ return [
         'starts_at_help' => 'Submitted to CMS as Unix timestamp (milliseconds).',
         'group_label' => 'Linked game groups (biz_x, multi)',
         'group_help' => 'After selection, Side A/B lists only subjects linked to these groups in biz_y. Group↔game mapping is maintained only on this form.',
-        'side_a' => 'Side A (home, biz_game.side_a_subject_id)',
-        'side_b' => 'Side B (away, biz_game.side_b_subject_id)',
+        'side_a' => 'Side A (biz_game.side_a_subject_id)',
+        'side_b' => 'Side B (biz_game.side_b_subject_id)',
         'none_selected' => '— None —',
     ],
     'detail' => [

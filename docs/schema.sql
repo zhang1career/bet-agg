@@ -39,8 +39,8 @@ CREATE TABLE IF NOT EXISTS `bet_order` (
 CREATE TABLE IF NOT EXISTS `biz_game` (
                                           `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
     `raw_id` bigint(20) unsigned NOT NULL DEFAULT '0' COMMENT 'cms game ID',
-    `side_a_subject_id` bigint(20) unsigned NOT NULL DEFAULT '0' COMMENT '主场侧',
-    `side_b_subject_id` bigint(20) unsigned NOT NULL DEFAULT '0' COMMENT '客场侧',
+    `side_a_subject_id` bigint(20) unsigned NOT NULL DEFAULT '0' COMMENT 'A 方赛事主体',
+    `side_b_subject_id` bigint(20) unsigned NOT NULL DEFAULT '0' COMMENT 'B 方赛事主体',
     `status` tinyint(1) unsigned NOT NULL DEFAULT '0' COMMENT '0-init, 1-open, 2-closed, 3-settled, 4-pending settlement',
     `settle_outcomes` text COLLATE utf8mb4_unicode_ci COMMENT 'json',
     `ct` bigint(20) unsigned NOT NULL DEFAULT '0' COMMENT 'Create time in Unix milliseconds',

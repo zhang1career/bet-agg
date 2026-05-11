@@ -54,25 +54,25 @@ final readonly class AdminSettlementFormViewData
     {
         $aId = (int) $game->side_a_subject_id;
         $bId = (int) $game->side_b_subject_id;
-        $aName = $game->sideASubject?->name ?? 'Side A';
-        $bName = $game->sideBSubject?->name ?? 'Side B';
+        $aName = $game->sideASubject?->name ?? (string) __('console.settlement.side_a_placeholder');
+        $bName = $game->sideBSubject?->name ?? (string) __('console.settlement.side_b_placeholder');
 
         return [
             [
                 'value' => 'subject:'.$aId,
-                'label' => 'Home win — '.$aName,
+                'label' => (string) __('console.settlement.outcome_a_win', ['name' => $aName]),
             ],
             [
                 'value' => 'draw',
-                'label' => 'Draw',
+                'label' => (string) __('console.settlement.outcome_draw'),
             ],
             [
                 'value' => 'subject:'.$bId,
-                'label' => 'Away win — '.$bName,
+                'label' => (string) __('console.settlement.outcome_b_win', ['name' => $bName]),
             ],
             [
                 'value' => 'void_all',
-                'label' => 'Void all (refund)',
+                'label' => (string) __('console.settlement.outcome_void_all'),
             ],
         ];
     }

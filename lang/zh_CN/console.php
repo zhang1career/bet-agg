@@ -156,6 +156,12 @@ return [
         'status_recorded' => '赛果已保存，请执行 applyGameSettlement 进行兑奖。',
         'only_open' => '仅开放中的赛事可录入赛果。',
         'modal_title' => '录入赛果',
+        'side_a_placeholder' => 'A 方',
+        'side_b_placeholder' => 'B 方',
+        'outcome_a_win' => 'A 方胜 — :name',
+        'outcome_draw' => '平局',
+        'outcome_b_win' => 'B 方胜 — :name',
+        'outcome_void_all' => '全场走水（退款）',
     ],
     'orders' => [
         'foot_note' => '订单状态由下单与结算驱动。请在「赛事」列表中通过结算操作录入赛果，由定时任务完成兑奖。',
@@ -255,8 +261,8 @@ return [
         'starts_at_help' => '提交到 CMS 为 Unix 时间戳（毫秒）。',
         'group_label' => '关联赛事分组（biz_x，多选）',
         'group_help' => '勾选后，下方 A/B 方下拉仅显示这些分组在「赛事主体 ↔ 分组」biz_y 中的主体。分组与赛事的关联仅在此表单维护。',
-        'side_a' => 'A 方（主场侧，biz_game.side_a_subject_id）',
-        'side_b' => 'B 方（客场侧，biz_game.side_b_subject_id）',
+        'side_a' => 'A 方（biz_game.side_a_subject_id）',
+        'side_b' => 'B 方（biz_game.side_b_subject_id）',
         'none_selected' => '— 未选 —',
     ],
     'detail' => [

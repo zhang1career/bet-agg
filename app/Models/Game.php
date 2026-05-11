@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * Local betting aggregate for a CMS game: {@code raw_id} is the external game id;
- * title, media, kickoff in CMS. Sides reference {@see GameSubject} (order: A=主场侧, B=客场侧).
+ * title, media, kickoff in CMS. Sides reference {@see GameSubject} as **A** and **B** ({@code side_a_subject_id} / {@code side_b_subject_id}), without implying home/away.
  *
  * @property int $id
  * @property int $raw_id
