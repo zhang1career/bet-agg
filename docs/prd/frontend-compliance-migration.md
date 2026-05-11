@@ -44,6 +44,8 @@ Only **one** element in `lines` is accepted server-side.
 
 Client models may keep a “BetOrder” name aligned with persistence (`bet_order` / `order_item` tables).
 
+**Note:** JSON uses `market_id` on each line; the DB column is `order_item.mid` — no extra client field is required beyond the public API.
+ 
 ## 6. Points → reputation
 
 - Remove screens and API calls for **points balance / points ledger / hold state**.
@@ -56,12 +58,13 @@ Client models may keep a “BetOrder” name aligned with persistence (`bet_orde
 
 - `GET /api/bet/dict?codes=...` (same query shape as before if you used dict on bet path).
 - Replace requested code strings: use **`bet_order_status`**, **`order_item_result`** where you previously used bet order / line dicts. Remove **`points_hold_state`** if referenced.
+- Catalog payloads (`games` / `markets`) may embed `_dict` with **`game_status`** and **`market_status`**; request those codes from `dict` when you need labels outside embedded `_dict`.
 
 ## 8. Schema-driven expectations (`docs/schema.sql`)
 
-- Tables **`bet_order`**, **`order_item`**, **`points_balance`**, **`points_flow`** back the new APIs.
-- Dropped concepts: points tables, bet order tables, `biz_market.odds_millis` (column absent).
-- When showing DB-backed admin or support tools, align table names accordingly.
+- **Core tables** for orders and reputation: **`bet_order`**, **`order_item`** (FK-style columns `oid` → `bet_order.id`, `mid` → `biz_market.id`), **`points_balance`**, **`points_flow`**. The `points_*` names are legacy; in this product they store **non-redeemable reputation** only (`points_flow.oid` ties ledger rows to **`bet_order.id`**).
+- **Removed vs legacy wager stack:** **`POST /api/bet/place`**, stake/odds request fields, redeemable wallet / hold flows, and **`biz_market.odds_millis`** (column absent in current schema).
+- When building admin or support tools that read the DB directly, use these table/column names; the public JSON API still uses stable field names such as `market_id` on lines (see §5).
 
 ## 9. Minimal UI checklist
 
