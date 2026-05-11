@@ -8,7 +8,7 @@ use App\Exceptions\ApiJsonExceptionHandler;
 use RuntimeException;
 
 /**
- * Base class for {@code /api/bet/place} business failures. Each subclass binds
+ * Base class for prediction API business failures. Each subclass binds
  * a stable {@code RET_*} code (response envelope) and an HTTP status; the
  * application-wide {@see ApiJsonExceptionHandler} renders both
  * uniformly so agents can branch on `errorCode` without parsing free text.

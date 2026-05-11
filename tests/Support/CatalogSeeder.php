@@ -21,43 +21,35 @@ final class CatalogSeeder
      *     game_local_id: int,
      * }
      */
-    public static function openHomeWinMarket(int $oddsMillis = 2000): array
+    public static function openHomeWinMarket(int $unusedOddsMillis = 2000): array
     {
         $game = self::seedGame();
 
         $market = new Market([
-            'game_id' => $game->id,
+            'gid' => $game->id,
             'type' => MarketType::OneX2,
             'name' => 'Full-time 1X2',
             'status' => Market::STATUS_OPEN,
-            'odds_millis' => Market::oneX2OddsMillisJson($oddsMillis, $oddsMillis, $oddsMillis),
         ]);
         $market->save();
 
         return [
             'market_id' => (int) $market->id,
             'outcome_code' => MatchOutcomeCode::HomeWin->value,
-            'odds_millis' => $oddsMillis,
             'game_local_id' => (int) $game->id,
         ];
     }
 
     /**
-     * Open game with two subjects + group + 胜平负 odds (home / draw / away may differ).
+     * Open game with two subjects + group + 胜平负 market (no pricing in DB).
      *
      * @return array{
      *     game_local_id: int,
      *     market_id: int,
-     *     home_odds_millis: int,
-     *     draw_odds_millis: int,
-     *     away_odds_millis: int,
      * }
      */
-    public static function oneXTwoSettlement(
-        int $homeOddsMillis = 2500,
-        int $drawOddsMillis = 2000,
-        int $awayOddsMillis = 2000,
-    ): array {
+    public static function oneXTwoSettlement(): array
+    {
         $suffix = str_replace('.', '', uniqid('', true));
         $group = new GameGroup(['code' => 'seed-g-'.$suffix]);
         $group->save();
@@ -73,20 +65,16 @@ final class CatalogSeeder
         $group->games()->attach((int) $game->id);
 
         $market = new Market([
-            'game_id' => $game->id,
+            'gid' => $game->id,
             'type' => MarketType::OneX2,
             'name' => '胜平负',
             'status' => Market::STATUS_OPEN,
-            'odds_millis' => Market::oneX2OddsMillisJson($homeOddsMillis, $drawOddsMillis, $awayOddsMillis),
         ]);
         $market->save();
 
         return [
             'game_local_id' => (int) $game->id,
             'market_id' => (int) $market->id,
-            'home_odds_millis' => $homeOddsMillis,
-            'draw_odds_millis' => $drawOddsMillis,
-            'away_odds_millis' => $awayOddsMillis,
         ];
     }
 

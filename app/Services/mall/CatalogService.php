@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\mall;
 
-use App\Http\Controllers\api\BetGameController;
-use App\Http\Controllers\api\BetMarketController;
+use App\Http\Controllers\api\PredictionGameController;
+use App\Http\Controllers\api\PredictionMarketController;
 use App\Models\Game;
 use App\Models\Market;
 use App\Repos\mall\CatalogRepo;
@@ -17,6 +17,7 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
  * Read-side catalog: {@code biz_game} + {@code biz_market}; 胜平负选项由 {@see SyntheticMatchMarket} 合成。
+ * List filters are shaped by {@see PredictionGameController} / {@see PredictionMarketController}.
  */
 final readonly class CatalogService
 {
@@ -27,7 +28,7 @@ final readonly class CatalogService
     ) {}
 
     /**
-     * @param  GameListFilter  $filter  Validated filter inputs from {@see BetGameController}.
+     * @param  GameListFilter  $filter  Validated filter inputs from {@see PredictionGameController}.
      * @return array{items: list<array<string, mixed>>, pagination: array<string, mixed>}
      *
      * @throws ConnectionException
@@ -77,7 +78,7 @@ final readonly class CatalogService
     }
 
     /**
-     * @param  MarketListFilter  $filter  Validated filter inputs from {@see BetMarketController}.
+     * @param  MarketListFilter  $filter  Validated filter inputs from {@see PredictionMarketController}.
      * @return array{items: list<array<string, mixed>>, pagination: array<string, mixed>}
      *
      * @throws ConnectionException
@@ -197,7 +198,6 @@ final readonly class CatalogService
             'type' => $market->type->value,
             'name' => $market->name,
             'status' => $market->status,
-            'odds_millis' => $market->outcomeOddsMillisMap(),
             'ut' => $market->ut,
             'game' => $game === null ? null : $this->serializeNestedGame($game, $nestedCms),
         ];

@@ -9,9 +9,9 @@ use App\Models\Market;
 class MarketRepo
 {
     /**
-     * Lock row for bet placement: needs parent game and synthetic leg subjects.
+     * Lock row for prediction submission: needs parent game and synthetic leg subjects.
      */
-    public function lockWithGameAndSubjectsForBet(int $marketId): ?Market
+    public function lockWithGameAndSubjectsForPrediction(int $marketId): ?Market
     {
         return Market::query()
             ->with(['game.sideASubject', 'game.sideBSubject'])
@@ -23,7 +23,7 @@ class MarketRepo
     public function markAllSettledForGame(int $gameId, int $nowMillis): void
     {
         Market::query()
-            ->where('game_id', $gameId)
+            ->where('gid', $gameId)
             ->update(['status' => Market::STATUS_SETTLED, 'ut' => $nowMillis]);
     }
 
@@ -33,7 +33,7 @@ class MarketRepo
     public function idsForGame(int $gameId): array
     {
         return Market::query()
-            ->where('game_id', $gameId)
+            ->where('gid', $gameId)
             ->pluck('id')
             ->all();
     }

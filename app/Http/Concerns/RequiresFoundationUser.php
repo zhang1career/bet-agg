@@ -17,7 +17,7 @@ use Psr\SimpleCache\InvalidArgumentException;
  * Shared Foundation user resolution for API controllers.
  *
  * The consuming class must expose {@see UserFoundationGateway} as a constructor-promoted
- * property {@code $foundationGateway} (same pattern as {@see BetPlaceController}).
+ * property {@code $foundationGateway} (same pattern as {@see PredictionSubmitController}).
  */
 trait RequiresFoundationUser
 {
@@ -33,7 +33,7 @@ trait RequiresFoundationUser
      */
     protected function requireAuthenticatedUser(Request $request): array
     {
-        $token = trim((string)$request->header('X-User-Access-Token', ''));
+        $token = trim((string) $request->header('X-User-Access-Token', ''));
         if ($token === '') {
             throw new FoundationAuthRequiredException(
                 'Authentication required. Send header: X-User-Access-Token: <access_token> (raw JWT, no Bearer prefix).'

@@ -19,7 +19,6 @@ final class SyntheticMatchMarketTest extends TestCase
     {
         $market = new Market;
         $market->type = MarketType::OneX2;
-        $market->odds_millis = Market::oneX2OddsMillisJson(1800, 3000, 4200);
 
         $svc = new SyntheticMatchMarket;
         $legs = $svc->legsForApi($market, null);
@@ -28,16 +27,13 @@ final class SyntheticMatchMarketTest extends TestCase
         $this->assertSame('主队胜', $legs[0]['label']);
         $this->assertSame('平局', $legs[1]['label']);
         $this->assertSame('客队胜', $legs[2]['label']);
-        $this->assertSame(1800, $legs[0]['current_odds_millis']);
-        $this->assertSame(3000, $legs[1]['current_odds_millis']);
-        $this->assertSame(4200, $legs[2]['current_odds_millis']);
+        $this->assertSame(MatchOutcomeCode::HomeWin->value, $legs[0]['outcome_code']);
     }
 
     public function test_legs_for_api_one_x2_embeds_subject_names(): void
     {
         $market = new Market;
         $market->type = MarketType::OneX2;
-        $market->odds_millis = Market::oneX2OddsMillisJson(1, 2, 3);
 
         $game = new Game;
         $game->setRelation('sideASubject', new GameSubject(['name' => 'Alpha']));
@@ -50,29 +46,23 @@ final class SyntheticMatchMarketTest extends TestCase
         $this->assertSame('Beta胜', $legs[2]['label']);
     }
 
-    public function test_odds_millis_for_outcome_returns_mapped_value(): void
+    public function test_assert_valid_outcome_accepts_known_codes(): void
     {
         $market = new Market;
         $market->type = MarketType::OneX2;
-        $market->odds_millis = Market::oneX2OddsMillisJson(111, 222, 333);
 
-        $svc = new SyntheticMatchMarket;
-
-        $this->assertSame(
-            222,
-            $svc->oddsMillisForOutcome($market, MatchOutcomeCode::Draw->value),
-        );
+        (new SyntheticMatchMarket)->assertValidOutcome($market, MatchOutcomeCode::Draw->value);
+        $this->addToAssertionCount(1);
     }
 
-    public function test_odds_millis_for_outcome_throws_on_invalid_code(): void
+    public function test_assert_valid_outcome_throws_on_invalid_code(): void
     {
         $market = new Market;
         $market->type = MarketType::OneX2;
-        $market->odds_millis = [];
 
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('Invalid outcome_code.');
 
-        (new SyntheticMatchMarket)->oddsMillisForOutcome($market, 'not_an_outcome');
+        (new SyntheticMatchMarket)->assertValidOutcome($market, 'not_an_outcome');
     }
 }

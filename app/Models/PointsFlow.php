@@ -4,19 +4,19 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use App\Enums\PointsHoldState;
+use App\Enums\ReputationFlowKind;
 use App\Models\concerns\HasMillisTimestamps;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * Points ledger rows: hold lifecycle (try / confirm / cancel), manual admin entries, settlement postings.
+ * Row in {@code points_flow} (ledger; {@code oid} → {@code bet_order.id}).
  *
  * @property int $id
  * @property int $uid
- * @property int $oid 0 = not linked to an order row
+ * @property int $oid
  * @property int $amount
- * @property PointsHoldState $state
+ * @property ReputationFlowKind $state
  * @property int $ct
  * @property int $ut
  */
@@ -41,7 +41,7 @@ class PointsFlow extends Model
         'uid' => 'integer',
         'oid' => 'integer',
         'amount' => 'integer',
-        'state' => PointsHoldState::class,
+        'state' => ReputationFlowKind::class,
         'ct' => 'integer',
         'ut' => 'integer',
     ];

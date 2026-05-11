@@ -21,7 +21,7 @@ use Psr\SimpleCache\InvalidArgumentException;
 
 /**
  * Authenticated snowflake mint at {@code POST /api/bet/snowflake}; proxies to service_foundation using {@code SF_SNOWFLAKE_ACCESS_KEY}.
- * Use the returned {@code id} as {@code X-Request-Id} on {@code POST /api/bet/place}.
+ * Use the returned {@code id} as {@code X-Request-Id} on {@code POST /api/bet/submit}.
  */
 final class SnowflakeIdController extends Controller
 {
@@ -47,7 +47,7 @@ final class SnowflakeIdController extends Controller
         $id = $this->snowflake->mintNextId();
 
         $this->logHandledApiRequest($request, [
-            'handler' => 'bet.snowflake.mint',
+            'handler' => 'prediction.snowflake.mint',
             'uid' => FoundationUser::id($user),
         ]);
 

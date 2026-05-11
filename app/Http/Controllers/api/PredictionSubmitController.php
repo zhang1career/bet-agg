@@ -5,20 +5,20 @@ declare(strict_types=1);
 namespace App\Http\Controllers\api;
 
 use App\Components\ApiResponse;
-use App\Exceptions\bet\BetPlaceRequestIdException;
+use App\Exceptions\bet\PredictionRequestIdException;
 use App\Exceptions\ConfigurationMissingException;
 use App\Exceptions\FoundationAuthRequiredException;
 use App\Http\Concerns\RequiresFoundationUser;
 use App\Http\Controllers\Controller;
-use App\Services\mall\BetPlaceService;
 use App\Services\mall\FoundationUser;
+use App\Services\mall\PredictionSubmitService;
 use App\Services\MallDictionaryService;
 use App\Services\user\UserFoundationGateway;
 use App\Support\BetOrderApiArray;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
-class BetPlaceController extends Controller
+class PredictionSubmitController extends Controller
 {
     use RequiresFoundationUser;
 
@@ -26,7 +26,7 @@ class BetPlaceController extends Controller
 
     public function __construct(
         private readonly UserFoundationGateway $foundationGateway,
-        private readonly BetPlaceService $betPlace,
+        private readonly PredictionSubmitService $submit,
         private readonly MallDictionaryService $dict,
     ) {}
 
@@ -39,17 +39,15 @@ class BetPlaceController extends Controller
         $user = $this->requireAuthenticatedUser($request);
         $uid = FoundationUser::id($user);
 
-        $idemKey = $this->requirePlaceRequestId($request);
+        $idemKey = $this->requireSubmitRequestId($request);
 
         $request->validate([
             'lines' => 'required|array|min:1|max:1',
             'lines.0.market_id' => 'required|integer|min:1',
             'lines.0.outcome_code' => 'required|string|max:32',
-            'lines.0.stake_points' => 'required|integer|min:1',
-            'lines.0.expected_odds_millis' => 'required|integer|min:1000',
         ]);
 
-        /** @var list<array{market_id: int, outcome_code: string, stake_points: int, expected_odds_millis: int}> $lines */
+        /** @var list<array{market_id: int, outcome_code: string}> $lines */
         $lines = [];
         foreach ($request->input('lines', []) as $line) {
             if (! is_array($line)) {
@@ -58,17 +56,15 @@ class BetPlaceController extends Controller
             $lines[] = [
                 'market_id' => (int) ($line['market_id'] ?? 0),
                 'outcome_code' => trim((string) ($line['outcome_code'] ?? '')),
-                'stake_points' => (int) ($line['stake_points'] ?? 0),
-                'expected_odds_millis' => (int) ($line['expected_odds_millis'] ?? 0),
             ];
         }
 
-        $result = $this->betPlace->place($uid, $idemKey, $lines);
+        $result = $this->submit->submit($uid, $idemKey, $lines);
         $order = $result['order'];
 
         $this->logHandledApiRequest($request, [
-            'handler' => 'bet.place.store',
-            'order_id' => $order->id,
+            'handler' => 'prediction.submit.store',
+            'bet_order_id' => $order->id,
             'idem_key' => $idemKey,
             'is_replay' => $result['is_replay'],
         ]);
@@ -82,14 +78,14 @@ class BetPlaceController extends Controller
         return response()->json(ApiResponse::ok($payload), $result['is_replay'] ? 200 : 201);
     }
 
-    private function requirePlaceRequestId(Request $request): int
+    private function requireSubmitRequestId(Request $request): int
     {
         $raw = trim((string) $request->header(self::REQUEST_ID_HEADER, ''));
         if ($raw === '') {
-            throw new BetPlaceRequestIdException;
+            throw new PredictionRequestIdException;
         }
         if (! ctype_digit($raw) || (int) $raw < 1) {
-            throw new BetPlaceRequestIdException('X-Request-Id must be a positive decimal snowflake id.');
+            throw new PredictionRequestIdException('X-Request-Id must be a positive decimal snowflake id.');
         }
 
         return (int) $raw;

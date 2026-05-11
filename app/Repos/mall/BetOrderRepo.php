@@ -24,10 +24,8 @@ class BetOrderRepo
     }
 
     /**
-     * Accepted / settlement-failed orders that have at least one line on the given markets.
-     *
-     * @param  list<int>  $marketIds
-     * @return list<int>
+     * @param  list<int>  $marketIds  {@code order_item.mid} values
+     * @return list<int> {@code bet_order.id}
      */
     public function idsPendingSettlementTouchingMarkets(array $marketIds): array
     {
@@ -37,7 +35,7 @@ class BetOrderRepo
                 BetOrderStatus::SettlementFailed->value,
             ])
             ->whereHas('lines', static function ($q) use ($marketIds): void {
-                $q->whereIn('market_id', $marketIds);
+                $q->whereIn('mid', $marketIds);
             })
             ->orderBy('id')
             ->pluck('id')

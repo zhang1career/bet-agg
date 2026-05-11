@@ -118,7 +118,7 @@ final class CatalogRepo
             $query->whereIn('status', $filter->statuses);
         }
         if ($filter->localGameId !== null) {
-            $query->where('game_id', $filter->localGameId);
+            $query->where('gid', $filter->localGameId);
         }
         if ($filter->updatedAfterMillis !== null) {
             $query->where('ut', '>=', $filter->updatedAfterMillis);

@@ -11,7 +11,6 @@
     <div class="bg-white shadow-sm p-4 rounded mb-4">
         <p><strong>{{ __('console.table.uid') }}:</strong> {{ $order->uid }}</p>
         <p><strong>{{ __('console.table.status') }}:</strong> <span data-mall-dict-code="bet_order_status" data-mall-dict-value="{{ $order->status->value }}">{{ $order->status->value }}</span></p>
-        <p><strong>{{ __('console.detail.total_stake') }}:</strong> {{ $order->total_price }}</p>
         <p><strong>{{ __('console.detail.ct_ut') }}:</strong> {{ \App\Support\MillisTimestampDisplay::format($order->ct) }}
             / {{ \App\Support\MillisTimestampDisplay::format($order->ut) }}</p>
     </div>
@@ -53,9 +52,6 @@
         <tr>
             <th>{{ __('console.table.market') }}</th>
             <th>{{ __('console.table.outcome') }}</th>
-            <th>{{ __('console.table.stake') }}</th>
-            <th>{{ __('console.table.odds_millis_line') }}</th>
-            <th>{{ __('console.table.potential_return') }}</th>
             <th>{{ __('console.table.line_result') }}</th>
         </tr>
         </thead>
@@ -64,24 +60,21 @@
             <tr>
                 <td class="small">
                     @if($item->relationLoaded('market') && $item->market)
-                        <a href="{{ route('admin.markets.show', $item->market) }}" class="font-monospace">{{ __('console.table.market') }} {{ $item->market_id }}</a>
+                        <a href="{{ route('admin.markets.show', $item->market) }}" class="font-monospace">{{ __('console.table.market') }} {{ $item->mid }}</a>
                         <span class="text-muted">·</span>
-                        <a href="{{ route('admin.games.show', $item->market->game_id) }}">{{ __('console.pages.game_detail', ['id' => $item->market->game_id]) }}</a>
+                        <a href="{{ route('admin.games.show', $item->market->gid) }}">{{ __('console.pages.game_detail', ['id' => $item->market->gid]) }}</a>
                     @else
-                        <span class="font-monospace">{{ __('console.table.market') }} {{ $item->market_id }}</span>
+                        <span class="font-monospace">{{ __('console.table.market') }} {{ $item->mid }}</span>
                     @endif
                 </td>
                 <td class="small">
                     <code class="small">{{ json_encode($item->selection ?? [], JSON_UNESCAPED_UNICODE) }}</code>
-                    @if(!empty($item->odds_snapshot['label']))
-                        <br><span class="text-muted">{{ $item->odds_snapshot['label'] }}</span>
+                    @if($item->pick_label !== '')
+                        <br><span class="text-muted">{{ $item->pick_label }}</span>
                     @endif
                 </td>
-                <td>{{ $item->stake_points }}</td>
-                <td>{{ $item->decimal_odds_millis }}</td>
-                <td>{{ $item->potential_return_points }}</td>
                 <td>
-                    <span data-mall-dict-code="bet_line_result" data-mall-dict-value="{{ $item->result->value }}">{{ $item->result->value }}</span>
+                    <span data-mall-dict-code="order_item_result" data-mall-dict-value="{{ $item->result->value }}">{{ $item->result->value }}</span>
                 </td>
             </tr>
         @endforeach

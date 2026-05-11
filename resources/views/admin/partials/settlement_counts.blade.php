@@ -43,7 +43,7 @@
                     @php $n = (int) ($lineCounts[$lr->value] ?? 0); @endphp
                     <tr @class(['table-light' => $n === 0])>
                         <td>
-                            <span data-mall-dict-code="bet_line_result" data-mall-dict-value="{{ $lr->value }}">{{ $lr->label() }}</span>
+                            <span data-mall-dict-code="order_item_result" data-mall-dict-value="{{ $lr->value }}">{{ $lr->label() }}</span>
                         </td>
                         <td class="text-end font-monospace">{{ $n }}</td>
                     </tr>

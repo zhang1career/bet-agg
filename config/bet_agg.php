@@ -36,8 +36,10 @@ return [
         'pending_payment_timeout_ms' => (int) env('BET_PENDING_PAYMENT_TIMEOUT_MS', 1_800_000),
     ],
 
-    'points' => [
-        /** Dedicated Foundation user id: receives accepted stakes and funds winner payouts */
-        'bookmaker_uid' => (int) env('BET_BOOKMAKER_UID', 0),
+    'reputation' => [
+        /** Reputation score delta on correct prediction (non-currency). */
+        'delta_win' => (int) env('BET_REPUTATION_DELTA_WIN', 10),
+        /** Magnitude subtracted on incorrect prediction (positive config; applied as negative delta). */
+        'delta_lose' => (int) env('BET_REPUTATION_DELTA_LOSE', 5),
     ],
 ];

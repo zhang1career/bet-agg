@@ -13,12 +13,9 @@ use App\Services\MallDictionaryService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
-class BetGameController extends Controller
+class PredictionGameController extends Controller
 {
     /**
-     * Whitelisted sort tokens for {@see GameListFilter}; tokens are agent-facing
-     * and intentionally short so they round-trip through query strings cleanly.
-     *
      * @var array<string, array{0: string, 1: string}>
      */
     private const SORT_MAP = [
@@ -53,7 +50,7 @@ class BetGameController extends Controller
         $pack = $this->catalog->listGames($filter, $page, $perPage);
         $pack['_dict'] = $this->dict->resolve(['game_status']);
 
-        $this->logHandledApiRequest($request, ['handler' => 'bet.games.index']);
+        $this->logHandledApiRequest($request, ['handler' => 'prediction.games.index']);
 
         return response()->json(ApiResponse::ok($pack));
     }
@@ -63,7 +60,7 @@ class BetGameController extends Controller
         $row = $this->catalog->getGameDetail($game_id);
         $row['_dict'] = $this->dict->resolve(['game_status']);
 
-        $this->logHandledApiRequest($request, ['handler' => 'bet.games.show', 'game_id' => $game_id]);
+        $this->logHandledApiRequest($request, ['handler' => 'prediction.games.show', 'game_id' => $game_id]);
 
         return response()->json(ApiResponse::ok($row));
     }

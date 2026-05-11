@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 /**
- * Business grouping for CMS-backed games (e.g. tournament phase). Pivot {@code biz_x} uses columns {@code group_id}, {@code gid}.
+ * Business grouping for CMS-backed games (e.g. tournament phase). Pivot {@code x} uses columns {@code pid}, {@code gid}.
  *
  * @property int $id
  * @property string $code Stable external identifier (e.g. fifa-2026-group)
@@ -45,7 +45,7 @@ class GameGroup extends Model
      */
     public function games(): BelongsToMany
     {
-        return $this->belongsToMany(Game::class, 'biz_x', 'group_id', 'gid');
+        return $this->belongsToMany(Game::class, 'x', 'pid', 'gid');
     }
 
     /**
@@ -53,6 +53,6 @@ class GameGroup extends Model
      */
     public function subjects(): BelongsToMany
     {
-        return $this->belongsToMany(GameSubject::class, 'biz_y', 'group_id', 'subject_id');
+        return $this->belongsToMany(GameSubject::class, 'y', 'pid', 'sid');
     }
 }

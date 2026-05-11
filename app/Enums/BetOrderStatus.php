@@ -10,7 +10,7 @@ use ValueError;
 enum BetOrderStatus: int implements HasDictionaryLabel
 {
     case Pending = 0;
-    /** Stake confirmed after checkout / payment; bet is live. */
+    /** Prediction recorded; awaiting event outcome. */
     case Accepted = 1;
     case Cancelled = 2;
     case Won = 3;
@@ -18,7 +18,7 @@ enum BetOrderStatus: int implements HasDictionaryLabel
     case Void = 5;
     /**
      * Settlement attempted but the inner-phase transaction was rolled back
-     * (e.g. bookmaker liquidity insufficient at payout time). The order is
+     * (e.g. reputation ledger failure). The order is
      * parked here for manual review; once the underlying issue is resolved
      * the operator can re-run settlement which will transition to a terminal
      * outcome.
@@ -37,7 +37,7 @@ enum BetOrderStatus: int implements HasDictionaryLabel
     {
         return match ($this) {
             self::Pending => 'pending',
-            self::Accepted => 'accepted',
+            self::Accepted => 'recorded',
             self::Cancelled => 'cancelled',
             self::Won => 'won',
             self::Lost => 'lost',
@@ -84,7 +84,9 @@ enum BetOrderStatus: int implements HasDictionaryLabel
 
         return match ($normalized) {
             'pending' => self::Pending,
-            'paid', 'accepted' => self::Accepted,
+            'paid' => self::Accepted,
+            'accepted' => self::Accepted,
+            'recorded' => self::Accepted,
             'cancelled' => self::Cancelled,
             'won' => self::Won,
             'lost' => self::Lost,

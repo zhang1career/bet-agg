@@ -8,7 +8,7 @@ use App\Models\concerns\HasMillisTimestamps;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * User points wallet (single account unit for betting and payouts).
+ * Row in {@code points_balance} (reputation score in {@code balance}; not currency).
  *
  * @property int $id
  * @property int $uid
@@ -32,7 +32,6 @@ class PointsBalance extends Model
     ];
 
     protected $casts = [
-        'id' => 'integer',
         'uid' => 'integer',
         'balance' => 'integer',
         'ct' => 'integer',

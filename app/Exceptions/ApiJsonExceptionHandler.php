@@ -19,7 +19,8 @@ use Throwable;
 use ValueError;
 
 /**
- * JSON envelope for {@code api/*} and {@code internal/*} routes. Returns {@code null} for other paths.
+ * JSON envelope for {@code api/*} and {@code internal/*} routes. Returns {@code null} for other paths
+ * (including {@code admin/*} Blade forms, which use default session validation redirects).
  */
 final class ApiJsonExceptionHandler
 {
@@ -27,8 +28,7 @@ final class ApiJsonExceptionHandler
     {
         $path = $request->path();
         $jsonEnvelopePath = str_starts_with($path, 'api/')
-            || str_starts_with($path, 'internal/')
-            || str_starts_with($path, 'admin/bet/');
+            || str_starts_with($path, 'internal/');
         if (! $jsonEnvelopePath) {
             return null;
         }

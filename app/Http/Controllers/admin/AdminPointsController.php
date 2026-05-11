@@ -8,11 +8,11 @@ use App\Exceptions\ConfigurationMissingException;
 use App\Http\Controllers\Controller;
 use App\Models\PointsBalance;
 use App\Models\PointsFlow;
-use App\Services\mall\PointsAdminService;
 use App\Services\user\GatewayUserByIdClient;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 use Paganini\Aggregation\Exceptions\DownstreamServiceException;
 use RuntimeException;
@@ -22,7 +22,6 @@ class AdminPointsController extends Controller
     private const MAX_USER_IDS_PER_BATCH = 50;
 
     public function __construct(
-        private readonly PointsAdminService $adminPoints,
         private readonly GatewayUserByIdClient $gatewayUserById,
     ) {}
 
@@ -126,18 +125,28 @@ class AdminPointsController extends Controller
     {
         $d = $request->validate([
             'uid' => 'required|integer|min:1',
-            'balance' => 'nullable|integer|min:0',
+            'balance' => 'nullable|integer',
         ]);
 
+        $uid = (int) $d['uid'];
+        $initial = (int) ($d['balance'] ?? 0);
+
         try {
-            $this->adminPoints->openAccount((int) $d['uid'], (int) ($d['balance'] ?? 0));
+            DB::transaction(function () use ($uid, $initial): void {
+                $p = PointsBalance::query()->where('uid', $uid)->lockForUpdate()->first();
+                if ($p !== null) {
+                    throw new RuntimeException('Reputation profile already exists for this user.');
+                }
+                $row = new PointsBalance(['uid' => $uid, 'balance' => $initial]);
+                $row->save();
+            });
         } catch (RuntimeException $e) {
             return redirect()->route('admin.points.index', ['tab' => 'balances'])
                 ->withErrors(['account' => $e->getMessage()])
                 ->withInput();
         }
 
-        return redirect()->route('admin.points.index', ['tab' => 'balances'])->with('status', 'Points account created.');
+        return redirect()->route('admin.points.index', ['tab' => 'balances'])->with('status', 'Reputation profile created.');
     }
 
     public function adjust(Request $request): RedirectResponse
@@ -145,33 +154,34 @@ class AdminPointsController extends Controller
         $d = $request->validate([
             'uid' => 'required|integer|min:1',
             'delta_points' => 'required|integer|not_in:0',
-            'oid' => 'nullable|integer|min:0',
         ]);
 
+        $uid = (int) $d['uid'];
+        $delta = (int) $d['delta_points'];
+
         try {
-            $this->adminPoints->adjustBalance(
-                (int) $d['uid'],
-                (int) $d['delta_points'],
-                (int) ($d['oid'] ?? 0),
-            );
+            DB::transaction(function () use ($uid, $delta): void {
+                $p = PointsBalance::query()->where('uid', $uid)->lockForUpdate()->first();
+                if ($p === null) {
+                    throw new RuntimeException('Reputation profile not found for this user.');
+                }
+                $p->balance = (int) $p->balance + $delta;
+                $p->save();
+            });
         } catch (RuntimeException $e) {
             return redirect()->route('admin.points.index', ['tab' => 'balances'])
                 ->withErrors(['adjust' => $e->getMessage()])
                 ->withInput();
         }
 
-        return redirect()->route('admin.points.index', ['tab' => 'balances'])->with('status', 'Points balance updated.');
+        return redirect()->route('admin.points.index', ['tab' => 'balances'])->with('status', 'Reputation score updated.');
     }
 
     public function destroyBalance(int $id): RedirectResponse
     {
-        try {
-            $this->adminPoints->deleteBalanceById($id);
-        } catch (RuntimeException $e) {
-            return redirect()->route('admin.points.index', ['tab' => 'balances'])
-                ->withErrors(['delete' => $e->getMessage()]);
-        }
+        $row = PointsBalance::query()->findOrFail($id);
+        $row->delete();
 
-        return redirect()->route('admin.points.index', ['tab' => 'balances'])->with('status', 'Account deleted.');
+        return redirect()->route('admin.points.index', ['tab' => 'balances'])->with('status', 'Profile deleted.');
     }
 }

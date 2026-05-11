@@ -40,6 +40,6 @@ class GameSubject extends Model
      */
     public function groups(): BelongsToMany
     {
-        return $this->belongsToMany(GameGroup::class, 'biz_y', 'subject_id', 'group_id');
+        return $this->belongsToMany(GameGroup::class, 'y', 'sid', 'pid');
     }
 }

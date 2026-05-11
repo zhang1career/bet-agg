@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Subjects allowed for a game side: union of {@code biz_game_subject} ids linked via
- * {@code biz_y} to any of the given game group ids.
+ * {@code y} to any of the given game group ids.
  */
 final class GameSubjectScope
 {
@@ -27,11 +27,11 @@ final class GameSubjectScope
         }
 
         /** @var list<int> $out */
-        $out = DB::table('biz_y')
-            ->whereIn('group_id', $groupIds)
+        $out = DB::table('y')
+            ->whereIn('pid', $groupIds)
             ->distinct()
-            ->orderBy('subject_id')
-            ->pluck('subject_id')
+            ->orderBy('sid')
+            ->pluck('sid')
             ->all();
 
         return array_map(static fn (mixed $id): int => (int) $id, $out);

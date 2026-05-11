@@ -9,8 +9,8 @@ use App\Enums\MarketType;
 use App\Http\Controllers\Controller;
 use App\Models\Game;
 use App\Models\Market;
-use App\Services\mall\SettlementConsoleOverviewService;
 use App\Services\mall\serv_fd\CmsGameClient;
+use App\Services\mall\SettlementConsoleOverviewService;
 use App\Support\AdminGameSelectOptionLabels;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -80,23 +80,13 @@ class AdminMarketController extends Controller
             'name' => 'string|max:256',
             'type' => ['required', 'integer', Rule::enum(MarketType::class)],
             'status' => ['required', 'integer', Rule::enum(MarketStatus::class)],
-            'home_odds_millis' => 'required|integer|min:1000',
-            'draw_odds_millis' => 'required|integer|min:1000',
-            'away_odds_millis' => 'required|integer|min:1000',
         ]);
 
-        $odds = Market::oneX2OddsMillisJson(
-            (int) $v['home_odds_millis'],
-            (int) $v['draw_odds_millis'],
-            (int) $v['away_odds_millis'],
-        );
-
         $market = new Market([
-            'game_id' => (int) $v['game_id'],
+            'gid' => (int) $v['game_id'],
             'type' => MarketType::from((int) $v['type']),
             'name' => trim((string) $v['name']) !== '' ? trim((string) $v['name']) : '胜平负',
             'status' => MarketStatus::from((int) $v['status'])->value,
-            'odds_millis' => $odds,
         ]);
         $market->save();
 
@@ -108,7 +98,7 @@ class AdminMarketController extends Controller
         $market->load(['game.sideASubject', 'game.sideBSubject']);
 
         $mid = (int) $market->id;
-        $gid = (int) $market->game_id;
+        $gid = (int) $market->gid;
 
         return view('admin.markets.show', [
             'market' => $market,
@@ -125,23 +115,13 @@ class AdminMarketController extends Controller
             'name' => 'string|max:256',
             'type' => ['required', 'integer', Rule::enum(MarketType::class)],
             'status' => ['required', 'integer', Rule::enum(MarketStatus::class)],
-            'home_odds_millis' => 'required|integer|min:1000',
-            'draw_odds_millis' => 'required|integer|min:1000',
-            'away_odds_millis' => 'required|integer|min:1000',
         ]);
 
-        $odds = Market::oneX2OddsMillisJson(
-            (int) $v['home_odds_millis'],
-            (int) $v['draw_odds_millis'],
-            (int) $v['away_odds_millis'],
-        );
-
         $market->fill([
-            'game_id' => (int) $v['game_id'],
+            'gid' => (int) $v['game_id'],
             'type' => MarketType::from((int) $v['type']),
             'name' => trim((string) $v['name']) !== '' ? trim((string) $v['name']) : $market->name,
             'status' => MarketStatus::from((int) $v['status'])->value,
-            'odds_millis' => $odds,
         ]);
         $market->save();
 

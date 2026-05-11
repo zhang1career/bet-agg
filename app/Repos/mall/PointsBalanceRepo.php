@@ -6,28 +6,28 @@ namespace App\Repos\mall;
 
 use App\Models\PointsBalance;
 
-/**
- * Points wallet rows: reads and pessimistic locks for ledger flows.
- */
 final class PointsBalanceRepo
 {
-    public function findByUid(int $uid): ?PointsBalance
-    {
-        return PointsBalance::query()->where('uid', $uid)->first();
-    }
-
-    public function existsLockedByUid(int $uid): bool
-    {
-        return PointsBalance::query()->where('uid', $uid)->lockForUpdate()->exists();
-    }
-
     public function findLockedByUid(int $uid): ?PointsBalance
     {
         return PointsBalance::query()->where('uid', $uid)->lockForUpdate()->first();
     }
 
-    public function findLockedById(int $id): ?PointsBalance
+    public function ensureLockedProfile(int $uid): PointsBalance
     {
-        return PointsBalance::query()->where('id', $id)->lockForUpdate()->first();
+        $row = $this->findLockedByUid($uid);
+        if ($row !== null) {
+            return $row;
+        }
+
+        $created = new PointsBalance(['uid' => $uid, 'balance' => 0]);
+        $created->save();
+
+        $locked = $this->findLockedByUid($uid);
+        if ($locked === null) {
+            throw new \RuntimeException('Points balance row missing after create.');
+        }
+
+        return $locked;
     }
 }

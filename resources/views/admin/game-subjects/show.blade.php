@@ -23,7 +23,7 @@
     @endif
     <div class="mall-console-card card shadow-sm">
         <div class="card-body">
-            <h3 class="h6">{{ __('console.game_subjects.related_groups') }} <small class="text-muted">biz_y</small></h3>
+            <h3 class="h6">{{ __('console.game_subjects.related_groups') }} <small class="text-muted">y</small></h3>
             <ul class="mb-0">
                 @forelse($subject->groups as $g)
                     <li><a href="{{ route('admin.game-groups.show', $g) }}"><code>{{ $g->code }}</code></a></li>

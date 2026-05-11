@@ -6,13 +6,12 @@ namespace Tests\Feature;
 
 use App\Enums\BetOrderStatus;
 use App\Enums\MatchOutcomeCode;
-use App\Enums\PointsHoldState;
+use App\Enums\ReputationFlowKind;
 use App\Models\BetOrder;
-use App\Models\Game;
 use App\Models\PointsBalance;
 use App\Models\PointsFlow;
-use App\Services\mall\BetPlaceService;
 use App\Services\mall\BetSettlementService;
+use App\Services\mall\PredictionSubmitService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Paganini\Batch\DTO\BatchRunResult;
@@ -42,46 +41,27 @@ final class BetSettlementFlowTest extends TestCase
         config()->set('api_gw.base_url', 'http://foundation.local');
         config()->set('bet_agg.foundation.base_url', 'http://foundation.local');
         config()->set('bet_agg.foundation.me_endpoint', '/api/user/me');
-        config()->set('bet_agg.points.bookmaker_uid', (int) env('BET_BOOKMAKER_UID', 900_001));
-    }
-
-    private function bookUid(): int
-    {
-        return (int) config('bet_agg.points.bookmaker_uid');
-    }
-
-    private function assertBookNonNegative(): void
-    {
-        $row = PointsBalance::query()->where('uid', $this->bookUid())->first();
-        if ($row === null) {
-            return;
-        }
-        $this->assertGreaterThanOrEqual(0, (int) $row->balance, 'bookmaker balance must stay non-negative');
+        config()->set('bet_agg.reputation.delta_win', 10);
+        config()->set('bet_agg.reputation.delta_lose', 5);
     }
 
     /**
-     * @param  array{
-     *     game_local_id: int,
-     *     market_id: int,
-     *     home_odds_millis: int,
-     *     draw_odds_millis: int,
-     *     away_odds_millis: int,
-     * }  $ids
+     * @return array{game_local_id: int, market_id: int}
      */
-    private function placeBet(
-        int $uid,
-        array $ids,
-        int $stake,
-        int $expectedOddsMillis,
-        int $idemSeed,
-        string $outcomeCode = 'home_win',
-    ): int {
-        $result = app(BetPlaceService::class)->place($uid, self::SNOWFLAKE_BASE + $idemSeed, [
+    private function seedFixture(): array
+    {
+        return CatalogSeeder::oneXTwoSettlement();
+    }
+
+    /**
+     * @param  array{game_local_id: int, market_id: int}  $ids
+     */
+    private function submitWithIds(array $ids, int $idemSeed, string $outcomeCode = 'home_win'): int
+    {
+        $result = app(PredictionSubmitService::class)->submit(42, self::SNOWFLAKE_BASE + $idemSeed, [
             [
                 'market_id' => $ids['market_id'],
                 'outcome_code' => $outcomeCode,
-                'stake_points' => $stake,
-                'expected_odds_millis' => $expectedOddsMillis,
             ],
         ]);
 
@@ -100,170 +80,84 @@ final class BetSettlementFlowTest extends TestCase
         return $svc->applyGameResult($gameId);
     }
 
-    public function test_winner_bet_pays_stake_times_odds_and_book_stays_solvent(): void
+    public function test_winner_increments_reputation(): void
     {
-        PointsBalance::query()->create(['uid' => $this->bookUid(), 'balance' => 1_000_000]);
-        PointsBalance::query()->create(['uid' => 42, 'balance' => 500]);
-
-        $ids = CatalogSeeder::oneXTwoSettlement(2500, 2000, 2000);
-        $stake = 100;
-        $expectedPayout = intdiv($stake * 2500, 1000);
-
-        $orderId = $this->placeBet(42, $ids, $stake, 2500, 1, MatchOutcomeCode::HomeWin->value);
-        $this->assertBookNonNegative();
-        $this->assertSame(400, (int) PointsBalance::query()->where('uid', 42)->value('balance'));
-        $this->assertSame(1_000_100, (int) PointsBalance::query()->where('uid', $this->bookUid())->value('balance'));
+        $ids = $this->seedFixture();
+        $orderId = $this->submitWithIds($ids, 1, MatchOutcomeCode::HomeWin->value);
 
         $result = $this->recordAndSettle($ids['game_local_id'], [MatchOutcomeCode::HomeWin->value]);
         $this->assertSame(JobStatus::Completed, $result->status);
-        $this->assertSame(1, $result->successCount);
-        $this->assertSame(0, $result->failureCount);
-        $this->assertBookNonNegative();
-
-        $this->assertSame(400 + $expectedPayout, (int) PointsBalance::query()->where('uid', 42)->value('balance'));
-        $this->assertSame(1_000_100 - $expectedPayout, (int) PointsBalance::query()->where('uid', $this->bookUid())->value('balance'));
 
         $order = BetOrder::query()->whereKey($orderId)->firstOrFail();
         $this->assertSame(BetOrderStatus::Won, $order->status);
 
+        $this->assertSame(10, (int) PointsBalance::query()->where('uid', 42)->value('balance'));
         $this->assertSame(1, (int) PointsFlow::query()
-            ->where('uid', $this->bookUid())
-            ->where('state', PointsHoldState::BookStakeCredit)
-            ->count());
-        $this->assertSame(1, (int) PointsFlow::query()
-            ->where('uid', $this->bookUid())
-            ->where('state', PointsHoldState::BookPayoutDebit)
+            ->where('oid', $orderId)
+            ->where('state', ReputationFlowKind::WinCredit->value)
             ->count());
     }
 
-    public function test_loser_bet_keeps_stake_in_book(): void
+    public function test_loser_decrements_reputation(): void
     {
-        PointsBalance::query()->create(['uid' => $this->bookUid(), 'balance' => 1_000_000]);
-        PointsBalance::query()->create(['uid' => 42, 'balance' => 500]);
+        PointsBalance::query()->create(['uid' => 42, 'balance' => 100, 'ct' => 1, 'ut' => 1]);
 
-        $ids = CatalogSeeder::oneXTwoSettlement(2500, 2000, 2000);
-        $orderId = $this->placeBet(42, $ids, 100, 2500, 2, MatchOutcomeCode::HomeWin->value);
+        $ids = $this->seedFixture();
+        $orderId = $this->submitWithIds($ids, 2, MatchOutcomeCode::HomeWin->value);
 
         $result = $this->recordAndSettle($ids['game_local_id'], [MatchOutcomeCode::AwayWin->value]);
         $this->assertSame(JobStatus::Completed, $result->status);
-        $this->assertBookNonNegative();
-
-        $this->assertSame(400, (int) PointsBalance::query()->where('uid', 42)->value('balance'));
-        $this->assertSame(1_000_100, (int) PointsBalance::query()->where('uid', $this->bookUid())->value('balance'));
 
         $order = BetOrder::query()->whereKey($orderId)->firstOrFail();
         $this->assertSame(BetOrderStatus::Lost, $order->status);
+
+        $this->assertSame(95, (int) PointsBalance::query()->where('uid', 42)->value('balance'));
+        $this->assertSame(1, (int) PointsFlow::query()
+            ->where('oid', $orderId)
+            ->where('state', ReputationFlowKind::LossDebit->value)
+            ->count());
     }
 
-    public function test_voided_bet_refunds_stake_from_bookmaker_to_user(): void
+    public function test_void_does_not_change_reputation(): void
     {
-        PointsBalance::query()->create(['uid' => $this->bookUid(), 'balance' => 1_000_000]);
-        PointsBalance::query()->create(['uid' => 42, 'balance' => 500]);
+        PointsBalance::query()->create(['uid' => 42, 'balance' => 50, 'ct' => 1, 'ut' => 1]);
 
-        $ids = CatalogSeeder::oneXTwoSettlement(2500, 2000, 2000);
-        $orderId = $this->placeBet(42, $ids, 100, 2500, 3, MatchOutcomeCode::HomeWin->value);
+        $ids = $this->seedFixture();
+        $orderId = $this->submitWithIds($ids, 3, MatchOutcomeCode::HomeWin->value);
 
         $result = $this->recordAndSettle($ids['game_local_id'], [], MatchOutcomeCode::allValues());
         $this->assertSame(JobStatus::Completed, $result->status);
-        $this->assertBookNonNegative();
-
-        $this->assertSame(500, (int) PointsBalance::query()->where('uid', 42)->value('balance'));
-        $this->assertSame(1_000_000, (int) PointsBalance::query()->where('uid', $this->bookUid())->value('balance'));
 
         $order = BetOrder::query()->whereKey($orderId)->firstOrFail();
         $this->assertSame(BetOrderStatus::Void, $order->status);
 
-        $this->assertSame(1, (int) PointsFlow::query()
-            ->where('uid', 42)
-            ->where('oid', $orderId)
-            ->where('state', PointsHoldState::SettlementRefund)
-            ->count());
-        $this->assertSame(1, (int) PointsFlow::query()
-            ->where('uid', $this->bookUid())
-            ->where('oid', $orderId)
-            ->where('state', PointsHoldState::BookStakeRefund)
-            ->count());
+        $this->assertSame(50, (int) PointsBalance::query()->where('uid', 42)->value('balance'));
+        $this->assertSame(0, (int) PointsFlow::query()->where('oid', $orderId)->count());
     }
 
-    public function test_settlement_marks_failed_orders_when_bookmaker_cannot_pay_and_keeps_game_settled(): void
+    public function test_second_apply_is_idempotent_for_reputation(): void
     {
-        PointsBalance::query()->create(['uid' => $this->bookUid(), 'balance' => 50]);
-        PointsBalance::query()->create(['uid' => 42, 'balance' => 500]);
-
-        $ids = CatalogSeeder::oneXTwoSettlement(5000, 2000, 2000);
-        $orderId = $this->placeBet(42, $ids, 100, 5000, 4, MatchOutcomeCode::HomeWin->value);
-
-        $result = $this->recordAndSettle($ids['game_local_id'], [MatchOutcomeCode::HomeWin->value]);
-        $this->assertSame(JobStatus::Partial, $result->status);
-        $this->assertSame(0, $result->successCount);
-        $this->assertSame(1, $result->failureCount);
-        $this->assertBookNonNegative();
-
-        $game = Game::query()->find($ids['game_local_id']);
-        $this->assertNotNull($game);
-        $this->assertSame(Game::STATUS_SETTLED, (int) $game->status);
-
-        $order = BetOrder::query()->whereKey($orderId)->firstOrFail();
-        $this->assertSame(BetOrderStatus::SettlementFailed, $order->status);
-    }
-
-    public function test_failed_settlement_can_be_retried_after_topping_up_bookmaker(): void
-    {
-        PointsBalance::query()->create(['uid' => $this->bookUid(), 'balance' => 50]);
-        PointsBalance::query()->create(['uid' => 42, 'balance' => 500]);
-
-        $ids = CatalogSeeder::oneXTwoSettlement(5000, 2000, 2000);
-        $orderId = $this->placeBet(42, $ids, 100, 5000, 5, MatchOutcomeCode::HomeWin->value);
-
-        $svc = app(BetSettlementService::class);
-        $svc->recordPendingSettlement($ids['game_local_id'], [MatchOutcomeCode::HomeWin->value], []);
-        $first = $svc->applyGameResult($ids['game_local_id']);
-        $this->assertSame(JobStatus::Partial, $first->status);
-        $this->assertSame(BetOrderStatus::SettlementFailed, BetOrder::query()->whereKey($orderId)->firstOrFail()->status);
-
-        PointsBalance::query()->where('uid', $this->bookUid())->update(['balance' => 1_000_000]);
-
-        $second = $svc->applyGameResult($ids['game_local_id']);
-        $this->assertSame(JobStatus::Completed, $second->status);
-        $this->assertSame(1, $second->successCount);
-
-        $order = BetOrder::query()->whereKey($orderId)->firstOrFail();
-        $this->assertSame(BetOrderStatus::Won, $order->status);
-    }
-
-    public function test_applying_result_twice_after_full_completion_emits_empty_batch_and_does_not_double_pay(): void
-    {
-        PointsBalance::query()->create(['uid' => $this->bookUid(), 'balance' => 1_000_000]);
-        PointsBalance::query()->create(['uid' => 42, 'balance' => 500]);
-
-        $ids = CatalogSeeder::oneXTwoSettlement(2500, 2000, 2000);
-        $this->placeBet(42, $ids, 100, 2500, 6, MatchOutcomeCode::HomeWin->value);
+        $ids = $this->seedFixture();
+        $this->submitWithIds($ids, 4, MatchOutcomeCode::HomeWin->value);
 
         $first = $this->recordAndSettle($ids['game_local_id'], [MatchOutcomeCode::HomeWin->value]);
         $this->assertSame(JobStatus::Completed, $first->status);
-        $this->assertSame(1, $first->successCount);
 
-        $userBalanceAfterFirst = (int) PointsBalance::query()->where('uid', 42)->value('balance');
-        $bookBalanceAfterFirst = (int) PointsBalance::query()->where('uid', $this->bookUid())->value('balance');
+        $scoreAfterFirst = (int) PointsBalance::query()->where('uid', 42)->value('balance');
 
         $second = app(BetSettlementService::class)->applyGameResult($ids['game_local_id']);
         $this->assertSame(JobStatus::Completed, $second->status);
-        $this->assertSame(0, $second->total, 'second pass should have zero items to process');
+        $this->assertSame(0, $second->total);
 
-        $this->assertSame($userBalanceAfterFirst, (int) PointsBalance::query()->where('uid', 42)->value('balance'));
-        $this->assertSame($bookBalanceAfterFirst, (int) PointsBalance::query()->where('uid', $this->bookUid())->value('balance'));
+        $this->assertSame($scoreAfterFirst, (int) PointsBalance::query()->where('uid', 42)->value('balance'));
     }
 
     public function test_xxl_apply_game_settlement_runs_same_as_service(): void
     {
         config()->set('xxl.token', 'xxl-test-token');
 
-        PointsBalance::query()->create(['uid' => $this->bookUid(), 'balance' => 1_000_000]);
-        PointsBalance::query()->create(['uid' => 42, 'balance' => 500]);
-
-        $ids = CatalogSeeder::oneXTwoSettlement(3000, 2000, 2000);
-        $this->placeBet(42, $ids, 100, 3000, 7, MatchOutcomeCode::HomeWin->value);
-        $expectedPayout = intdiv(100 * 3000, 1000);
+        $ids = $this->seedFixture();
+        $this->submitWithIds($ids, 5, MatchOutcomeCode::HomeWin->value);
 
         app(BetSettlementService::class)->recordPendingSettlement(
             $ids['game_local_id'],
@@ -282,6 +176,6 @@ final class BetSettlementFlowTest extends TestCase
             ->assertOk()
             ->assertJsonPath('code', 200);
 
-        $this->assertSame(400 + $expectedPayout, (int) PointsBalance::query()->where('uid', 42)->value('balance'));
+        $this->assertSame(10, (int) PointsBalance::query()->where('uid', 42)->value('balance'));
     }
 }

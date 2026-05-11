@@ -12,7 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use Paganini\Constants\ResponseConstant;
 
-final class BetDictController extends Controller
+final class PredictionDictController extends Controller
 {
     /**
      * @throws ValidationException

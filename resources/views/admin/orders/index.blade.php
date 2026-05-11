@@ -16,7 +16,6 @@
                         <th>{{ __('console.table.id') }}</th>
                         <th>{{ __('console.table.uid') }}</th>
                         <th>{{ __('console.table.status') }}</th>
-                        <th>{{ __('console.table.total_minor') }}</th>
                         <th>{{ __('console.table.created') }}</th>
                     </tr>
                     </thead>
@@ -28,7 +27,6 @@
                             </td>
                             <td>{{ $order->uid }}</td>
                             <td><span data-mall-dict-code="bet_order_status" data-mall-dict-value="{{ $order->status->value }}">{{ $order->status->value }}</span></td>
-                            <td>{{ $order->total_price }}</td>
                             <td class="text-muted small">{{ \App\Support\MillisTimestampDisplay::format($order->ct) }}</td>
                         </tr>
                     @endforeach

@@ -82,7 +82,7 @@ class Game extends Model
      */
     public function markets(): HasMany
     {
-        return $this->hasMany(Market::class, 'game_id');
+        return $this->hasMany(Market::class, 'gid');
     }
 
     /**
@@ -90,6 +90,6 @@ class Game extends Model
      */
     public function groups(): BelongsToMany
     {
-        return $this->belongsToMany(GameGroup::class, 'biz_x', 'gid', 'group_id');
+        return $this->belongsToMany(GameGroup::class, 'x', 'gid', 'pid');
     }
 }

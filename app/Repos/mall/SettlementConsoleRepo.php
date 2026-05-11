@@ -68,10 +68,10 @@ final class SettlementConsoleRepo
             ->join('order_item as oi', 'oi.oid', '=', 'bo.id');
 
         if ($scope === 'game') {
-            $q->join('biz_market as bm', 'bm.id', '=', 'oi.market_id')
-                ->where('bm.game_id', $entityId);
+            $q->join('biz_market as bm', 'bm.id', '=', 'oi.mid')
+                ->where('bm.gid', $entityId);
         } else {
-            $q->where('oi.market_id', $entityId);
+            $q->where('oi.mid', $entityId);
         }
 
         $rows = $q->selectRaw('bo.status AS st, COUNT(DISTINCT bo.id) AS c')
@@ -96,8 +96,8 @@ final class SettlementConsoleRepo
         }
 
         $rows = DB::table('order_item as oi')
-            ->join('biz_market as bm', 'bm.id', '=', 'oi.market_id')
-            ->where('bm.game_id', $gameId)
+            ->join('biz_market as bm', 'bm.id', '=', 'oi.mid')
+            ->where('bm.gid', $gameId)
             ->selectRaw('oi.result as r, COUNT(*) as c')
             ->groupBy('oi.result')
             ->get();
@@ -120,7 +120,7 @@ final class SettlementConsoleRepo
         }
 
         $rows = DB::table('order_item')
-            ->where('market_id', $marketId)
+            ->where('mid', $marketId)
             ->selectRaw('result as r, COUNT(*) as c')
             ->groupBy('result')
             ->get();
@@ -190,16 +190,16 @@ final class SettlementConsoleRepo
 
         if ($groupBy === 'game') {
             $rows = $base
-                ->join('biz_market as bm', 'bm.id', '=', 'oi.market_id')
-                ->whereIn('bm.game_id', $normalized)
-                ->selectRaw('bm.game_id AS bucket_id, COUNT(DISTINCT bo.id) AS c')
-                ->groupBy('bm.game_id')
+                ->join('biz_market as bm', 'bm.id', '=', 'oi.mid')
+                ->whereIn('bm.gid', $normalized)
+                ->selectRaw('bm.gid AS bucket_id, COUNT(DISTINCT bo.id) AS c')
+                ->groupBy('bm.gid')
                 ->get();
         } else {
             $rows = $base
-                ->whereIn('oi.market_id', $normalized)
-                ->selectRaw('oi.market_id AS bucket_id, COUNT(DISTINCT bo.id) AS c')
-                ->groupBy('oi.market_id')
+                ->whereIn('oi.mid', $normalized)
+                ->selectRaw('oi.mid AS bucket_id, COUNT(DISTINCT bo.id) AS c')
+                ->groupBy('oi.mid')
                 ->get();
         }
 

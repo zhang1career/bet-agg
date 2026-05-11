@@ -27,7 +27,7 @@ use Throwable;
  * Outer transaction (one per game):
  *   - lock biz_game and mark it + its markets as SETTLED (胜平负 options are synthetic),
  *   - persist {@code settle_outcomes} ({@code winners} / {@code voids}),
- *   - emit accepted-state orders that need money movement.
+ *   - emit accepted-state predictions that need scoring.
  *
  * @see SettlementBatchPlanProvider
  * @see SettlementBatchItemHandler

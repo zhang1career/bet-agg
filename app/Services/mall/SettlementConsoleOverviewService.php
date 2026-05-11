@@ -93,7 +93,7 @@ final readonly class SettlementConsoleOverviewService
     }
 
     /**
-     * Same as {@see pendingSettlementOrderCountByGameIds} but grouped by {@code order_item.market_id}.
+     * Same as {@see pendingSettlementOrderCountByGameIds} but grouped by {@code order_item.mid}.
      *
      * @param  list<int|string>  $marketIds
      * @return array<int, int> market id => count

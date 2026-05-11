@@ -11,10 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 /**
- * Read-only admin browse for bet orders. Order state is now driven exclusively
- * by {@see \App\Services\mall\BetPlaceService} (placement) and
- * {@see \App\Services\mall\BetSettlementService} (settlement); ad-hoc status
- * mutations from the admin UI are no longer supported.
+ * Read-only admin browse for prediction orders.
  */
 class AdminOrderController extends Controller
 {
@@ -37,15 +34,15 @@ class AdminOrderController extends Controller
     public function show(int $id): View
     {
         $order = BetOrder::query()
-            ->with(['lines.market.game'])
+            ->with(['items.market.game'])
             ->find($id);
         if ($order === null) {
             abort(404);
         }
 
         $gameIds = [];
-        foreach ($order->lines as $line) {
-            $g = $line->market?->game_id;
+        foreach ($order->items as $line) {
+            $g = $line->market?->gid;
             if ($g !== null && (int) $g >= 1) {
                 $gameIds[(int) $g] = true;
             }

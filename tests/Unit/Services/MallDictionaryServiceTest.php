@@ -30,19 +30,19 @@ final class MallDictionaryServiceTest extends TestCase
         $this->assertSame([], $svc->resolve(['not_a_real_dict']));
     }
 
-    public function test_resolve_points_hold_state_uses_dictionary_labels(): void
+    public function test_resolve_order_item_result_uses_dictionary_labels(): void
     {
         $svc = new MallDictionaryService;
 
-        $out = $svc->resolve(['points_hold_state']);
+        $out = $svc->resolve(['order_item_result']);
 
-        $this->assertArrayHasKey('points_hold_state', $out);
-        $rows = $out['points_hold_state'];
+        $this->assertArrayHasKey('order_item_result', $out);
+        $rows = $out['order_item_result'];
         $this->assertNotEmpty($rows);
         $first = $rows[0];
         $this->assertSame(['k', 'v'], array_keys($first));
-        $this->assertSame('10', $first['v']);
-        $this->assertSame('try pending', $first['k']);
+        $this->assertSame('0', $first['v']);
+        $this->assertSame('pending', $first['k']);
     }
 
     public function test_resolve_returns_only_requested_known_codes(): void

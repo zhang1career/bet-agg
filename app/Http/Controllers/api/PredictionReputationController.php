@@ -9,45 +9,38 @@ use App\Exceptions\ConfigurationMissingException;
 use App\Exceptions\FoundationAuthRequiredException;
 use App\Http\Concerns\RequiresFoundationUser;
 use App\Http\Controllers\Controller;
+use App\Models\PointsBalance;
 use App\Services\mall\FoundationUser;
-use App\Services\mall\PointsAdminService;
 use App\Services\user\UserFoundationGateway;
-use Illuminate\Contracts\Container\BindingResolutionException;
-use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Paganini\Aggregation\Exceptions\DownstreamServiceException;
-use Psr\SimpleCache\InvalidArgumentException;
 
-class BetPointsController extends Controller
+class PredictionReputationController extends Controller
 {
     use RequiresFoundationUser;
 
     public function __construct(
         private readonly UserFoundationGateway $foundationGateway,
-        private readonly PointsAdminService $points,
     ) {}
 
     /**
-     * Current user's available points balance (integer game points).
-     *
-     * @throws BindingResolutionException
-     * @throws ConfigurationMissingException
-     * @throws ConnectionException
-     * @throws DownstreamServiceException
      * @throws FoundationAuthRequiredException
-     * @throws InvalidArgumentException
+     * @throws ConfigurationMissingException
      */
     public function show(Request $request): JsonResponse
     {
         $user = $this->requireAuthenticatedUser($request);
+        $uid = FoundationUser::id($user);
 
-        $balance = $this->points->availableBalance(FoundationUser::id($user));
+        $row = PointsBalance::query()->firstOrCreate(
+            ['uid' => $uid],
+            ['balance' => 0],
+        );
 
-        $this->logHandledApiRequest($request, ['handler' => 'bet.points.show']);
+        $this->logHandledApiRequest($request, ['handler' => 'prediction.reputation.show', 'uid' => $uid]);
 
         return response()->json(ApiResponse::ok([
-            'balance' => $balance,
+            'score' => (int) $row->balance,
         ]));
     }
 }

@@ -11,19 +11,18 @@ use App\Models\Market;
 use RuntimeException;
 
 /**
- * 胜平负等业务：盘口选项不存表，由赛事双方主体 + {@see Market} 赔率现场合成。
+ * Synthetic 1X2 outcome rows for catalog and validation (no pricing).
  */
 final class SyntheticMatchMarket
 {
     /**
-     * @return list<array{outcome_code: string, label: string, current_odds_millis: int}>
+     * @return list<array{outcome_code: string, label: string}>
      */
     public function legsForApi(Market $market, ?Game $game): array
     {
         if ($market->type !== MarketType::OneX2) {
             return [];
         }
-        $map = $market->outcomeOddsMillisMap();
         $a = $game?->sideASubject !== null ? (string) $game->sideASubject->name : '主队';
         $b = $game?->sideBSubject !== null ? (string) $game->sideBSubject->name : '客队';
 
@@ -31,32 +30,25 @@ final class SyntheticMatchMarket
             [
                 'outcome_code' => MatchOutcomeCode::HomeWin->value,
                 'label' => $a.'胜',
-                'current_odds_millis' => ($map[MatchOutcomeCode::HomeWin->value] ?? 0),
             ],
             [
                 'outcome_code' => MatchOutcomeCode::Draw->value,
                 'label' => '平局',
-                'current_odds_millis' => ($map[MatchOutcomeCode::Draw->value] ?? 0),
             ],
             [
                 'outcome_code' => MatchOutcomeCode::AwayWin->value,
                 'label' => $b.'胜',
-                'current_odds_millis' => ($map[MatchOutcomeCode::AwayWin->value] ?? 0),
             ],
         ];
     }
 
-    public function oddsMillisForOutcome(Market $market, string $outcomeCode): int
+    public function assertValidOutcome(Market $market, string $outcomeCode): void
     {
         if ($market->type !== MarketType::OneX2) {
             throw new RuntimeException('Market type does not support synthetic legs.');
         }
-        $code = MatchOutcomeCode::tryFrom($outcomeCode);
-        if ($code === null) {
+        if (MatchOutcomeCode::tryFrom($outcomeCode) === null) {
             throw new RuntimeException('Invalid outcome_code.');
         }
-        $map = $market->outcomeOddsMillisMap();
-
-        return ($map[$code->value] ?? 0);
     }
 }

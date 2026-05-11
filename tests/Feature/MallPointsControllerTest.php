@@ -22,12 +22,12 @@ class MallPointsControllerTest extends TestCase
         config()->set('bet_agg.foundation.me_endpoint', '/api/user/me');
     }
 
-    public function test_points_requires_auth(): void
+    public function test_reputation_requires_auth(): void
     {
-        $this->getJson('/api/bet/points')->assertStatus(401)->assertJsonPath('errorCode', ResponseConstant::RET_UNAUTHORIZED);
+        $this->getJson('/api/bet/reputation')->assertStatus(401)->assertJsonPath('errorCode', ResponseConstant::RET_UNAUTHORIZED);
     }
 
-    public function test_points_returns_zero_when_no_balance_row(): void
+    public function test_reputation_returns_zero_when_no_profile_row(): void
     {
         Http::fake(array_merge([
             'http://foundation.local/api/user/me' => Http::response([
@@ -37,13 +37,13 @@ class MallPointsControllerTest extends TestCase
             ], 200),
         ], self::cmsGatewayGameFakes()));
 
-        $this->withHeader('X-User-Access-Token', 'tok')->getJson('/api/bet/points')
+        $this->withHeader('X-User-Access-Token', 'tok')->getJson('/api/bet/reputation')
             ->assertOk()
             ->assertJsonPath('errorCode', ResponseConstant::RET_OK)
-            ->assertJsonPath('data.balance', 0);
+            ->assertJsonPath('data.score', 0);
     }
 
-    public function test_points_returns_balance(): void
+    public function test_reputation_returns_score(): void
     {
         Http::fake(array_merge([
             'http://foundation.local/api/user/me' => Http::response([
@@ -60,9 +60,9 @@ class MallPointsControllerTest extends TestCase
             'ut' => 1,
         ]);
 
-        $this->withHeader('X-User-Access-Token', 'tok')->getJson('/api/bet/points')
+        $this->withHeader('X-User-Access-Token', 'tok')->getJson('/api/bet/reputation')
             ->assertOk()
             ->assertJsonPath('errorCode', ResponseConstant::RET_OK)
-            ->assertJsonPath('data.balance', 12_345);
+            ->assertJsonPath('data.score', 12_345);
     }
 }

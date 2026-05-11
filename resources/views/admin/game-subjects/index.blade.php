@@ -102,7 +102,7 @@
                                 <input type="text" name="name" id="gse_name" class="form-control" required maxlength="256" value="{{ old('name', $modalSubject->name) }}">
                             </div>
                             <div class="mb-3">
-                                <label class="form-label" for="gse_group_ids">{{ __('console.game_subjects.label_groups') }} <small class="text-muted">biz_y</small></label>
+                                <label class="form-label" for="gse_group_ids">{{ __('console.game_subjects.label_groups') }} <small class="text-muted">y</small></label>
                                 <select name="group_ids[]" id="gse_group_ids" class="form-select" multiple size="8">
                                     @foreach($groups as $g)
                                         <option value="{{ $g->id }}" @selected(in_array((int) $g->id, $gids, true))>

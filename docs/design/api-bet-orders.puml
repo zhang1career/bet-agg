@@ -11,14 +11,14 @@ start
 |AcceptBearerAccessToken|
 :If **X-User-Access-Token** empty\nand **Authorization** is **Bearer** scheme,\ncopy Bearer token into **X-User-Access-Token**;
 
-|BetOrderController|
+|PredictionOrderController|
 :requireAuthenticatedUser() via **RequiresFoundationUser**;
 |UserFoundationGateway|
 :Memo / cache / GET **/api/user/me**;
-|BetOrderController|
+|PredictionOrderController|
 :Extract **uid** via **FoundationUser::id**;
 
-|BetOrderController|
+|PredictionOrderController|
 if (index?) then (yes)
   :Clamp **per_page**;
   |Eloquent **BetOrder**|
@@ -34,7 +34,7 @@ else (show)
   :**BetOrderApiArray::detail**;
 endif
 
-|BetOrderController|
+|PredictionOrderController|
 :Call **MallDictionaryService** resolve(['bet_order_status']);
 :**logHandledApiRequest**;
 :Return **ApiResponse::ok**;
