@@ -10,6 +10,7 @@ use App\Http\Controllers\Controller;
 use App\Services\mall\CatalogService;
 use App\Services\mall\GameListFilter;
 use App\Services\MallDictionaryService;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -28,6 +29,9 @@ class PredictionGameController extends Controller
         private readonly MallDictionaryService $dict,
     ) {}
 
+    /**
+     * @throws ConnectionException
+     */
     public function index(Request $request): JsonResponse
     {
         $request->validate([
@@ -55,6 +59,9 @@ class PredictionGameController extends Controller
         return response()->json(ApiResponse::ok($pack));
     }
 
+    /**
+     * @throws ConnectionException
+     */
     public function show(Request $request, int $game_id): JsonResponse
     {
         $row = $this->catalog->getGameDetail($game_id);

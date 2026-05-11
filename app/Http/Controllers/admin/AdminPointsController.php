@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\admin;
 
-use App\Exceptions\ConfigurationMissingException;
 use App\Http\Controllers\Controller;
 use App\Models\PointsBalance;
 use App\Models\PointsFlow;
@@ -14,7 +13,6 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
-use Paganini\Aggregation\Exceptions\DownstreamServiceException;
 use RuntimeException;
 
 class AdminPointsController extends Controller
@@ -51,13 +49,7 @@ class AdminPointsController extends Controller
 
     public function showUser(int $user_id): JsonResponse
     {
-        try {
-            $user = $this->gatewayUserById->fetch($user_id);
-        } catch (ConfigurationMissingException $e) {
-            return response()->json(['message' => $e->getMessage()], 503);
-        } catch (DownstreamServiceException $e) {
-            return response()->json(['message' => $e->getMessage()], 502);
-        }
+        $user = $this->gatewayUserById->fetch($user_id);
 
         if ($user === null) {
             return response()->json(['message' => 'User not found.'], 404);
@@ -96,13 +88,7 @@ class AdminPointsController extends Controller
             return response()->json(['message' => 'Too many user_ids.'], 422);
         }
 
-        try {
-            $users = $this->gatewayUserById->fetchMany($ids);
-        } catch (ConfigurationMissingException $e) {
-            return response()->json(['message' => $e->getMessage()], 503);
-        } catch (DownstreamServiceException $e) {
-            return response()->json(['message' => $e->getMessage()], 502);
-        }
+        $users = $this->gatewayUserById->fetchMany($ids);
 
         return response()->json(['users' => $users]);
     }
@@ -165,7 +151,7 @@ class AdminPointsController extends Controller
                 if ($p === null) {
                     throw new RuntimeException('Reputation profile not found for this user.');
                 }
-                $p->balance = (int) $p->balance + $delta;
+                $p->balance = $p->balance + $delta;
                 $p->save();
             });
         } catch (RuntimeException $e) {

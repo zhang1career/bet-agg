@@ -71,7 +71,7 @@ class AdminGameController extends Controller
         try {
             $rawIds = $games
                 ->getCollection()
-                ->map(static fn (Game $g): int => (int) $g->raw_id)
+                ->map(static fn (Game $g): int => $g->raw_id)
                 ->unique()
                 ->filter(static fn (int $r): bool => $r >= 1)
                 ->values()
@@ -101,7 +101,7 @@ class AdminGameController extends Controller
         if ($mallEditId >= 1) {
             $modalEditGame = Game::query()->with('groups')->find($mallEditId);
             if ($modalEditGame instanceof Game) {
-                $modalEditCms = $this->fetchCmsGameOrNull((int) $modalEditGame->raw_id);
+                $modalEditCms = $this->fetchCmsGameOrNull($modalEditGame->raw_id);
                 $modalEditSelectedGroups = $modalEditGame->groups->pluck('id')->map(static fn ($id): int => (int) $id)->all();
             } else {
                 $modalEditGame = null;
@@ -188,9 +188,9 @@ class AdminGameController extends Controller
             'markets' => static fn ($q) => $q->orderByDesc('id'),
         ]);
 
-        $cmsGame = $this->fetchCmsGameOrNull((int) $game->raw_id);
+        $cmsGame = $this->fetchCmsGameOrNull($game->raw_id);
 
-        $gid = (int) $game->id;
+        $gid = $game->id;
 
         return view('admin.games.show', [
             'game' => $game,
@@ -214,7 +214,7 @@ class AdminGameController extends Controller
                 ->withErrors($sideErrors);
         }
 
-        $cmsGame = $this->fetchCmsGameOrNull((int) $game->raw_id);
+        $cmsGame = $this->fetchCmsGameOrNull($game->raw_id);
         if (is_array($cmsGame)) {
             if (trim((string) ($v['name'] ?? '')) === '') {
                 return redirect()->route('admin.games.index', ['mall_edit' => $game->id])
@@ -223,7 +223,7 @@ class AdminGameController extends Controller
             }
             $cmsFields = $this->cmsWriteFieldsFromValidated($v);
             try {
-                $this->cmsGameClient->update((int) $game->raw_id, $cmsFields);
+                $this->cmsGameClient->update($game->raw_id, $cmsFields);
             } catch (DownstreamServiceException $e) {
                 return redirect()->route('admin.games.index', ['mall_edit' => $game->id])
                     ->withInput()
@@ -253,7 +253,7 @@ class AdminGameController extends Controller
         }
 
         try {
-            $this->cmsGameClient->delete((int) $game->raw_id);
+            $this->cmsGameClient->delete($game->raw_id);
         } catch (Throwable $e) {
             return redirect()
                 ->route('admin.games.show', $game)
@@ -288,7 +288,7 @@ class AdminGameController extends Controller
             ->get();
 
         $rawIds = $rows
-            ->map(static fn (Game $g): int => (int) $g->raw_id)
+            ->map(static fn (Game $g): int => $g->raw_id)
             ->unique()
             ->filter(static fn (int $r): bool => $r >= 1)
             ->values()
@@ -303,7 +303,7 @@ class AdminGameController extends Controller
         }
 
         $withMeta = $rows->map(function (Game $g) use ($cmsByRawId): array {
-            $ms = (int) (($cmsByRawId[(int) $g->raw_id] ?? [])['starts_at'] ?? 0);
+            $ms = (int) (($cmsByRawId[$g->raw_id] ?? [])['starts_at'] ?? 0);
 
             return ['game' => $g, 'starts_ms' => $ms];
         });

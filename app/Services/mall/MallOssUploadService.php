@@ -4,13 +4,15 @@ declare(strict_types=1);
 
 namespace App\Services\mall;
 
+use App\Exceptions\ConfigurationMissingException;
 use App\Services\api_gw\ResolvedApiGatewayBaseUrl;
 use Illuminate\Contracts\Container\BindingResolutionException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
-use RuntimeException;
+use Paganini\Aggregation\Exceptions\DownstreamServiceException;
 use Throwable;
+use ValueError;
 
 /** Foundation OSS: HTTP PUT {@code /api/oss/{bucket}/{key}} (same idea as Django avatar_storage_service). */
 final readonly class MallOssUploadService
@@ -24,12 +26,15 @@ final readonly class MallOssUploadService
      * Object key {@code {segment}/{uuid}.ext}; {@code segment} must be in {@see self::GAME_MEDIA_SEGMENTS}.
      *
      * @return non-empty-string
+     *
      * @throws BindingResolutionException
+     * @throws ConfigurationMissingException
+     * @throws DownstreamServiceException
      */
     public function uploadGameMediaFile(UploadedFile $uploadedFile, string $segment): string
     {
         if (! in_array($segment, self::GAME_MEDIA_SEGMENTS, true)) {
-            throw new RuntimeException('Invalid game media segment.');
+            throw new ValueError('Invalid game media segment.');
         }
 
         $extension = $uploadedFile->getClientOriginalExtension() ?: $uploadedFile->extension() ?: 'bin';
@@ -40,7 +45,7 @@ final readonly class MallOssUploadService
         $bucket = trim((string) config('bet_upload.oss_bucket'), '/');
 
         if ($base === '' || $bucket === '') {
-            throw new RuntimeException(
+            throw new ConfigurationMissingException(
                 'OSS upload is not configured: set API_GATEWAY_BASE_URL and SF_OSS_BUCKET.'
             );
         }
@@ -51,12 +56,12 @@ final readonly class MallOssUploadService
         $mime = $uploadedFile->getMimeType() ?: 'application/octet-stream';
         $path = $uploadedFile->getRealPath();
         if ($path === false) {
-            throw new RuntimeException('Temporary upload path unavailable.');
+            throw new DownstreamServiceException('Temporary upload path unavailable.');
         }
 
         $stream = fopen($path, 'rb');
         if ($stream === false) {
-            throw new RuntimeException('Failed to read uploaded file.');
+            throw new DownstreamServiceException('Failed to read uploaded file.');
         }
 
         try {
@@ -69,7 +74,7 @@ final readonly class MallOssUploadService
             }
             $response = $request->withBody($stream, $mime)->put($uploadUrl);
         } catch (Throwable $e) {
-            throw new RuntimeException('OSS upload request failed: '.$e->getMessage(), 0, $e);
+            throw new DownstreamServiceException('OSS upload request failed: '.$e->getMessage(), 0, $e);
         } finally {
             if (is_resource($stream)) {
                 fclose($stream);
@@ -80,7 +85,7 @@ final readonly class MallOssUploadService
         if (! in_array($status, [200, 204], true)) {
             $preview = mb_substr($response->body(), 0, 500);
 
-            throw new RuntimeException(
+            throw new DownstreamServiceException(
                 sprintf('OSS upload rejected: HTTP %d. %s', $status, $preview)
             );
         }

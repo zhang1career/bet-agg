@@ -13,23 +13,29 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Paganini\Aggregation\Exceptions\DownstreamServiceException;
 use Paganini\Constants\ResponseConstant;
+use Random\RandomException;
 use RuntimeException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Throwable;
 use ValueError;
 
 /**
- * JSON envelope for {@code api/*} and {@code internal/*} routes. Returns {@code null} for other paths
- * (including {@code admin/*} Blade forms, which use default session validation redirects).
+ * JSON envelope for {@code api/*}, {@code internal/*}, and {@code admin/*} requests that
+ * {@code expectJson()} (e.g. {@code fetch} with {@code Accept: application/json}). Returns {@code null}
+ * for other paths so {@code admin/*} HTML forms keep default validation redirects and error pages.
  */
 final class ApiJsonExceptionHandler
 {
+    /**
+     * @throws RandomException
+     */
     public static function render(Request $request, Throwable $exception): ?JsonResponse
     {
         $path = $request->path();
         $jsonEnvelopePath = str_starts_with($path, 'api/')
             || str_starts_with($path, 'internal/');
-        if (! $jsonEnvelopePath) {
+        $adminJson = str_starts_with($path, 'admin/') && $request->expectsJson();
+        if (! $jsonEnvelopePath && ! $adminJson) {
             return null;
         }
 
@@ -38,11 +44,10 @@ final class ApiJsonExceptionHandler
 
         if ($exception instanceof ValidationException) {
             $message = $exception->validator->errors()->first() ?: 'Validation failed.';
+            $payload = ApiResponse::error(ResponseConstant::RET_INVALID_PARAM, $message, $reqId);
+            $payload['errors'] = $exception->errors();
 
-            return response()->json(
-                ApiResponse::error(ResponseConstant::RET_INVALID_PARAM, $message, $reqId),
-                422
-            );
+            return response()->json($payload, 422);
         }
 
         if ($exception instanceof HttpException) {

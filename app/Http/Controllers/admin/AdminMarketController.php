@@ -97,8 +97,8 @@ class AdminMarketController extends Controller
     {
         $market->load(['game.sideASubject', 'game.sideBSubject']);
 
-        $mid = (int) $market->id;
-        $gid = (int) $market->gid;
+        $mid = $market->id;
+        $gid = $market->gid;
 
         return view('admin.markets.show', [
             'market' => $market,

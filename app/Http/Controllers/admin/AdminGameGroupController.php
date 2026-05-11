@@ -61,17 +61,14 @@ class AdminGameGroupController extends Controller
         ]);
 
         $cmsByRawId = [];
-        try {
-            $rawIds = $gameGroup->games
-                ->map(static fn ($g): int => (int) $g->raw_id)
-                ->unique()
-                ->filter(static fn (int $r): bool => $r >= 1)
-                ->values()
-                ->all();
-            if ($rawIds !== []) {
-                $cmsByRawId = $this->cmsGameClient->findManyById($rawIds);
-            }
-        } catch (Throwable) {
+        $rawIds = $gameGroup->games
+            ->map(static fn ($g): int => (int) $g->raw_id)
+            ->unique()
+            ->filter(static fn (int $r): bool => $r >= 1)
+            ->values()
+            ->all();
+        if ($rawIds !== []) {
+            $cmsByRawId = $this->cmsGameClient->findManyById($rawIds);
         }
 
         return view('admin.game-groups.show', [

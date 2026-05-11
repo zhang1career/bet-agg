@@ -77,10 +77,11 @@
                             }
                             throw new Error(msg || 'Upload failed');
                         }
-                        if (!j.path) {
+                        var path = j.path || (j.data && j.data.path) || '';
+                        if (!path) {
                             throw new Error('Invalid upload response');
                         }
-                        return j.path;
+                        return path;
                     });
                 });
             }
