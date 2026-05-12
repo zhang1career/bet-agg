@@ -1,163 +1,154 @@
+-- bet_agg schema (prediction + points tables; settlement deltas on points_balance / points_flow)
+-- MySQL 5.7+ / utf8mb4
+
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET NAMES utf8 */;
+/*!50503 SET NAMES utf8mb4 */;
+/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
+/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
+/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
+
 CREATE DATABASE IF NOT EXISTS `bet_agg` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci */;
 USE `bet_agg`;
 
--- =============================================================================
--- biz_game_group / biz_game_subject / biz_y（分组 ↔ 赛事主体，多对多）
--- biz_x（分组 ↔ 本地赛事，多对多）
--- =============================================================================
-CREATE TABLE IF NOT EXISTS `biz_game_group` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `code` varchar(192) NOT NULL COMMENT '对外稳定代号，如 fifa-2026-group',
-  `ct` bigint unsigned NOT NULL DEFAULT '0',
-  `ut` bigint unsigned NOT NULL DEFAULT '0',
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uni_biz_game_group_code` (`code`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE IF NOT EXISTS `biz_game_subject` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `name` varchar(256) NOT NULL COMMENT '球队/选手等展示名',
-  `ct` bigint unsigned NOT NULL DEFAULT '0',
-  `ut` bigint unsigned NOT NULL DEFAULT '0',
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE IF NOT EXISTS `biz_y` (
-  `group_id` bigint unsigned NOT NULL,
-  `subject_id` bigint unsigned NOT NULL,
-  PRIMARY KEY (`group_id`,`subject_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- =============================================================================
--- biz_game：local key；raw_id = CMS id；双方为赛事主体 FK；结算写入 winning_outcomes（TEXT 存 JSON 数组，synthetic keys）
--- =============================================================================
-CREATE TABLE IF NOT EXISTS `biz_game` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `raw_id` bigint unsigned NOT NULL COMMENT '外部/CMS game 主键',
-  `side_a_subject_id` bigint unsigned DEFAULT NULL COMMENT '主场侧 → biz_game_subject.id',
-  `side_b_subject_id` bigint unsigned DEFAULT NULL COMMENT '客场侧 → biz_game_subject.id',
-  `status` tinyint unsigned NOT NULL DEFAULT '1' COMMENT '1 open, 2 closed, 3 settled',
-  `winning_outcomes` text DEFAULT NULL COMMENT 'JSON 编码的字符串数组，元素如 home_win / draw / away_win',
-  `ct` bigint unsigned NOT NULL DEFAULT '0',
-  `ut` bigint unsigned NOT NULL DEFAULT '0',
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uni_biz_game_raw_id` (`raw_id`),
-  KEY `idx_biz_game_side_a` (`side_a_subject_id`),
-  KEY `idx_biz_game_side_b` (`side_b_subject_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE IF NOT EXISTS `biz_x` (
-  `group_id` bigint unsigned NOT NULL COMMENT 'biz_game_group.id',
-  `gid` bigint unsigned NOT NULL COMMENT 'biz_game.id',
-  PRIMARY KEY (`group_id`,`gid`),
-  KEY `idx_biz_x_gid` (`gid`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- =============================================================================
--- biz_market：type=MarketType 整型；赔率集中在 odds_millis（TEXT，JSON）；不再使用 biz_selection
--- =============================================================================
-CREATE TABLE IF NOT EXISTS `biz_market` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `game_id` bigint unsigned NOT NULL,
-  `type` tinyint unsigned NOT NULL DEFAULT '0' COMMENT 'MarketType: 0 = 胜平负',
-  `name` varchar(256) NOT NULL DEFAULT '' COMMENT '盘口展示名称',
-  `status` tinyint unsigned NOT NULL DEFAULT '1' COMMENT '1 open, 2 suspended, 3 settled',
-  `odds_millis` text DEFAULT NULL COMMENT 'JSON：outcome_code -> 欧洲盘×1000；胜平负(type=0)时为 home_win / draw / away_win',
-  `ct` bigint unsigned NOT NULL DEFAULT '0',
-  `ut` bigint unsigned NOT NULL DEFAULT '0',
-  PRIMARY KEY (`id`),
-  KEY `idx_biz_market_game` (`game_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- =============================================================================
--- bet_order / order_item（明细：market_id + selection JSON）
--- =============================================================================
 CREATE TABLE IF NOT EXISTS `bet_order` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `uid` bigint unsigned NOT NULL DEFAULT '0',
-  `idem_key` bigint unsigned NOT NULL COMMENT 'POST /bet/place 幂等键：snowflake 整数（同 uid 下唯一）',
-  `total_price` int NOT NULL DEFAULT '0' COMMENT '总下注 stake points',
-  `status` tinyint unsigned NOT NULL DEFAULT '0' COMMENT 'BetOrderStatus enum',
-  `points_held` int NOT NULL DEFAULT '0' COMMENT '冻结的 stake（accept 后通常等于 total_price）',
-  `ct` bigint unsigned NOT NULL DEFAULT '0',
-  `ut` bigint unsigned NOT NULL DEFAULT '0',
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uni_bet_order_uid_idem_key` (`uid`,`idem_key`),
-  KEY `idx_bet_order_user` (`uid`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `uid` bigint(20) unsigned NOT NULL DEFAULT '0' COMMENT 'user ID',
+  `idem_key` bigint(20) unsigned DEFAULT NULL,
+  `status` tinyint(3) unsigned NOT NULL DEFAULT '0' COMMENT '0-pending, 1-recorded(open), 2-cancelled, 3-won, 4-lost, 5-void, 6-settlement failed',
+  `ct` bigint(20) unsigned NOT NULL DEFAULT '0' COMMENT 'Create time in Unix milliseconds',
+  `ut` bigint(20) unsigned NOT NULL DEFAULT '0' COMMENT 'Update time in Unix milliseconds',
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE KEY `uni_bet_order_idem` (`idem_key`),
+  KEY `idx_bet_order_uid_id` (`uid`,`id`) USING BTREE,
+  KEY `idx_bet_order_status_id` (`status`,`id`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC COMMENT='Prediction submission (no stake)';
 
 CREATE TABLE IF NOT EXISTS `order_item` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `oid` bigint unsigned NOT NULL DEFAULT '0' COMMENT 'bet_order.id',
-  `market_id` bigint unsigned NOT NULL,
-  `selection` text DEFAULT NULL COMMENT 'JSON 编码选项；type=胜平负时为 {"code":"home_win|draw|away_win"}',
-  `stake_points` int unsigned NOT NULL DEFAULT '0',
-  `odds_snapshot` text DEFAULT NULL COMMENT 'JSON 编码；下单时上下文',
-  `decimal_odds_millis` int unsigned NOT NULL DEFAULT '0',
-  `potential_return_points` bigint unsigned NOT NULL DEFAULT '0' COMMENT '若胜出应收总额（含本金，欧洲盘）',
-  `result` tinyint unsigned NOT NULL DEFAULT '0' COMMENT '0 pending, 1 win, 2 lose, 3 void',
-  `ct` bigint unsigned NOT NULL DEFAULT '0',
-  `ut` bigint unsigned NOT NULL DEFAULT '0',
-  PRIMARY KEY (`id`),
-  KEY `idx_order_item_oid` (`oid`),
-  KEY `idx_order_item_market` (`market_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `oid` bigint(20) unsigned NOT NULL DEFAULT '0' COMMENT 'bet_order.id',
+  `mid` bigint(20) unsigned NOT NULL DEFAULT '0' COMMENT 'biz_market.id',
+  `selection` text COLLATE utf8mb4_unicode_ci COMMENT 'json e.g. {"code":"home_win"}',
+  `pick_label` varchar(256) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '' COMMENT 'display label at submit time',
+  `result` int(10) unsigned NOT NULL DEFAULT '0' COMMENT '0-pending, 1-win, 2-lose, 3-void',
+  `ct` bigint(20) unsigned NOT NULL DEFAULT '0',
+  `ut` bigint(20) unsigned NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`) USING BTREE,
+  KEY `idx_order_item_oid` (`oid`) USING BTREE,
+  KEY `idx_order_item_mid` (`mid`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC COMMENT='One line per prediction order';
 
--- =============================================================================
--- settle_job（Paganini Batch）
--- =============================================================================
-CREATE TABLE IF NOT EXISTS `settle_job` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `biz_key` varchar(128) NOT NULL,
-  `payload` text DEFAULT NULL COMMENT 'JSON-encoded outer-phase payload',
-  `total` int unsigned NOT NULL DEFAULT '0',
-  `cursor_offset` int unsigned NOT NULL DEFAULT '0' COMMENT '已处理项数（含失败）',
-  `success_count` int unsigned NOT NULL DEFAULT '0',
-  `failure_count` int unsigned NOT NULL DEFAULT '0',
-  `status` tinyint unsigned NOT NULL DEFAULT '0' COMMENT 'JobStatus: 0 pending, 1 running, 2 completed, 3 partial, 4 failed',
-  `last_error` text DEFAULT NULL,
-  `ct` bigint unsigned NOT NULL DEFAULT '0',
-  `ut` bigint unsigned NOT NULL DEFAULT '0',
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uni_settle_biz_key` (`biz_key`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- =============================================================================
--- points_balance / points_flow
--- =============================================================================
 CREATE TABLE IF NOT EXISTS `points_balance` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `uid` bigint unsigned NOT NULL,
-  `balance` bigint NOT NULL DEFAULT '0' COMMENT '可用点数',
-  `ct` bigint unsigned NOT NULL DEFAULT '0',
-  `ut` bigint unsigned NOT NULL DEFAULT '0',
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uni_bet_points_bal_user` (`uid`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `uid` bigint(20) unsigned NOT NULL DEFAULT '0' COMMENT 'user ID',
+  `balance` bigint(20) NOT NULL DEFAULT '0' COMMENT 'user points score (non-currency in current flows)',
+  `ct` bigint(20) unsigned NOT NULL DEFAULT '0',
+  `ut` bigint(20) unsigned NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE KEY `uni_points_balance_uid` (`uid`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC COMMENT='User points balance';
 
 CREATE TABLE IF NOT EXISTS `points_flow` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `uid` bigint unsigned NOT NULL DEFAULT '0',
-  `oid` bigint unsigned NOT NULL DEFAULT '0' COMMENT 'bet_order.id',
-  `amount` bigint NOT NULL DEFAULT '0',
-  `state` tinyint unsigned NOT NULL DEFAULT '0',
-  `ct` bigint unsigned NOT NULL DEFAULT '0',
-  `ut` bigint unsigned NOT NULL DEFAULT '0',
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `uid` bigint(20) unsigned NOT NULL DEFAULT '0',
+  `oid` bigint(20) unsigned NOT NULL DEFAULT '0' COMMENT 'bet_order.id',
+  `amount` bigint(20) NOT NULL DEFAULT '0' COMMENT 'signed change applied to balance',
+  `state` tinyint(3) unsigned NOT NULL DEFAULT '0' COMMENT '1=win credit, 2=loss debit',
+  `ct` bigint(20) unsigned NOT NULL DEFAULT '0',
+  `ut` bigint(20) unsigned NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE KEY `uni_points_flow_oid_state` (`oid`,`state`),
+  KEY `idx_points_flow_uid` (`uid`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC COMMENT='Settlement-driven points ledger';
+
+CREATE TABLE IF NOT EXISTS `biz_game` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `raw_id` bigint(20) unsigned NOT NULL DEFAULT '0' COMMENT 'cms game ID',
+  `side_a_subject_id` bigint(20) unsigned NOT NULL DEFAULT '0',
+  `side_b_subject_id` bigint(20) unsigned NOT NULL DEFAULT '0',
+  `status` tinyint(1) unsigned NOT NULL DEFAULT '0' COMMENT '0-init, 1-open, 2-closed, 3-settled, 4-pending settlement',
+  `settle_outcomes` text COLLATE utf8mb4_unicode_ci COMMENT 'json winners/voids',
+  `ct` bigint(20) unsigned NOT NULL DEFAULT '0',
+  `ut` bigint(20) unsigned NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE KEY `uni_bet_game_raw` (`raw_id`),
+  KEY `idx_bet_game_side_a` (`side_a_subject_id`),
+  KEY `idx_bet_game_side_b` (`side_b_subject_id`),
+  KEY `idx_biz_game_status_id` (`status`,`id`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC COMMENT='业务竞赛';
+
+CREATE TABLE IF NOT EXISTS `biz_game_group` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `code` varchar(192) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `ct` bigint(20) unsigned NOT NULL DEFAULT '0',
+  `ut` bigint(20) unsigned NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
-  KEY `idx_bet_points_flow_user_order` (`uid`,`oid`),
-  UNIQUE KEY `uni_bet_points_flow_oid_state` (`oid`,`state`)
+  UNIQUE KEY `uni_game_group_code` (`code`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='赛事分组';
+
+CREATE TABLE IF NOT EXISTS `biz_game_subject` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `name` varchar(256) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
+  `ct` bigint(20) unsigned NOT NULL DEFAULT '0',
+  `ut` bigint(20) unsigned NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='赛事主体';
+
+CREATE TABLE IF NOT EXISTS `biz_market` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `gid` bigint(20) unsigned NOT NULL DEFAULT '0',
+  `name` varchar(256) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
+  `type` tinyint(3) unsigned NOT NULL DEFAULT '0' COMMENT '1 = 胜平负',
+  `status` tinyint(1) unsigned NOT NULL DEFAULT '0' COMMENT '0-init, 1-open, 2-suspended, 3-settled',
+  `ct` bigint(20) unsigned NOT NULL DEFAULT '0',
+  `ut` bigint(20) unsigned NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`) USING BTREE,
+  KEY `idx_bet_sport_market_gid` (`gid`) USING BTREE,
+  KEY `idx_biz_market_status_id` (`status`,`id`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC COMMENT='业务盘口（无赔率列）';
+
+CREATE TABLE IF NOT EXISTS `x` (
+  `pid` bigint(20) unsigned NOT NULL DEFAULT '0',
+  `gid` bigint(20) unsigned NOT NULL DEFAULT '0',
+  PRIMARY KEY (`pid`,`gid`),
+  KEY `idx_x_game` (`gid`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `y` (
+  `pid` bigint(20) unsigned NOT NULL,
+  `sid` bigint(20) unsigned NOT NULL,
+  PRIMARY KEY (`pid`,`sid`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `sessions` (
-  `id` varchar(255) NOT NULL,
-  `user_id` bigint unsigned DEFAULT NULL,
-  `ip_address` varchar(45) DEFAULT NULL,
-  `user_agent` text,
-  `payload` longtext NOT NULL,
-  `last_activity` int NOT NULL,
-  PRIMARY KEY (`id`),
-  KEY `idx_bet_sessions_user` (`user_id`),
-  KEY `idx_bet_sessions_last_activity` (`last_activity`)
+  `id` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `user_id` bigint(20) unsigned DEFAULT NULL,
+  `ip_address` varchar(45) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `user_agent` text COLLATE utf8mb4_unicode_ci,
+  `payload` longtext COLLATE utf8mb4_unicode_ci NOT NULL,
+  `last_activity` int(11) NOT NULL,
+  PRIMARY KEY (`id`) USING BTREE,
+  KEY `idx_bet_sessions_user` (`user_id`) USING BTREE,
+  KEY `idx_bet_sessions_last_activity` (`last_activity`) USING BTREE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 已移除：`biz_selection`；旧库迁移请自行数据清洗后 DROP。
+CREATE TABLE IF NOT EXISTS `settle_job` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `biz_key` varchar(128) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `payload` text COLLATE utf8mb4_unicode_ci COMMENT 'JSON-encoded outer-phase payload',
+  `total` int(10) unsigned NOT NULL DEFAULT '0',
+  `cursor_offset` int(10) unsigned NOT NULL DEFAULT '0',
+  `success_count` int(10) unsigned NOT NULL DEFAULT '0',
+  `failure_count` int(10) unsigned NOT NULL DEFAULT '0',
+  `status` tinyint(3) unsigned NOT NULL DEFAULT '0',
+  `last_error` text COLLATE utf8mb4_unicode_ci,
+  `ct` bigint(20) unsigned NOT NULL DEFAULT '0',
+  `ut` bigint(20) unsigned NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uni_bet_settle_job_biz` (`biz_key`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='结算批处理任务头';
+
+/*!40101 SET SQL_MODE=IFNULL(@OLD_SQL_MODE, '') */;
+/*!40014 SET FOREIGN_KEY_CHECKS=IFNULL(@OLD_FOREIGN_KEY_CHECKS, 1) */;
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40111 SET SQL_NOTES=IFNULL(@OLD_SQL_NOTES, 1) */;

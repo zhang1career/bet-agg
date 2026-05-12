@@ -21,4 +21,18 @@ final class MillisTimestampDisplay
             ->timezone((string) config('app.timezone'))
             ->format('Y-m-d H:i:s');
     }
+
+    /**
+     * Same as {@see format} but without seconds (admin list cells).
+     */
+    public static function formatYmdHi(?int $millis): string
+    {
+        if ($millis === null || $millis <= 0) {
+            return '—';
+        }
+
+        return Carbon::createFromTimestampMs($millis)
+            ->timezone((string) config('app.timezone'))
+            ->format('Y-m-d H:i');
+    }
 }

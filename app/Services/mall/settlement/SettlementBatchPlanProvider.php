@@ -4,81 +4,72 @@ declare(strict_types=1);
 
 namespace App\Services\mall\settlement;
 
-use App\Enums\BetOrderStatus;
-use App\Models\BetOrder;
 use App\Models\Game;
-use App\Models\Market;
+use App\Repos\mall\BetOrderRepo;
+use App\Repos\mall\GameRepo;
+use App\Repos\mall\MarketRepo;
+use App\Support\SettleOutcomes;
 use Paganini\Batch\Contracts\BatchPlanProviderContract;
 use Paganini\Batch\DTO\BatchItem;
 use Paganini\Batch\DTO\BatchPlan;
 use RuntimeException;
 
-/**
- * Outer-phase work: lock the game, mark game / markets settled,
- * persist {@code winning_outcomes}, emit accepted {@see BetOrder} ids.
- */
-final readonly class SettlementBatchPlanProvider implements BatchPlanProviderContract
+final class SettlementBatchPlanProvider implements BatchPlanProviderContract
 {
-    /**
-     * @param  list<string>  $winningOutcomeCodes
-     * @param  list<string>  $voidOutcomeCodes
-     */
     public function __construct(
         private int $gameId,
-        private array $winningOutcomeCodes,
-        private array $voidOutcomeCodes,
+        private GameRepo $games,
+        private MarketRepo $markets,
+        private BetOrderRepo $orders,
     ) {}
 
     public function makePlan(): BatchPlan
     {
-        $game = Game::query()->whereKey($this->gameId)->lockForUpdate()->first();
+        $game = $this->games->lockForUpdate($this->gameId);
         if ($game === null) {
             throw new RuntimeException('Game not found.');
         }
 
-        if ($game->status !== Game::STATUS_SETTLED) {
-            $now = Game::nowMillis();
-            Market::query()
-                ->where('game_id', $this->gameId)
-                ->update(['status' => Market::STATUS_SETTLED, 'ut' => $now]);
-
-            $game->status = Game::STATUS_SETTLED;
-            $game->winning_outcomes = $this->winningOutcomeCodes;
-            $game->save();
+        $status = (int) $game->status;
+        if ($status !== Game::STATUS_PENDING_SETTLEMENT && $status !== Game::STATUS_SETTLED) {
+            throw new RuntimeException('Game '.$this->gameId.' is not pending settlement.');
         }
 
-        $marketIds = Market::query()
-            ->where('game_id', $this->gameId)
-            ->pluck('id')
-            ->all();
+        [$winners, $voids] = SettleOutcomes::unpack(
+            is_array($game->settle_outcomes) ? $game->settle_outcomes : null,
+        );
 
-        $orderIds = BetOrder::query()
-            ->whereIn('status', [
-                BetOrderStatus::Accepted->value,
-                BetOrderStatus::SettlementFailed->value,
-            ])
-            ->whereHas('lines', static function ($q) use ($marketIds): void {
-                $q->whereIn('market_id', $marketIds);
-            })
-            ->orderBy('id')
-            ->pluck('id')
-            ->all();
-
-        $items = [];
-        foreach ($orderIds as $orderId) {
-            $items[] = new BatchItem(
-                ref: (string) (int) $orderId,
-                payload: [],
+        $overlap = array_intersect($winners, $voids);
+        if ($overlap !== []) {
+            throw new RuntimeException(
+                'Outcome codes cannot appear in both winners and voids: '.implode(',', $overlap),
             );
         }
 
-        return new BatchPlan(
-            payload: [
-                'game_id' => $this->gameId,
-                'winners' => $this->winningOutcomeCodes,
-                'voids' => $this->voidOutcomeCodes,
-            ],
-            items: $items,
-        );
+        if ($status === Game::STATUS_PENDING_SETTLEMENT && $winners === [] && $voids === []) {
+            throw new RuntimeException('settle_outcomes is empty for pending game '.$this->gameId.'.');
+        }
+
+        if ($status === Game::STATUS_PENDING_SETTLEMENT) {
+            $now = Game::nowMillis();
+            $game->status = Game::STATUS_SETTLED;
+            $game->ut = $now;
+            $game->save();
+            $this->markets->markAllSettledForGame($this->gameId, $now);
+        }
+
+        $marketIds = $this->markets->idsForGame($this->gameId);
+        $orderIds = $this->orders->idsPendingSettlementTouchingMarkets($marketIds);
+
+        $items = [];
+        foreach ($orderIds as $oid) {
+            $items[] = new BatchItem((string) $oid, []);
+        }
+
+        return new BatchPlan([
+            'game_id' => $this->gameId,
+            'winners' => $winners,
+            'voids' => $voids,
+        ], $items);
     }
 }

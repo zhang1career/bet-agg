@@ -97,14 +97,35 @@
                     <span class="text-muted">{{ __('console.games.vs') }}</span>
                     {{ $game->sideBSubject?->name ?? '—' }}
                 </dd>
-                @if(filled($game->winning_outcomes))
-                    <dt class="col-sm-3">{{ __('console.games.winning_outcomes') }}</dt>
-                    <dd class="col-sm-9 font-monospace small">{{ json_encode($game->winning_outcomes) }}</dd>
+                @if(filled($game->settle_outcomes))
+                    <dt class="col-sm-3">{{ __('console.games.settle_outcomes') }}</dt>
+                    <dd class="col-sm-9 font-monospace small">{{ json_encode(\App\Support\SettleOutcomes::forApi(is_array($game->settle_outcomes) ? $game->settle_outcomes : null), JSON_UNESCAPED_UNICODE) }}</dd>
                 @endif
                 <dt class="col-sm-3">{{ __('console.games.timestamps') }}</dt>
                 <dd class="col-sm-9 text-muted small">ct {{ \App\Support\MillisTimestampDisplay::format($game->ct) }}
                     · ut {{ \App\Support\MillisTimestampDisplay::format($game->ut) }}</dd>
             </dl>
+        </div>
+    </div>
+
+    <div class="mall-console-card card shadow-sm mb-4">
+        <div class="card-body">
+            <div class="mall-list-toolbar d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+                <h3 class="h6 mb-0">{{ __('console.settlement_overview.section_title') }}</h3>
+                @php
+                    $settlementGamesIndex = ['mall_settlement' => 1];
+                    if ($game->status === \App\Models\Game::STATUS_OPEN && $game->side_a_subject_id && $game->side_b_subject_id) {
+                        $settlementGamesIndex['mall_settlement_game'] = $game->id;
+                    }
+                @endphp
+                <a href="{{ route('admin.games.index', $settlementGamesIndex) }}" class="btn btn-outline-secondary btn-sm">{{ __('console.sidebar.settlement') }}</a>
+            </div>
+            <p class="small text-muted">{{ __('console.settlement_overview.intro') }}</p>
+            @include('admin.partials.settlement_counts', [
+                'orderCounts' => $settlementOrderCounts,
+                'lineCounts' => $settlementLineCounts,
+            ])
+            @include('admin.partials.settlement_jobs', ['jobs' => $settlementJobs])
         </div>
     </div>
 

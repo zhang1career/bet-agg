@@ -14,6 +14,13 @@ use Tests\TestCase;
 
 class UserFoundationGatewayCacheTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+        // PHPUnit without phpunit.xml may leave env unset; gateway uses Cache facade for TTL layer.
+        config(['cache.default' => 'array']);
+    }
+
     public function test_repeat_call_within_request_uses_memo_no_extra_http(): void
     {
         $this->fakeMeOk(['id' => 7, 'username' => 'u7']);
@@ -81,19 +88,10 @@ class UserFoundationGatewayCacheTest extends TestCase
         $this->assertNull($this->cachedUser('jwt-revoked'));
     }
 
-    public function test_401_after_cached_value_clears_cache_when_upstream_revisited(): void
+    public function test_401_on_upstream_roundtrip_throws_auth_required(): void
     {
-        // Seed cache as if a previous request had succeeded — then upstream switches to 401.
-        // The gateway must drop the now-stale cache when it actually re-hits upstream.
+        // Cache empty / miss so the gateway calls upstream (same outcome as after TTL expiry).
         $req = $this->makeRequestWithToken('jwt-was-valid');
-        Cache::put(
-            'bet-agg:auth:user:'.hash('sha256', 'jwt-was-valid'),
-            ['id' => 33, 'username' => 'pre-cached'],
-            60,
-        );
-        Cache::forget('bet-agg:auth:user:'.hash('sha256', 'jwt-was-valid'));
-        // (Above forget simulates a TTL expiry / explicit eviction; from this point the
-        //  upstream is consulted again and is now returning 401 — invalidation must hold.)
 
         Http::fake([
             'http://gw.test/api/user/me' => Http::response(['message' => 'expired token'], 401),

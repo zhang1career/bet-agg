@@ -1,0 +1,40 @@
+@startuml api-bet-leaderboard
+title GET /api/bet/leaderboard — logic swimlanes
+
+skinparam ActivityBackgroundColor #F8F8F8
+skinparam ActivityBorderColor #333333
+
+note right
+  **Public route** — no **X-User-Access-Token**;
+  no **RequiresFoundationUser** in controller.
+  Source: **PredictionLeaderboardController::index**
+end note
+
+|Client|
+start
+:GET /api/bet/leaderboard\noptional query **page** (default 1),\n**per_page** (default 25, max 100);
+
+|Laravel|
+:Dispatch **PredictionLeaderboardController::index**;
+
+|PredictionLeaderboardController|
+:**page** = max(1, (int) query page);
+:**per_page** = min(100, max(1, (int) query per_page));
+
+|PointsBalance (Eloquent)|
+:Query **points_balance** table;
+:**ORDER BY** balance **DESC**, uid **ASC**;
+:**paginate**(per_page, page);
+
+|PredictionLeaderboardController|
+:**base** = (currentPage - 1) * perPage;
+:Iterate paginator **items** in order,\nfor each row: **rank** = base + 1-based index,\nemit { rank, uid, **score**: row.balance };
+
+:**logHandledApiRequest**\n(handler: prediction.leaderboard.index);
+:Return **ApiResponse::ok**(\n  items, pagination:\n  total, per_page, current_page, last_page\n);
+
+|Client|
+:200 JSON;
+stop
+
+@enduml

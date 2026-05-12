@@ -19,16 +19,12 @@
                 <dd class="col-sm-9 font-monospace">{{ $flow->id }}</dd>
                 <dt class="col-sm-3">{{ __('console.table.uid') }}</dt>
                 <dd class="col-sm-9">{{ $flow->uid }}</dd>
-                <dt class="col-sm-3">{{ __('console.table.oid') }}</dt>
+                <dt class="col-sm-3">OID</dt>
                 <dd class="col-sm-9">{{ $flow->oid }}</dd>
-                <dt class="col-sm-3">{{ __('console.table.amount_points') }}</dt>
+                <dt class="col-sm-3">Amount</dt>
                 <dd class="col-sm-9 font-monospace">{{ number_format((int) $flow->amount) }}</dd>
-                <dt class="col-sm-3">{{ __('console.table.state') }}</dt>
-                <dd class="col-sm-9">
-                    <span class="badge mall-badge-soft"
-                          data-mall-dict-code="points_hold_state"
-                          data-mall-dict-value="{{ $flow->state->value }}">{{ $flow->state->value }}</span>
-                </dd>
+                <dt class="col-sm-3">State</dt>
+                <dd class="col-sm-9">{{ $flow->state->value }}</dd>
                 <dt class="col-sm-3">{{ __('console.detail.ct_ut') }}</dt>
                 <dd class="col-sm-9 text-muted small">{{ \App\Support\MillisTimestampDisplay::format($flow->ct) }}
                     / {{ \App\Support\MillisTimestampDisplay::format($flow->ut) }}</dd>

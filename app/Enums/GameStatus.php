@@ -14,6 +14,8 @@ enum GameStatus: int implements HasDictionaryLabel
     case Closed = 2;
     /** Game outcome recorded; tied to settlement workflow. */
     case Settled = 3;
+    /** Result stored on game/markets; payout batch (scheduler) not completed. */
+    case PendingSettlement = 4;
 
     public function label(): string
     {
@@ -21,6 +23,7 @@ enum GameStatus: int implements HasDictionaryLabel
             self::Open => 'Open',
             self::Closed => 'Closed',
             self::Settled => 'Settled',
+            self::PendingSettlement => 'Pending settlement',
         };
     }
 }

@@ -79,17 +79,6 @@
                     </a>
                 </li>
                 <li>
-                    <a href="{{ route('admin.settlement.create') }}"
-                       class="flex items-center px-4 py-3 rounded-lg hover:bg-gray-700 transition-colors sidebar-link {{ request()->routeIs('admin.settlement.*') ? 'bg-gray-700' : '' }}"
-                       title="{{ __('console.sidebar.settlement') }}">
-                        <svg class="w-5 h-5 flex-shrink-0 sidebar-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                        </svg>
-                        <span class="sidebar-text ml-3 whitespace-nowrap">{{ __('console.sidebar.settlement') }}</span>
-                    </a>
-                </li>
-                <li>
                     <a href="{{ route('admin.orders.index') }}"
                        class="flex items-center px-4 py-3 rounded-lg hover:bg-gray-700 transition-colors sidebar-link {{ request()->routeIs('admin.orders.*') ? 'bg-gray-700' : '' }}"
                        title="{{ __('console.sidebar.orders') }}">
@@ -175,6 +164,8 @@
         </div>
     </main>
 </div>
+
+@stack('modals')
 
 {{-- Global confirm delete (form action set via data-mall-delete-url on open button) --}}
 <div class="modal fade" id="mallModalDelete" tabindex="-1" aria-labelledby="mallModalDeleteLabel" aria-hidden="true">

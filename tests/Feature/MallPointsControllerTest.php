@@ -27,7 +27,7 @@ class MallPointsControllerTest extends TestCase
         $this->getJson('/api/bet/points')->assertStatus(401)->assertJsonPath('errorCode', ResponseConstant::RET_UNAUTHORIZED);
     }
 
-    public function test_points_returns_zero_when_no_balance_row(): void
+    public function test_points_returns_zero_when_no_profile_row(): void
     {
         Http::fake(array_merge([
             'http://foundation.local/api/user/me' => Http::response([

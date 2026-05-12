@@ -65,7 +65,7 @@ final class BetCatalogApiTest extends TestCase
         $this->assertSame('cms/cover.png', $res->json('data.main_media'));
         $this->assertSame(1_700_000_000_000, $res->json('data.start_at'));
         $this->assertArrayNotHasKey('name', $res->json('data'));
-        $this->assertSame([], $res->json('data.winning_outcomes'));
+        $this->assertSame(['winners' => [], 'voids' => []], $res->json('data.settle_outcomes'));
         $this->assertSame([], $res->json('data.groups'));
     }
 
@@ -140,7 +140,7 @@ final class BetCatalogApiTest extends TestCase
         $this->assertSame($sorted, $ids);
     }
 
-    public function test_markets_list_embeds_synthetic_selections_by_default_and_filters_by_local_game_id(): void
+    public function test_markets_list_omits_selections_and_filters_by_local_game_id(): void
     {
         CatalogSeeder::openHomeWinMarket(2000);
         $otherPayload = CatalogSeeder::openHomeWinMarket(1700);
@@ -152,14 +152,11 @@ final class BetCatalogApiTest extends TestCase
         $items = $resAll->json('data.items');
         $this->assertGreaterThanOrEqual(2, count($items));
         foreach ($items as $row) {
-            $this->assertArrayHasKey('selections', $row);
-            $this->assertNotEmpty($row['selections']);
-            $this->assertArrayHasKey('current_odds_millis', $row['selections'][0]);
-            $this->assertArrayHasKey('outcome_code', $row['selections'][0]);
+            $this->assertArrayNotHasKey('selections', $row);
         }
         $this->assertArrayHasKey('_dict', $resAll->json('data'));
 
-        $localGameId = (int) $otherMarket->game_id;
+        $localGameId = (int) $otherMarket->gid;
         $resOne = $this->getJson('/api/bet/markets?game_id='.$localGameId);
         $resOne->assertOk();
         $filtered = $resOne->json('data.items');
@@ -167,17 +164,10 @@ final class BetCatalogApiTest extends TestCase
         $this->assertSame($localGameId, $filtered[0]['game_id']);
     }
 
-    public function test_markets_list_can_disable_selections_inlining(): void
+    public function test_markets_list_rejects_invalid_status_filter(): void
     {
-        CatalogSeeder::openHomeWinMarket(2000);
-
-        $res = $this->getJson('/api/bet/markets?include_selections=0');
-        $res->assertOk();
-        $items = $res->json('data.items');
-        $this->assertNotEmpty($items);
-        foreach ($items as $row) {
-            $this->assertArrayNotHasKey('selections', $row);
-        }
+        $res = $this->getJson('/api/bet/markets?status=99');
+        $res->assertUnprocessable();
     }
 
     public function test_market_show_includes_synthetic_selections_and_nested_game(): void
@@ -192,7 +182,7 @@ final class BetCatalogApiTest extends TestCase
         $this->assertSame('Full-time 1X2', $res->json('data.name'));
         $this->assertSame(MarketType::OneX2->value, $res->json('data.type'));
         $this->assertArrayHasKey('game', $res->json('data'));
-        $this->assertSame((int) $market->game_id, $res->json('data.game.id'));
+        $this->assertSame((int) $market->gid, $res->json('data.game.id'));
         $rawId = (int) $market->game->raw_id;
         $this->assertSame('CMS game '.$rawId, $res->json('data.game.title'));
         $this->assertArrayNotHasKey('main_media', $res->json('data.game'));
@@ -201,7 +191,7 @@ final class BetCatalogApiTest extends TestCase
         $selections = $res->json('data.selections');
         $this->assertCount(3, $selections);
         $this->assertSame('home_win', $selections[0]['outcome_code']);
-        $this->assertSame(2000, $selections[0]['current_odds_millis']);
+        $this->assertArrayNotHasKey('current_odds_millis', $selections[0]);
     }
 
     public function test_markets_list_only_under_open_games_when_no_filters_passed(): void

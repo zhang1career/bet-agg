@@ -50,11 +50,13 @@
     </div>
 
     {{ $groups->links() }}
+@endsection
 
+@push('modals')
     <div class="modal fade" id="mallModalGroupCreate" tabindex="-1" aria-hidden="true"
          data-mall-modal="1" data-mall-strip-query="mall_create"
          @if($mallCreate) data-mall-auto-show="1" @endif>
-        <div class="modal-dialog">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content">
                 <form method="post" action="{{ route('admin.game-groups.store') }}">
                     @csrf
@@ -86,7 +88,7 @@
         <div class="modal fade" id="mallModalGroupEdit" tabindex="-1" aria-hidden="true"
              data-mall-modal="1" data-mall-strip-query="mall_edit"
              data-mall-auto-show="1">
-            <div class="modal-dialog">
+            <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
                 <div class="modal-content">
                     <form method="post" action="{{ route('admin.game-groups.update', $modalGroup) }}">
                         @csrf
@@ -115,4 +117,4 @@
             </div>
         </div>
     @endif
-@endsection
+@endpush

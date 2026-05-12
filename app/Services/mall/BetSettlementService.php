@@ -7,8 +7,13 @@ namespace App\Services\mall;
 use App\Enums\BetOrderStatus;
 use App\Models\BetOrder;
 use App\Models\Game;
+use App\Repos\mall\BetOrderRepo;
+use App\Repos\mall\GameRepo;
+use App\Repos\mall\MarketRepo;
 use App\Services\mall\settlement\SettlementBatchItemHandler;
 use App\Services\mall\settlement\SettlementBatchPlanProvider;
+use App\Support\SettlementBizKey;
+use App\Support\SettleOutcomes;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Paganini\Batch\DTO\BatchRunResult;
@@ -21,8 +26,8 @@ use Throwable;
  *
  * Outer transaction (one per game):
  *   - lock biz_game and mark it + its markets as SETTLED (胜平负 options are synthetic),
- *   - persist {@code winning_outcomes} (synthetic keys e.g. {@code home_win}),
- *   - emit accepted-state orders that need money movement.
+ *   - persist {@code settle_outcomes} ({@code winners} / {@code voids}),
+ *   - emit accepted-state predictions that need scoring.
  *
  * @see SettlementBatchPlanProvider
  * @see SettlementBatchItemHandler
@@ -32,24 +37,28 @@ final readonly class BetSettlementService
     public function __construct(
         private BatchExecutor $batchExecutor,
         private SettlementBatchItemHandler $itemHandler,
+        private GameRepo $games,
+        private MarketRepo $markets,
+        private BetOrderRepo $orders,
     ) {}
 
     /**
-     * @param list<string> $winningOutcomeCodes e.g. {@code home_win}, {@code draw}
-     * @param list<string> $voidOutcomeCodes legs that refund (e.g. all three for void_all)
-     * @throws Throwable
+     * Operator submits the sports result: persist {@see SettleOutcomes} on the game only,
+     * set game status to pending settlement. The scheduler calls {@see applyGameResult}.
+     *
+     * @param  list<string>  $winningOutcomeCodes  e.g. {@code home_win}, {@code draw}
+     * @param  list<string>  $voidOutcomeCodes  legs that refund (e.g. all three for void_all)
      */
-    public function applyGameResult(
+    public function recordPendingSettlement(
         int $gameId,
         array $winningOutcomeCodes,
         array $voidOutcomeCodes = [],
-    ): BatchRunResult {
+    ): void {
         if ($gameId < 1) {
             throw new RuntimeException('Invalid game_id.');
         }
         $winners = self::normalizeOutcomeCodes($winningOutcomeCodes);
         $voids = self::normalizeOutcomeCodes($voidOutcomeCodes);
-
         $overlap = array_intersect($winners, $voids);
         if ($overlap !== []) {
             throw new RuntimeException(sprintf(
@@ -58,8 +67,43 @@ final readonly class BetSettlementService
             ));
         }
 
+        DB::transaction(function () use ($gameId, $winners, $voids): void {
+            /** @var Game|null $game */
+            $game = $this->games->lockForUpdate($gameId);
+            if ($game === null) {
+                throw new RuntimeException('Game not found.');
+            }
+            if ((int) $game->status !== Game::STATUS_OPEN) {
+                throw new RuntimeException('Only open games can receive a settlement result.');
+            }
+
+            $now = Game::nowMillis();
+            $game->settle_outcomes = SettleOutcomes::pack($winners, $voids);
+            $game->status = Game::STATUS_PENDING_SETTLEMENT;
+            $game->ut = $now;
+            $game->save();
+        });
+    }
+
+    /**
+     * Run payout batch for one game. Reads winners/voids from {@see Game::$settle_outcomes} when
+     * pending or settled (retry).
+     *
+     * @throws Throwable
+     */
+    public function applyGameResult(int $gameId): BatchRunResult
+    {
+        if ($gameId < 1) {
+            throw new RuntimeException('Invalid game_id.');
+        }
+
         $bizKey = self::bizKeyForGame($gameId).':'.Game::nowMillis();
-        $plan = new SettlementBatchPlanProvider($gameId, $winners, $voids);
+        $plan = new SettlementBatchPlanProvider(
+            $gameId,
+            $this->games,
+            $this->markets,
+            $this->orders,
+        );
 
         $result = $this->batchExecutor->execute($bizKey, $plan, $this->itemHandler);
 
@@ -72,7 +116,15 @@ final readonly class BetSettlementService
 
     public static function bizKeyForGame(int $gameId): string
     {
-        return 'settle:game:'.$gameId;
+        return SettlementBizKey::prefixForGame($gameId);
+    }
+
+    /**
+     * Inverse of {@see bizKeyForGame} for persisted batch rows ({@code biz_key} may include a millis suffix).
+     */
+    public static function gameIdFromSettleBizKey(string $bizKey): ?int
+    {
+        return SettlementBizKey::gameIdFromBizKey($bizKey);
     }
 
     /**
@@ -107,7 +159,7 @@ final readonly class BetSettlementService
             try {
                 DB::transaction(function () use ($orderId): void {
                     /** @var BetOrder|null $order */
-                    $order = BetOrder::query()->whereKey($orderId)->lockForUpdate()->first();
+                    $order = $this->orders->findLocked($orderId);
                     if ($order === null) {
                         return;
                     }

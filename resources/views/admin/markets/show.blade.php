@@ -27,14 +27,12 @@
                 <dd class="col-sm-9 font-monospace">{{ $market->id }}</dd>
                 <dt class="col-sm-3">{{ __('console.table.game') }}</dt>
                 <dd class="col-sm-9">
-                    <a href="{{ route('admin.games.show', $market->game_id) }}">{{ __('console.markets.game_number', ['id' => $market->game_id]) }}</a>
+                    <a href="{{ route('admin.games.show', $market->gid) }}">{{ __('console.markets.game_number', ['id' => $market->gid]) }}</a>
                 </dd>
                 <dt class="col-sm-3">{{ __('console.table.name') }}</dt>
                 <dd class="col-sm-9">{{ $market->name }}</dd>
                 <dt class="col-sm-3">{{ __('console.table.type') }}</dt>
                 <dd class="col-sm-9 font-monospace">{{ $market->type->value }} — {{ $market->type->label() }}</dd>
-                <dt class="col-sm-3">odds_millis</dt>
-                <dd class="col-sm-9 font-monospace small">{{ json_encode($market->outcomeOddsMillisMap(), JSON_UNESCAPED_UNICODE) }}</dd>
                 <dt class="col-sm-3">{{ __('console.markets.synthetic_legs') }}</dt>
                 <dd class="col-sm-9 small">
                     @php
@@ -42,7 +40,7 @@
                     @endphp
                     <ul class="mb-0">
                         @foreach($legs as $leg)
-                            <li><code>{{ $leg['outcome_code'] }}</code> — {{ $leg['label'] }} · {{ $leg['current_odds_millis'] }}</li>
+                            <li><code>{{ $leg['outcome_code'] }}</code> — {{ $leg['label'] }}</li>
                         @endforeach
                     </ul>
                 </dd>
@@ -55,6 +53,18 @@
                 <dd class="col-sm-9 text-muted small">ct {{ \App\Support\MillisTimestampDisplay::format($market->ct) }}
                     · ut {{ \App\Support\MillisTimestampDisplay::format($market->ut) }}</dd>
             </dl>
+        </div>
+    </div>
+
+    <div class="mall-console-card card shadow-sm mb-4">
+        <div class="card-body">
+            <h3 class="h6 mb-3">{{ __('console.settlement_overview.section_title_market') }}</h3>
+            <p class="small text-muted">{{ __('console.settlement_overview.intro_market') }}</p>
+            @include('admin.partials.settlement_counts', [
+                'orderCounts' => $settlementOrderCounts,
+                'lineCounts' => $settlementLineCounts,
+            ])
+            @include('admin.partials.settlement_jobs', ['jobs' => $settlementJobs])
         </div>
     </div>
 @endsection

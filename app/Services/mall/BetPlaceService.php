@@ -6,32 +6,30 @@ namespace App\Services\mall;
 
 use App\Enums\BetLineResult;
 use App\Enums\BetOrderStatus;
-use App\Enums\PointsHoldState;
-use App\Exceptions\bet\InsufficientPointsException;
-use App\Exceptions\bet\OddsMovedException;
 use App\Exceptions\bet\SelectionNotAcceptingException;
 use App\Models\BetOrder;
-use App\Models\BetOrderLine;
 use App\Models\Game;
 use App\Models\Market;
-use App\Models\PointsBalance;
-use App\Models\PointsFlow;
+use App\Models\OrderItem;
+use App\Repos\mall\BetOrderRepo;
+use App\Repos\mall\MarketRepo;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
 /**
- * Atomic single-step bet placement (request still sends {@code outcome_code}; persisted as {@code order_item.selection} JSON).
+ * Records a single-outcome selection before settlement (current catalog: no stake or odds on the order line).
  */
 final readonly class BetPlaceService
 {
     public function __construct(
-        private PointsAdminService $pointsAdmin,
         private SyntheticMatchMarket $synthetic,
+        private BetOrderRepo $orders,
+        private MarketRepo $markets,
     ) {}
 
     /**
-     * @param  list<array{market_id: int, outcome_code: string, stake_points: int, expected_odds_millis: int}>  $lines
+     * @param  list<array{market_id: int, outcome_code: string}>  $lines
      * @return array{order: BetOrder, is_replay: bool}
      */
     public function place(int $uid, int $idemKey, array $lines): array
@@ -42,11 +40,8 @@ final readonly class BetPlaceService
         if ($idemKey < 1) {
             throw new RuntimeException('Idempotency key must be a positive integer.');
         }
-        if ($lines === []) {
-            throw new RuntimeException('Bet must contain at least one line.');
-        }
         if (count($lines) !== 1) {
-            throw new RuntimeException('Only single-selection bets are supported in this version.');
+            throw new RuntimeException('Only single-outcome selections are supported.');
         }
 
         $existingOrder = $this->findExistingByIdemKey($uid, $idemKey);
@@ -54,38 +49,23 @@ final readonly class BetPlaceService
             return ['order' => $existingOrder, 'is_replay' => true];
         }
 
-        $bookmakerUid = (int) config('bet_agg.points.bookmaker_uid');
-        if ($bookmakerUid < 1) {
-            throw new RuntimeException('Bookmaker account is not configured (bet_agg.points.bookmaker_uid).');
-        }
-        if ($bookmakerUid === $uid) {
-            throw new RuntimeException('Player cannot use the configured bookmaker account.');
-        }
-
         try {
-            return DB::transaction(function () use ($uid, $idemKey, $lines, $bookmakerUid): array {
+            return DB::transaction(function () use ($uid, $idemKey, $lines): array {
                 $line = $lines[0];
                 $marketId = (int) ($line['market_id'] ?? 0);
                 $outcomeCode = trim((string) ($line['outcome_code'] ?? ''));
-                $stake = (int) ($line['stake_points'] ?? 0);
-                $expectedOdds = (int) ($line['expected_odds_millis'] ?? 0);
-                if ($marketId < 1 || $outcomeCode === '' || $stake < 1 || $expectedOdds < 1000) {
+                if ($marketId < 1 || $outcomeCode === '') {
                     throw new RuntimeException('Invalid bet line.');
                 }
 
-                $market = $this->loadAndValidateMarketLeg($marketId, $outcomeCode, $expectedOdds);
-                $oddsMillis = $this->synthetic->oddsMillisForOutcome($market, $outcomeCode);
-                $potentialReturn = intdiv($stake * $oddsMillis, 1000);
-                if ($potentialReturn < 1) {
-                    throw new RuntimeException('Potential return rounds down to zero; stake or odds too small.');
+                $market = $this->loadAndValidateMarketLeg($marketId, $outcomeCode);
+                $game = $market->game;
+                if ($game === null) {
+                    throw new SelectionNotAcceptingException($marketId, $outcomeCode, 'game missing');
                 }
 
-                $this->debitUserBalance($uid, $stake);
-
-                $order = $this->insertOrder($uid, $stake, $idemKey);
-                $this->insertOrderLine($order, $market, $outcomeCode, $stake, $oddsMillis, $potentialReturn);
-                $this->insertStakeFlow($uid, $order->id, $stake);
-                $this->pointsAdmin->creditBookmakerAcceptedStake($bookmakerUid, $stake, $order->id);
+                $order = $this->insertOrder($uid, $idemKey);
+                $this->insertLine($order, $market, $game, $outcomeCode);
 
                 return ['order' => $order->load('lines'), 'is_replay' => false];
             });
@@ -102,21 +82,13 @@ final readonly class BetPlaceService
 
     private function findExistingByIdemKey(int $uid, int $idemKey): ?BetOrder
     {
-        return BetOrder::query()
-            ->with('lines')
-            ->where('uid', $uid)
-            ->where('idem_key', $idemKey)
-            ->first();
+        return $this->orders->findWithLinesByUserIdem($uid, $idemKey);
     }
 
-    private function loadAndValidateMarketLeg(int $marketId, string $outcomeCode, int $expectedOddsMillis): Market
+    private function loadAndValidateMarketLeg(int $marketId, string $outcomeCode): Market
     {
         /** @var Market|null $market */
-        $market = Market::query()
-            ->with(['game.sideASubject', 'game.sideBSubject'])
-            ->whereKey($marketId)
-            ->lockForUpdate()
-            ->first();
+        $market = $this->markets->lockWithGameAndSubjectsForPrediction($marketId);
         if ($market === null) {
             throw new SelectionNotAcceptingException($marketId, $outcomeCode, 'market not found');
         }
@@ -133,62 +105,29 @@ final readonly class BetPlaceService
             throw new SelectionNotAcceptingException($marketId, $outcomeCode, 'market is not open');
         }
 
-        $odds = $this->synthetic->oddsMillisForOutcome($market, $outcomeCode);
-        if ($odds < 1000) {
-            throw new SelectionNotAcceptingException($marketId, $outcomeCode, 'odds invalid');
-        }
-        if ($odds !== $expectedOddsMillis) {
-            throw new OddsMovedException($marketId, $outcomeCode, $expectedOddsMillis, $odds);
-        }
+        $this->synthetic->assertValidOutcome($market, $outcomeCode);
 
         return $market;
     }
 
-    private function debitUserBalance(int $uid, int $stake): void
-    {
-        $balance = PointsBalance::query()->where('uid', $uid)->lockForUpdate()->first();
-        if ($balance === null) {
-            $created = new PointsBalance(['uid' => $uid, 'balance' => 0]);
-            $created->save();
-            $balance = PointsBalance::query()->where('uid', $uid)->lockForUpdate()->first();
-        }
-        if ($balance === null) {
-            throw new RuntimeException('Points balance row missing.');
-        }
-
-        $available = $balance->balance;
-        if ($available < $stake) {
-            throw new InsufficientPointsException($stake, $available);
-        }
-
-        $balance->balance = $available - $stake;
-        $balance->save();
-    }
-
-    private function insertOrder(int $uid, int $stake, int $idemKey): BetOrder
+    private function insertOrder(int $uid, int $idemKey): BetOrder
     {
         $order = new BetOrder([
             'uid' => $uid,
             'idem_key' => $idemKey,
             'status' => BetOrderStatus::Accepted,
-            'total_price' => $stake,
-            'points_held' => $stake,
         ]);
         $order->save();
 
         return $order;
     }
 
-    private function insertOrderLine(
+    private function insertLine(
         BetOrder $order,
         Market $market,
+        Game $game,
         string $outcomeCode,
-        int $stake,
-        int $oddsMillis,
-        int $potentialReturn,
-    ): void
-    {
-        $game = $market->game;
+    ): void {
         $labels = $this->synthetic->legsForApi($market, $game);
         $label = $outcomeCode;
         foreach ($labels as $leg) {
@@ -199,38 +138,14 @@ final readonly class BetPlaceService
             }
         }
 
-        $snapshot = [
-            'market_id' => $market->id,
-            'selection' => ['code' => $outcomeCode],
-            'game_id' => (int)$game?->id,
-            'cms_game_id' => (int)$game?->raw_id,
-            'label' => $label,
-            'decimal_odds_millis' => $oddsMillis,
-        ];
-
-        $line = new BetOrderLine([
+        $line = new OrderItem([
             'oid' => $order->id,
-            'market_id' => $market->id,
+            'mid' => $market->id,
             'selection' => ['code' => $outcomeCode],
-            'stake_points' => $stake,
-            'odds_snapshot' => $snapshot,
-            'decimal_odds_millis' => $oddsMillis,
-            'potential_return_points' => $potentialReturn,
+            'pick_label' => $label,
             'result' => BetLineResult::Pending,
         ]);
         $line->save();
-
-    }
-
-    private function insertStakeFlow(int $uid, int $orderId, int $stake): void
-    {
-        $flow = new PointsFlow([
-            'uid' => $uid,
-            'oid' => $orderId,
-            'amount' => -$stake,
-            'state' => PointsHoldState::Confirmed,
-        ]);
-        $flow->save();
     }
 
     private function isUniqueViolation(QueryException $e): bool

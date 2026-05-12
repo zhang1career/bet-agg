@@ -1,0 +1,47 @@
+@startuml api-bet-markets
+title GET /api/bet/markets & GET /api/bet/markets/{market_id} — logic swimlanes
+
+skinparam ActivityBackgroundColor #F8F8F8
+skinparam ActivityBorderColor #333333
+
+|Client|
+start
+:GET /api/bet/markets\nor GET /api/bet/markets/{market_id};
+
+|BetMarketController|
+if (index?) then (yes)
+  :Validate **game_id**, **status**, **updated_after**;
+  if (**status** present?) then (yes)
+    :Assert tokens are valid **MarketStatus** ids;
+  endif
+  :Clamp **page** / **per_page**;
+  :Build **MarketListFilter**\n(default: only markets under open game\nunless **status** or **game_id** set);
+  |CatalogService|
+  :**CatalogRepo::paginateMarkets**;
+else (detail)
+  |CatalogService|
+  :**CatalogRepo::findMarketForDetail**(market_id);
+  if (not found?) then (yes)
+    :throw **NotFoundHttpException**;
+    stop
+  endif
+  :Resolve **selectionsForMarkets** +\n**SyntheticMatchMarket** as needed;
+endif
+
+|CatalogService|
+:Collect **raw_id** from related games;
+|CmsGameClient|
+:HTTP fetch CMS metadata by **raw_id**;
+|CatalogService|
+:**serializeMarketRow**;
+
+|BetMarketController|
+:Call **MallDictionaryService** resolve(['market_status','game_status']);
+:**logHandledApiRequest**;
+:Return **ApiResponse::ok**;
+
+|Client|
+:200 JSON;
+stop
+
+@enduml

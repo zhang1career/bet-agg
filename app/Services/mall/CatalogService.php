@@ -4,39 +4,39 @@ declare(strict_types=1);
 
 namespace App\Services\mall;
 
-use App\Http\Controllers\api\BetGameController;
-use App\Http\Controllers\api\BetMarketController;
+use App\Http\Controllers\api\PredictionGameController;
+use App\Http\Controllers\api\PredictionMarketController;
 use App\Models\Game;
 use App\Models\Market;
+use App\Repos\mall\CatalogRepo;
 use App\Services\mall\serv_fd\CmsGameClient;
+use App\Support\SettleOutcomes;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Client\ConnectionException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
  * Read-side catalog: {@code biz_game} + {@code biz_market}; 胜平负选项由 {@see SyntheticMatchMarket} 合成。
+ * List filters are shaped by {@see PredictionGameController} / {@see PredictionMarketController}.
  */
 final readonly class CatalogService
 {
     public function __construct(
-        private CmsGameClient        $cmsGames,
+        private CmsGameClient $cmsGames,
         private SyntheticMatchMarket $synthetic,
+        private CatalogRepo $catalog,
     ) {}
 
     /**
-     * @param GameListFilter $filter Validated filter inputs from {@see BetGameController}.
+     * @param  GameListFilter  $filter  Validated filter inputs from {@see PredictionGameController}.
      * @return array{items: list<array<string, mixed>>, pagination: array<string, mixed>}
+     *
      * @throws ConnectionException
      */
     public function listGames(GameListFilter $filter, int $page, int $perPage): array
     {
-        $query = Game::query()->with(['sideASubject', 'sideBSubject']);
-        $this->applyGameFilter($query, $filter);
-        $this->applyGameSort($query, $filter);
-
         /** @var LengthAwarePaginator<int, Game> $p */
-        $p = $query->paginate($perPage, ['*'], 'page', $page);
+        $p = $this->catalog->paginateGames($filter, $page, $perPage);
 
         /** @var list<Game> $games */
         $games = $p->items();
@@ -56,14 +56,12 @@ final readonly class CatalogService
 
     /**
      * @return array<string, mixed>
+     *
      * @throws ConnectionException
      */
     public function getGameDetail(int $localId): array
     {
-        $game = Game::query()
-            ->whereKey($localId)
-            ->with(['groups', 'sideASubject', 'sideBSubject'])
-            ->first();
+        $game = $this->catalog->findGameForDetail($localId);
         if ($game === null) {
             throw new NotFoundHttpException('Game not found.');
         }
@@ -80,35 +78,22 @@ final readonly class CatalogService
     }
 
     /**
-     * @param MarketListFilter $filter Validated filter inputs from {@see BetMarketController}.
+     * @param  MarketListFilter  $filter  Validated filter inputs from {@see PredictionMarketController}.
      * @return array{items: list<array<string, mixed>>, pagination: array<string, mixed>}
+     *
      * @throws ConnectionException
      */
     public function listMarkets(MarketListFilter $filter, int $page, int $perPage): array
     {
-        $query = Market::query()->with([
-            'game.sideASubject',
-            'game.sideBSubject',
-        ]);
-        $this->applyMarketFilter($query, $filter);
-        $query->orderByDesc('id');
-
         /** @var LengthAwarePaginator<int, Market> $p */
-        $p = $query->paginate($perPage, ['*'], 'page', $page);
+        $p = $this->catalog->paginateMarkets($filter, $page, $perPage);
 
         $marketsOnPage = $p->items();
         $cmsByRawId = $this->cmsGamesByRawIds($this->uniqueRawIdsFromMarkets($marketsOnPage));
-        $selectionsByMarket = $filter->includeSelections
-            ? $this->selectionsForMarkets(array_map(static fn (Market $m): int => $m->id, $marketsOnPage))
-            : [];
 
         $items = [];
         foreach ($marketsOnPage as $market) {
-            $items[] = $this->serializeMarketRow(
-                $market,
-                $filter->includeSelections ? ($selectionsByMarket[$market->id] ?? []) : null,
-                $cmsByRawId,
-            );
+            $items[] = $this->serializeMarketRow($market, null, $cmsByRawId);
         }
 
         return [
@@ -119,14 +104,12 @@ final readonly class CatalogService
 
     /**
      * @return array<string, mixed>
+     *
      * @throws ConnectionException
      */
     public function getMarketDetail(int $id): array
     {
-        $market = Market::query()
-            ->with(['game.sideASubject', 'game.sideBSubject'])
-            ->whereKey($id)
-            ->first();
+        $market = $this->catalog->findMarketForDetail($id);
         if ($market === null) {
             throw new NotFoundHttpException('Market not found.');
         }
@@ -141,59 +124,6 @@ final readonly class CatalogService
     }
 
     /**
-     * @param  Builder<Game>  $query
-     */
-    private function applyGameFilter(Builder $query, GameListFilter $filter): void
-    {
-        if ($filter->statuses !== []) {
-            $query->whereIn('status', $filter->statuses);
-        }
-        if ($filter->updatedAfterMillis !== null) {
-            $query->where('ut', '>=', $filter->updatedAfterMillis);
-        }
-        if ($filter->groupCode !== null) {
-            $query->whereHas('groups', static function (Builder $q) use ($filter): void {
-                $q->where('biz_game_group.code', $filter->groupCode);
-            });
-        }
-    }
-
-    /**
-     * @param  Builder<Game>  $query
-     */
-    private function applyGameSort(Builder $query, GameListFilter $filter): void
-    {
-        if ($filter->sort === null) {
-            $query->orderByDesc('id');
-
-            return;
-        }
-        [$column, $direction] = $filter->sort;
-        $query->orderBy($column, $direction);
-    }
-
-    /**
-     * @param  Builder<Market>  $query
-     */
-    private function applyMarketFilter(Builder $query, MarketListFilter $filter): void
-    {
-        if ($filter->statuses !== []) {
-            $query->whereIn('status', $filter->statuses);
-        }
-        if ($filter->localGameId !== null) {
-            $query->where('game_id', $filter->localGameId);
-        }
-        if ($filter->updatedAfterMillis !== null) {
-            $query->where('ut', '>=', $filter->updatedAfterMillis);
-        }
-        if ($filter->onlyMarketsUnderOpenGame) {
-            $query->whereHas('game', static function (Builder $q): void {
-                $q->where('status', Game::STATUS_OPEN);
-            });
-        }
-    }
-
-    /**
      * @param  list<int>  $marketIds
      * @return array<int, list<array<string, mixed>>>
      */
@@ -203,11 +133,7 @@ final readonly class CatalogService
             return [];
         }
 
-        $markets = Market::query()
-            ->whereIn('id', $marketIds)
-            ->with(['game.sideASubject', 'game.sideBSubject'])
-            ->get()
-            ->keyBy(static fn (Market $m): int => $m->id);
+        $markets = $this->catalog->marketsWithGamesForLegs($marketIds);
 
         $byMarket = [];
         foreach ($marketIds as $mid) {
@@ -236,7 +162,9 @@ final readonly class CatalogService
             'side_b_subject_id' => $game->side_b_subject_id !== null ? (int) $game->side_b_subject_id : null,
             'side_a_name' => $game->sideASubject !== null ? (string) $game->sideASubject->name : null,
             'side_b_name' => $game->sideBSubject !== null ? (string) $game->sideBSubject->name : null,
-            'winning_outcomes' => $game->winning_outcomes ?? [],
+            'settle_outcomes' => SettleOutcomes::forApi(
+                is_array($game->settle_outcomes) ? $game->settle_outcomes : null,
+            ),
             'ut' => $game->ut,
         ];
 
@@ -266,11 +194,10 @@ final readonly class CatalogService
 
         $row = [
             'id' => $market->id,
-            'game_id' => (int)$game?->id,
+            'game_id' => (int) $game?->id,
             'type' => $market->type->value,
             'name' => $market->name,
             'status' => $market->status,
-            'odds_millis' => $market->outcomeOddsMillisMap(),
             'ut' => $market->ut,
             'game' => $game === null ? null : $this->serializeNestedGame($game, $nestedCms),
         ];
@@ -289,7 +216,7 @@ final readonly class CatalogService
     private function serializeNestedGame(Game $game, ?array $cmsRow): array
     {
         $merged = $this->serializeGameRow($game, $cmsRow, false);
-        unset($merged['winning_outcomes']);
+        unset($merged['settle_outcomes']);
 
         return $merged;
     }
@@ -333,8 +260,9 @@ final readonly class CatalogService
     }
 
     /**
-     * @param list<int> $rawIds
+     * @param  list<int>  $rawIds
      * @return array<int, array<string, mixed>>
+     *
      * @throws ConnectionException
      */
     private function cmsGamesByRawIds(array $rawIds): array

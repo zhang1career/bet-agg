@@ -256,3 +256,51 @@ html[data-bs-theme="dark"] .border-gray-200 {
 .mall-icon-svg {
     display: block;
 }
+
+/*
+ * Full-screen-height modals wrap header/body/footer in <form> inside .modal-content.
+ * Bootstrap’s scrollable modal assumes .modal-body is a direct child of .modal-content,
+ * so without a flex chain .modal-body grows with content and gets clipped (no inner scroll).
+ */
+body.mall-admin .modal-dialog-scrollable .modal-content {
+    display: flex;
+    flex-direction: column;
+    max-height: min(90vh, calc(100vh - 2rem));
+    overflow: hidden;
+}
+
+body.mall-admin .modal-dialog-scrollable .modal-content > form {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: 100%;
+}
+
+body.mall-admin .modal-dialog-scrollable .modal-content > form > .modal-header,
+body.mall-admin .modal-dialog-scrollable .modal-content > form > .modal-footer {
+    flex-shrink: 0;
+}
+
+body.mall-admin .modal-dialog-scrollable .modal-content > form > .modal-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+}
+
+/* Modals that use scrollable layout without a wrapping <form> (e.g. read-only detail). */
+body.mall-admin .modal-dialog-scrollable .modal-content > .modal-header,
+body.mall-admin .modal-dialog-scrollable .modal-content > .modal-footer {
+    flex-shrink: 0;
+}
+
+body.mall-admin .modal-dialog-scrollable .modal-content > .modal-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+}
+
+body.mall-admin .mall-th-sort-link.mall-th-sort-active {
+    font-weight: 700;
+    color: var(--bs-primary);
+}

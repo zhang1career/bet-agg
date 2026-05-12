@@ -40,11 +40,13 @@
         </div>
     </div>
     {{ $subjects->links() }}
+@endsection
 
+@push('modals')
     <div class="modal fade" id="mallModalSubjectCreate" tabindex="-1" aria-hidden="true"
          data-mall-modal="1" data-mall-strip-query="mall_create"
          @if($mallCreate) data-mall-auto-show="1" @endif>
-        <div class="modal-dialog modal-dialog-scrollable">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content">
                 <form method="post" action="{{ route('admin.game-subjects.store') }}">
                     @csrf
@@ -85,7 +87,7 @@
         <div class="modal fade" id="mallModalSubjectEdit" tabindex="-1" aria-hidden="true"
              data-mall-modal="1" data-mall-strip-query="mall_edit"
              data-mall-auto-show="1">
-            <div class="modal-dialog modal-dialog-scrollable">
+            <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
                 <div class="modal-content">
                     <form method="post" action="{{ route('admin.game-subjects.update', $modalSubject) }}">
                         @csrf
@@ -100,7 +102,7 @@
                                 <input type="text" name="name" id="gse_name" class="form-control" required maxlength="256" value="{{ old('name', $modalSubject->name) }}">
                             </div>
                             <div class="mb-3">
-                                <label class="form-label" for="gse_group_ids">{{ __('console.game_subjects.label_groups') }} <small class="text-muted">biz_y</small></label>
+                                <label class="form-label" for="gse_group_ids">{{ __('console.game_subjects.label_groups') }} <small class="text-muted">y</small></label>
                                 <select name="group_ids[]" id="gse_group_ids" class="form-select" multiple size="8">
                                     @foreach($groups as $g)
                                         <option value="{{ $g->id }}" @selected(in_array((int) $g->id, $gids, true))>
@@ -119,4 +121,4 @@
             </div>
         </div>
     @endif
-@endsection
+@endpush

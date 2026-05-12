@@ -1,0 +1,51 @@
+@startuml api-bet-place
+title POST /api/bet/place — logic swimlanes
+
+skinparam ActivityBackgroundColor #F8F8F8
+skinparam ActivityBorderColor #333333
+
+|Client|
+start
+:POST /api/bet/place\nHeaders: **X-User-Access-Token**, **X-Request-Id**\n(snowflake from **POST /api/bet/snowflake**);
+
+|BetPlaceController|
+:requireAuthenticatedUser() via trait;
+|UserFoundationGateway|
+:Memo / cache by token hash;
+if (cache miss?) then (yes)
+  |Foundation user API|
+  :GET **/api/user/me**\nheader **X-User-Access-Token**;
+endif
+|UserFoundationGateway|
+:Return user payload;
+|BetPlaceController|
+:**requirePlaceRequestId** (**X-Request-Id** positive decimal);
+:Validate body **lines** (exactly one line,\nmarket_id, outcome_code);
+
+|BetPlaceService|
+:If idempotent row exists\n(**BetOrderRepo::findWithLinesByUserIdem**)\nthen return replay;
+note right
+  Repo steps below run inside
+  **DB::transaction**
+end note
+|MarketRepo|
+:**lockWithGameAndSubjectsForPrediction**(market_id);
+|SyntheticMatchMarket|
+:Assert **outcome_code** valid for market (**assertValidOutcome**);
+if (game/market not open or invalid outcome?) then (yes)
+  :throw domain exceptions\n(e.g. **SelectionNotAccepting**);
+  stop
+endif
+|BetOrderRepo|
+:Insert **BetOrder** + **BetOrderLine**;
+
+|BetPlaceController|
+:Call **MallDictionaryService** resolve(['bet_order_status']);
+:**logHandledApiRequest**;
+:Return **ApiResponse::ok** +\nHTTP **201** (new) or **200** (replay);
+
+|Client|
+:200/201 JSON;
+stop
+
+@enduml

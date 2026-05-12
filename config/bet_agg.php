@@ -11,6 +11,14 @@ return [
         'normalize_5xx_message' => env('BET_AGG_API_NORMALIZE_5XX_MESSAGE', '服务器内部错误'),
     ],
 
+    /**
+     * Decimal snowflake mint via service_foundation (server-side key; not sent by API clients).
+     */
+    'snowflake' => [
+        'access_key' => env('SF_SNOWFLAKE_ACCESS_KEY', ''),
+        'mint_endpoint' => env('BET_FOUNDATION_SNOWFLAKE_MINT_PATH', '/api/snowflake/id'),
+    ],
+
     'foundation' => [
         'base_url' => env('API_GATEWAY_BASE_URL', ''),
         'service_discovery' => [
@@ -24,12 +32,10 @@ return [
         'unauthorized_code' => ResponseConstant::RET_UNAUTHORIZED,
     ],
 
-    'orders' => [
-        'pending_payment_timeout_ms' => (int) env('BET_PENDING_PAYMENT_TIMEOUT_MS', 1_800_000),
-    ],
-
     'points' => [
-        /** Dedicated Foundation user id: receives accepted stakes and funds winner payouts */
-        'bookmaker_uid' => (int) env('BET_BOOKMAKER_UID', 0),
+        /** Score delta on correct prediction (settlement win). */
+        'delta_win' => (int) env('BET_POINTS_DELTA_WIN', 100),
+        /** Magnitude subtracted on incorrect prediction (positive config; applied as negative delta). */
+        'delta_lose' => (int) env('BET_POINTS_DELTA_LOSE', 50),
     ],
 ];

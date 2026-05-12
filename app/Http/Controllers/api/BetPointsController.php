@@ -7,6 +7,7 @@ namespace App\Http\Controllers\api;
 use App\Components\ApiResponse;
 use App\Exceptions\ConfigurationMissingException;
 use App\Exceptions\FoundationAuthRequiredException;
+use App\Http\Concerns\RequiresFoundationUser;
 use App\Http\Controllers\Controller;
 use App\Services\mall\FoundationUser;
 use App\Services\mall\PointsAdminService;
@@ -16,14 +17,14 @@ use Illuminate\Http\Request;
 
 class BetPointsController extends Controller
 {
+    use RequiresFoundationUser;
+
     public function __construct(
         private readonly UserFoundationGateway $foundationGateway,
         private readonly PointsAdminService $points,
     ) {}
 
     /**
-     * Current user's available points balance (integer game points).
-     *
      * @throws FoundationAuthRequiredException
      * @throws ConfigurationMissingException
      */
@@ -38,23 +39,5 @@ class BetPointsController extends Controller
         return response()->json(ApiResponse::ok([
             'balance' => $balance,
         ]));
-    }
-
-    /**
-     * @return array<string, mixed>
-     *
-     * @throws FoundationAuthRequiredException
-     * @throws ConfigurationMissingException
-     */
-    private function requireAuthenticatedUser(Request $request): array
-    {
-        $token = trim((string) $request->header('X-User-Access-Token', ''));
-        if ($token === '') {
-            throw new FoundationAuthRequiredException(
-                'Authentication required. Send header: X-User-Access-Token: <access_token> (raw JWT, no Bearer prefix).'
-            );
-        }
-
-        return $this->foundationGateway->fetchCurrentUser($request);
     }
 }

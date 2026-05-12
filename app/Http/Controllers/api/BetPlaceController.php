@@ -45,11 +45,9 @@ class BetPlaceController extends Controller
             'lines' => 'required|array|min:1|max:1',
             'lines.0.market_id' => 'required|integer|min:1',
             'lines.0.outcome_code' => 'required|string|max:32',
-            'lines.0.stake_points' => 'required|integer|min:1',
-            'lines.0.expected_odds_millis' => 'required|integer|min:1000',
         ]);
 
-        /** @var list<array{market_id: int, outcome_code: string, stake_points: int, expected_odds_millis: int}> $lines */
+        /** @var list<array{market_id: int, outcome_code: string}> $lines */
         $lines = [];
         foreach ($request->input('lines', []) as $line) {
             if (! is_array($line)) {
@@ -58,8 +56,6 @@ class BetPlaceController extends Controller
             $lines[] = [
                 'market_id' => (int) ($line['market_id'] ?? 0),
                 'outcome_code' => trim((string) ($line['outcome_code'] ?? '')),
-                'stake_points' => (int) ($line['stake_points'] ?? 0),
-                'expected_odds_millis' => (int) ($line['expected_odds_millis'] ?? 0),
             ];
         }
 

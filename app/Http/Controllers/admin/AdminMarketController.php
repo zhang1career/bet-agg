@@ -9,16 +9,21 @@ use App\Enums\MarketType;
 use App\Http\Controllers\Controller;
 use App\Models\Game;
 use App\Models\Market;
+use App\Services\mall\serv_fd\CmsGameClient;
+use App\Services\mall\SettlementConsoleOverviewService;
 use App\Support\AdminGameSelectOptionLabels;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use Throwable;
 
 class AdminMarketController extends Controller
 {
     public function __construct(
         private readonly AdminGameSelectOptionLabels $gameSelectLabels,
+        private readonly CmsGameClient $cmsGameClient,
+        private readonly SettlementConsoleOverviewService $settlementOverview,
     ) {}
 
     public function index(Request $request): View
@@ -29,6 +34,21 @@ class AdminMarketController extends Controller
             ->orderByDesc('id')
             ->paginate($perPage)
             ->withQueryString();
+
+        $cmsByRawId = [];
+        try {
+            $rawIds = $markets
+                ->getCollection()
+                ->map(static fn (Market $m): int => (int) ($m->game?->raw_id ?? 0))
+                ->unique()
+                ->filter(static fn (int $r): bool => $r >= 1)
+                ->values()
+                ->all();
+            if ($rawIds !== []) {
+                $cmsByRawId = $this->cmsGameClient->findManyById($rawIds);
+            }
+        } catch (Throwable) {
+        }
 
         $games = Game::query()->orderByDesc('id')->limit(500)->get();
         $gameSelectLabels = $this->gameSelectLabels->mapByLocalId($games);
@@ -44,6 +64,7 @@ class AdminMarketController extends Controller
 
         return view('admin.markets.index', [
             'markets' => $markets,
+            'cmsByRawId' => $cmsByRawId,
             'games' => $games,
             'gameSelectLabels' => $gameSelectLabels,
             'mallCreate' => $mallCreate,
@@ -59,23 +80,13 @@ class AdminMarketController extends Controller
             'name' => 'string|max:256',
             'type' => ['required', 'integer', Rule::enum(MarketType::class)],
             'status' => ['required', 'integer', Rule::enum(MarketStatus::class)],
-            'home_odds_millis' => 'required|integer|min:1000',
-            'draw_odds_millis' => 'required|integer|min:1000',
-            'away_odds_millis' => 'required|integer|min:1000',
         ]);
 
-        $odds = Market::oneX2OddsMillisJson(
-            (int) $v['home_odds_millis'],
-            (int) $v['draw_odds_millis'],
-            (int) $v['away_odds_millis'],
-        );
-
         $market = new Market([
-            'game_id' => (int) $v['game_id'],
+            'gid' => (int) $v['game_id'],
             'type' => MarketType::from((int) $v['type']),
             'name' => trim((string) $v['name']) !== '' ? trim((string) $v['name']) : '胜平负',
             'status' => MarketStatus::from((int) $v['status'])->value,
-            'odds_millis' => $odds,
         ]);
         $market->save();
 
@@ -86,7 +97,15 @@ class AdminMarketController extends Controller
     {
         $market->load(['game.sideASubject', 'game.sideBSubject']);
 
-        return view('admin.markets.show', ['market' => $market]);
+        $mid = $market->id;
+        $gid = $market->gid;
+
+        return view('admin.markets.show', [
+            'market' => $market,
+            'settlementOrderCounts' => $this->settlementOverview->distinctOrderCountsByStatusForMarket($mid),
+            'settlementLineCounts' => $this->settlementOverview->lineResultCountsForMarket($mid),
+            'settlementJobs' => $this->settlementOverview->recentJobsForGame($gid),
+        ]);
     }
 
     public function update(Request $request, Market $market): RedirectResponse
@@ -96,23 +115,13 @@ class AdminMarketController extends Controller
             'name' => 'string|max:256',
             'type' => ['required', 'integer', Rule::enum(MarketType::class)],
             'status' => ['required', 'integer', Rule::enum(MarketStatus::class)],
-            'home_odds_millis' => 'required|integer|min:1000',
-            'draw_odds_millis' => 'required|integer|min:1000',
-            'away_odds_millis' => 'required|integer|min:1000',
         ]);
 
-        $odds = Market::oneX2OddsMillisJson(
-            (int) $v['home_odds_millis'],
-            (int) $v['draw_odds_millis'],
-            (int) $v['away_odds_millis'],
-        );
-
         $market->fill([
-            'game_id' => (int) $v['game_id'],
+            'gid' => (int) $v['game_id'],
             'type' => MarketType::from((int) $v['type']),
             'name' => trim((string) $v['name']) !== '' ? trim((string) $v['name']) : $market->name,
             'status' => MarketStatus::from((int) $v['status'])->value,
-            'odds_millis' => $odds,
         ]);
         $market->save();
 

@@ -18,11 +18,7 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
-/**
- * Read-only order browsing for agents. Bet placement is exclusively done via
- * {@see BetPlaceController}; there is no draft / cancel flow here anymore.
- */
-class BetOrderController extends Controller
+class PredictionOrderController extends Controller
 {
     use RequiresFoundationUser;
 
@@ -50,7 +46,7 @@ class BetOrderController extends Controller
             $items[] = $this->serializeOrderSummary($order);
         }
 
-        $this->logHandledApiRequest($request, ['handler' => 'bet.orders.index']);
+        $this->logHandledApiRequest($request, ['handler' => 'prediction.orders.index']);
 
         return response()->json(ApiResponse::ok([
             'items' => $items,
@@ -81,11 +77,11 @@ class BetOrderController extends Controller
             throw (new ModelNotFoundException)->setModel(BetOrder::class, [$id]);
         }
 
-        $this->logHandledApiRequest($request, ['handler' => 'bet.orders.show', 'order_id' => $id]);
+        $this->logHandledApiRequest($request, ['handler' => 'prediction.orders.show', 'order_id' => $id]);
 
         return response()->json(ApiResponse::ok([
             'order' => BetOrderApiArray::detail($order),
-            '_dict' => $this->dict->resolve(['bet_order_status']),
+            '_dict' => $this->dict->resolve(['bet_order_status', 'order_item_result']),
         ]));
     }
 
@@ -98,7 +94,6 @@ class BetOrderController extends Controller
             'id' => $order->id,
             'uid' => $order->uid,
             'status' => $order->status->value,
-            'total_price' => $order->total_price,
             'ct' => $order->ct,
             'ut' => $order->ut,
         ];

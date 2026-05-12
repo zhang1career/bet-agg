@@ -9,18 +9,18 @@ use Paganini\Constants\ResponseConstant;
 final class BetPlaceRequestIdException extends BetDomainException
 {
     public function __construct(
-        string $message = 'X-Request-Id required (snowflake from POST /api/snowflake/id).',
+        string $message = 'X-Request-Id required (decimal snowflake from POST /api/bet/snowflake on this host).',
     ) {
         parent::__construct($message);
-    }
-
-    public function httpStatus(): int
-    {
-        return 400;
     }
 
     public function errorCode(): int
     {
         return ResponseConstant::RET_MISSING_PARAM;
+    }
+
+    public function httpStatus(): int
+    {
+        return 400;
     }
 }

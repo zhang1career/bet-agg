@@ -20,7 +20,6 @@
                         <th>{{ __('console.table.game') }}</th>
                         <th>{{ __('console.table.name') }}</th>
                         <th>{{ __('console.table.type') }}</th>
-                        <th class="text-end">{{ __('console.table.odds_millis') }}</th>
                         <th>{{ __('console.table.status') }}</th>
                         <th class="text-end text-nowrap">{{ __('console.table.actions') }}</th>
                     </tr>
@@ -31,14 +30,11 @@
                             <td>
                                 <a href="{{ route('admin.markets.show', $m) }}" class="font-monospace">{{ $m->id }}</a>
                             </td>
-                            <td>
-                                <a href="{{ route('admin.games.show', $m->game_id) }}">{{ __('console.markets.game_number', ['id' => $m->game_id]) }}</a>
+                            <td class="small">
+                                <a href="{{ route('admin.games.show', $m->gid) }}">{{ ($cmsByRawId[(int) ($m->game?->raw_id ?? 0)] ?? [])['title'] ?? '—' }}</a>
                             </td>
                             <td>{{ $m->name }}</td>
                             <td class="small font-monospace">{{ $m->type->value }}</td>
-                            <td class="text-end font-monospace small">
-                                {{ json_encode($m->outcomeOddsMillisMap(), JSON_UNESCAPED_UNICODE) }}
-                            </td>
                             <td>
                                 @include('admin.partials.status_label', ['kind' => 'market', 'value' => $m->status])
                                 <span class="text-muted">({{ $m->status }})</span>
@@ -64,12 +60,14 @@
     </div>
 
     {{ $markets->links() }}
+@endsection
 
+@push('modals')
     <div class="modal fade" id="mallModalMarketCreate" tabindex="-1" aria-hidden="true"
          data-mall-modal="1"
          data-mall-strip-query="mall_create game_id"
          @if($mallCreate) data-mall-auto-show="1" @endif>
-        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content">
                 <form method="post" action="{{ route('admin.markets.store') }}">
                     @csrf
@@ -103,23 +101,6 @@
                                 @endforeach
                             </select>
                         </div>
-                        <div class="row g-2 mb-3">
-                            <div class="col-md-4">
-                                <label class="form-label" for="mmc_home_odds">{{ __('console.markets.home_odds') }}</label>
-                                <input type="number" name="home_odds_millis" id="mmc_home_odds" class="form-control" required min="1000"
-                                       value="{{ old('home_odds_millis', 2000) }}">
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label" for="mmc_draw_odds">{{ __('console.markets.draw_odds') }}</label>
-                                <input type="number" name="draw_odds_millis" id="mmc_draw_odds" class="form-control" required min="1000"
-                                       value="{{ old('draw_odds_millis', 2000) }}">
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label" for="mmc_away_odds">{{ __('console.markets.away_odds') }}</label>
-                                <input type="number" name="away_odds_millis" id="mmc_away_odds" class="form-control" required min="1000"
-                                       value="{{ old('away_odds_millis', 2000) }}">
-                            </div>
-                        </div>
                         <div class="mb-0">
                             <label class="form-label" for="mmc_status">{{ __('console.markets.market_status') }}</label>
                             <select name="status" id="mmc_status" class="form-select" required
@@ -137,12 +118,11 @@
     </div>
 
     @if($modalMarket)
-        @php($om = $modalMarket->outcomeOddsMillisMap())
         <div class="modal fade" id="mallModalMarketEdit" tabindex="-1" aria-hidden="true"
              data-mall-modal="1"
              data-mall-strip-query="mall_edit"
              data-mall-auto-show="1">
-            <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
                 <div class="modal-content">
                     <form method="post" action="{{ route('admin.markets.update', $modalMarket) }}">
                         @csrf
@@ -158,7 +138,7 @@
                                     @include('admin.partials.game_select_options', [
                                         'games' => $games,
                                         'gameSelectLabels' => $gameSelectLabels,
-                                        'selectedGameId' => (int) old('game_id', $modalMarket->game_id),
+                                        'selectedGameId' => (int) old('game_id', $modalMarket->gid),
                                     ])
                                 </select>
                             </div>
@@ -177,23 +157,6 @@
                                     @endforeach
                                 </select>
                             </div>
-                            <div class="row g-2 mb-3">
-                                <div class="col-md-4">
-                                    <label class="form-label" for="mme_home_odds">{{ __('console.markets.home_odds') }}</label>
-                                    <input type="number" name="home_odds_millis" id="mme_home_odds" class="form-control" required min="1000"
-                                           value="{{ old('home_odds_millis', $om[\App\Enums\MatchOutcomeCode::HomeWin->value] ?? 2000) }}">
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="form-label" for="mme_draw_odds">{{ __('console.markets.draw_odds') }}</label>
-                                    <input type="number" name="draw_odds_millis" id="mme_draw_odds" class="form-control" required min="1000"
-                                           value="{{ old('draw_odds_millis', $om[\App\Enums\MatchOutcomeCode::Draw->value] ?? 2000) }}">
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="form-label" for="mme_away_odds">{{ __('console.markets.away_odds') }}</label>
-                                    <input type="number" name="away_odds_millis" id="mme_away_odds" class="form-control" required min="1000"
-                                           value="{{ old('away_odds_millis', $om[\App\Enums\MatchOutcomeCode::AwayWin->value] ?? 2000) }}">
-                                </div>
-                            </div>
                             <div class="mb-0">
                                 <label class="form-label" for="mme_status">{{ __('console.markets.market_status') }}</label>
                                 <select name="status" id="mme_status" class="form-select" required
@@ -210,4 +173,4 @@
             </div>
         </div>
     @endif
-@endsection
+@endpush

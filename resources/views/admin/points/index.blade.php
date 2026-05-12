@@ -96,9 +96,9 @@
                         <tr>
                             <th>{{ __('console.table.id') }}</th>
                             <th>{{ __('console.table.uid') }}</th>
-                            <th>{{ __('console.table.oid') }}</th>
-                            <th class="text-end">{{ __('console.table.amount') }}</th>
-                            <th>{{ __('console.table.state') }}</th>
+                            <th>OID</th>
+                            <th class="text-end">Amount</th>
+                            <th>State</th>
                             <th class="text-end text-nowrap">{{ __('console.table.actions') }}</th>
                         </tr>
                         </thead>
@@ -111,11 +111,7 @@
                                 <td>{{ $f->uid }}</td>
                                 <td>{{ $f->oid }}</td>
                                 <td class="text-end font-monospace">{{ number_format((int) $f->amount) }}</td>
-                                <td>
-                                    <span class="badge mall-badge-soft"
-                                          data-mall-dict-code="points_hold_state"
-                                          data-mall-dict-value="{{ $f->state->value }}">{{ $f->state->value }}</span>
-                                </td>
+                                <td class="font-monospace">{{ $f->state->value }}</td>
                                 <td class="text-end text-nowrap">
                                     <button type="button" class="mall-icon-btn d-inline-flex p-1 rounded" title="{{ __('console.points.view') }}"
                                             data-bs-toggle="modal" data-bs-target="#mallModalFlowView"
@@ -142,7 +138,9 @@
         </div>
         {{ $flows->appends(['tab' => 'flows'])->links() }}
     @endif
+@endsection
 
+@push('modals')
     {{-- Open account --}}
     <div class="modal fade" id="mallModalOpenAccount" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
@@ -197,10 +195,6 @@
                             <label class="form-label" for="m-adj-delta">{{ __('console.points.delta') }}</label>
                             <input type="number" name="delta_points" id="m-adj-delta" class="form-control" required value="{{ old('delta_points') }}">
                         </div>
-                        <div class="mb-0">
-                            <label class="form-label" for="m-adj-oid">{{ __('console.points.order_id_optional') }}</label>
-                            <input type="number" name="oid" id="m-adj-oid" class="form-control" min="0" value="{{ old('oid', 0) }}">
-                        </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">{{ __('console.btn.cancel') }}</button>
@@ -242,11 +236,11 @@
                     <dl class="row mb-0">
                         <dt class="col-4">{{ __('console.table.uid') }}</dt>
                         <dd class="col-8" id="m-flow-uid"></dd>
-                        <dt class="col-4">{{ __('console.table.oid') }}</dt>
+                        <dt class="col-4">OID</dt>
                         <dd class="col-8" id="m-flow-oid"></dd>
-                        <dt class="col-4">{{ __('console.table.amount') }}</dt>
+                        <dt class="col-4">Amount</dt>
                         <dd class="col-8 font-monospace" id="m-flow-amount"></dd>
-                        <dt class="col-4">{{ __('console.table.state') }}</dt>
+                        <dt class="col-4">State</dt>
                         <dd class="col-8" id="m-flow-state"></dd>
                         <dt class="col-4">{{ __('console.points.flow_ct_ut') }}</dt>
                         <dd class="col-8" id="m-flow-ctut"></dd>
@@ -258,7 +252,7 @@
             </div>
         </div>
     </div>
-@endsection
+@endpush
 
 @push('scripts')
     <script>
@@ -416,6 +410,7 @@
                         ['m-flow-uid', 'data-flow-uid'],
                         ['m-flow-oid', 'data-flow-oid'],
                         ['m-flow-amount', 'data-flow-amount'],
+                        ['m-flow-state', 'data-flow-state'],
                     ];
                     map.forEach(function (pair) {
                         var el = document.getElementById(pair[0]);
@@ -423,19 +418,6 @@
                             el.textContent = btn.getAttribute(pair[1]) || '—';
                         }
                     });
-                    var stateVal = btn.getAttribute('data-flow-state') || '';
-                    var elState = document.getElementById('m-flow-state');
-                    if (elState) {
-                        if (window.mallDictEnsure) {
-                            window.mallDictEnsure(['points_hold_state'], function () {
-                                elState.textContent = window.mallDictLabel
-                                    ? window.mallDictLabel('points_hold_state', stateVal)
-                                    : stateVal;
-                            });
-                        } else {
-                            elState.textContent = stateVal || '—';
-                        }
-                    }
                     var ct = btn.getAttribute('data-flow-ct') || '';
                     var ut = btn.getAttribute('data-flow-ut') || '';
                     var elCt = document.getElementById('m-flow-ctut');

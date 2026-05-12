@@ -20,22 +20,22 @@ class MallDictApiTest extends TestCase
             ->assertJsonPath('errorCode', ResponseConstant::RET_MISSING_PARAM);
     }
 
-    public function test_dict_returns_points_hold_state(): void
+    public function test_dict_returns_bet_order_status(): void
     {
-        $this->getJson('/api/bet/dict?codes=points_hold_state')
+        $this->getJson('/api/bet/dict?codes=bet_order_status')
             ->assertOk()
             ->assertJsonPath('errorCode', ResponseConstant::RET_OK)
-            ->assertJsonPath('data.points_hold_state.0.v', '10')
-            ->assertJsonPath('data.points_hold_state.0.k', 'try pending');
+            ->assertJsonPath('data.bet_order_status.1.v', '1')
+            ->assertJsonPath('data.bet_order_status.1.k', 'recorded');
     }
 
     public function test_dict_ignores_unknown_codes(): void
     {
-        $this->getJson('/api/bet/dict?codes=unknown_code,points_hold_state')
+        $this->getJson('/api/bet/dict?codes=unknown_code,bet_order_status')
             ->assertOk()
             ->assertJsonPath('errorCode', ResponseConstant::RET_OK)
             ->assertJsonMissingPath('data.unknown_code')
-            ->assertJsonPath('data.points_hold_state.0.v', '10');
+            ->assertJsonPath('data.bet_order_status.1.v', '1');
     }
 
     public function test_dict_returns_game_status(): void
@@ -54,5 +54,12 @@ class MallDictApiTest extends TestCase
             ->assertJsonPath('errorCode', ResponseConstant::RET_OK)
             ->assertJsonPath('data.market_status.0.v', '1')
             ->assertJsonPath('data.market_status.0.k', 'Open');
+    }
+
+    public function test_dict_codes_query_max_length(): void
+    {
+        $tooLong = str_repeat('a', 513);
+        $this->getJson('/api/bet/dict?codes='.$tooLong)
+            ->assertStatus(422);
     }
 }
