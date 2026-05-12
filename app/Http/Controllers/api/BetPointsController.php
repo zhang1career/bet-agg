@@ -9,18 +9,19 @@ use App\Exceptions\ConfigurationMissingException;
 use App\Exceptions\FoundationAuthRequiredException;
 use App\Http\Concerns\RequiresFoundationUser;
 use App\Http\Controllers\Controller;
-use App\Models\PointsBalance;
 use App\Services\mall\FoundationUser;
+use App\Services\mall\PointsAdminService;
 use App\Services\user\UserFoundationGateway;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
-class PredictionReputationController extends Controller
+class BetPointsController extends Controller
 {
     use RequiresFoundationUser;
 
     public function __construct(
         private readonly UserFoundationGateway $foundationGateway,
+        private readonly PointsAdminService $points,
     ) {}
 
     /**
@@ -30,17 +31,13 @@ class PredictionReputationController extends Controller
     public function show(Request $request): JsonResponse
     {
         $user = $this->requireAuthenticatedUser($request);
-        $uid = FoundationUser::id($user);
 
-        $row = PointsBalance::query()->firstOrCreate(
-            ['uid' => $uid],
-            ['balance' => 0],
-        );
+        $balance = $this->points->availableBalance(FoundationUser::id($user));
 
-        $this->logHandledApiRequest($request, ['handler' => 'prediction.reputation.show', 'uid' => $uid]);
+        $this->logHandledApiRequest($request, ['handler' => 'bet.points.show']);
 
         return response()->json(ApiResponse::ok([
-            'score' => (int) $row->balance,
+            'balance' => $balance,
         ]));
     }
 }

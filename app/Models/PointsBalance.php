@@ -8,7 +8,7 @@ use App\Models\concerns\HasMillisTimestamps;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * Row in {@code points_balance} (reputation score in {@code balance}; not currency).
+ * Row in {@code points_balance} (user score in {@code balance}; not redeemable currency).
  *
  * @property int $id
  * @property int $uid

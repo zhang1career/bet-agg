@@ -6,7 +6,7 @@ namespace App\Exceptions\bet;
 
 use Paganini\Constants\ResponseConstant;
 
-final class PredictionRequestIdException extends BetDomainException
+final class BetPlaceRequestIdException extends BetDomainException
 {
     public function __construct(
         string $message = 'X-Request-Id required (decimal snowflake from POST /api/bet/snowflake on this host).',

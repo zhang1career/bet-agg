@@ -6,12 +6,12 @@ namespace Tests\Feature;
 
 use App\Enums\BetOrderStatus;
 use App\Enums\MatchOutcomeCode;
-use App\Enums\ReputationFlowKind;
+use App\Enums\PointsFlowKind;
 use App\Models\BetOrder;
 use App\Models\PointsBalance;
 use App\Models\PointsFlow;
+use App\Services\mall\BetPlaceService;
 use App\Services\mall\BetSettlementService;
-use App\Services\mall\PredictionSubmitService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Paganini\Batch\DTO\BatchRunResult;
@@ -41,8 +41,8 @@ final class BetSettlementFlowTest extends TestCase
         config()->set('api_gw.base_url', 'http://foundation.local');
         config()->set('bet_agg.foundation.base_url', 'http://foundation.local');
         config()->set('bet_agg.foundation.me_endpoint', '/api/user/me');
-        config()->set('bet_agg.reputation.delta_win', 10);
-        config()->set('bet_agg.reputation.delta_lose', 5);
+        config()->set('bet_agg.points.delta_win', 10);
+        config()->set('bet_agg.points.delta_lose', 5);
     }
 
     /**
@@ -58,7 +58,7 @@ final class BetSettlementFlowTest extends TestCase
      */
     private function submitWithIds(array $ids, int $idemSeed, string $outcomeCode = 'home_win'): int
     {
-        $result = app(PredictionSubmitService::class)->submit(42, self::SNOWFLAKE_BASE + $idemSeed, [
+        $result = app(BetPlaceService::class)->place(42, self::SNOWFLAKE_BASE + $idemSeed, [
             [
                 'market_id' => $ids['market_id'],
                 'outcome_code' => $outcomeCode,
@@ -94,7 +94,7 @@ final class BetSettlementFlowTest extends TestCase
         $this->assertSame(10, (int) PointsBalance::query()->where('uid', 42)->value('balance'));
         $this->assertSame(1, (int) PointsFlow::query()
             ->where('oid', $orderId)
-            ->where('state', ReputationFlowKind::WinCredit->value)
+            ->where('state', PointsFlowKind::WinCredit->value)
             ->count());
     }
 
@@ -114,7 +114,7 @@ final class BetSettlementFlowTest extends TestCase
         $this->assertSame(95, (int) PointsBalance::query()->where('uid', 42)->value('balance'));
         $this->assertSame(1, (int) PointsFlow::query()
             ->where('oid', $orderId)
-            ->where('state', ReputationFlowKind::LossDebit->value)
+            ->where('state', PointsFlowKind::LossDebit->value)
             ->count());
     }
 

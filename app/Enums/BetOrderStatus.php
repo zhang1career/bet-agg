@@ -18,7 +18,7 @@ enum BetOrderStatus: int implements HasDictionaryLabel
     case Void = 5;
     /**
      * Settlement attempted but the inner-phase transaction was rolled back
-     * (e.g. reputation ledger failure). The order is
+     * (e.g. points ledger failure). The order is
      * parked here for manual review; once the underlying issue is resolved
      * the operator can re-run settlement which will transition to a terminal
      * outcome.

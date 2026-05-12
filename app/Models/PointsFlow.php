@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use App\Enums\ReputationFlowKind;
+use App\Enums\PointsFlowKind;
 use App\Models\concerns\HasMillisTimestamps;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -16,7 +16,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $uid
  * @property int $oid
  * @property int $amount
- * @property ReputationFlowKind $state
+ * @property PointsFlowKind $state
  * @property int $ct
  * @property int $ut
  */
@@ -41,7 +41,7 @@ class PointsFlow extends Model
         'uid' => 'integer',
         'oid' => 'integer',
         'amount' => 'integer',
-        'state' => ReputationFlowKind::class,
+        'state' => PointsFlowKind::class,
         'ct' => 'integer',
         'ut' => 'integer',
     ];

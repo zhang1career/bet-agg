@@ -14,7 +14,7 @@ use Paganini\Constants\ResponseConstant;
 use Tests\Support\CatalogSeeder;
 use Tests\TestCase;
 
-final class PredictionSubmitApiTest extends TestCase
+final class BetPlaceApiTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -43,14 +43,14 @@ final class PredictionSubmitApiTest extends TestCase
      * @param  array<string, mixed>  $body
      * @param  array<string, string>  $headers
      */
-    private function submit(array $body, array $headers): TestResponse
+    private function place(array $body, array $headers): TestResponse
     {
         $req = $this;
         foreach ($headers as $k => $v) {
             $req = $req->withHeader($k, $v);
         }
 
-        return $req->postJson('/api/bet/submit', $body);
+        return $req->postJson('/api/bet/place', $body);
     }
 
     /**
@@ -66,7 +66,7 @@ final class PredictionSubmitApiTest extends TestCase
 
     public function test_requires_authentication(): void
     {
-        $this->postJson('/api/bet/submit', [
+        $this->postJson('/api/bet/place', [
             'lines' => [$this->line(1, MatchOutcomeCode::HomeWin->value)],
         ])->assertStatus(401)
             ->assertJsonPath('errorCode', ResponseConstant::RET_UNAUTHORIZED);
@@ -77,7 +77,7 @@ final class PredictionSubmitApiTest extends TestCase
         $this->fakeUserMe(42);
         $cat = CatalogSeeder::openHomeWinMarket();
 
-        $this->submit(
+        $this->place(
             ['lines' => [$this->line($cat['market_id'], $cat['outcome_code'])]],
             ['X-User-Access-Token' => 'tok'],
         )
@@ -90,7 +90,7 @@ final class PredictionSubmitApiTest extends TestCase
         $this->fakeUserMe(42);
         $cat = CatalogSeeder::openHomeWinMarket();
 
-        $this->submit(
+        $this->place(
             ['lines' => [$this->line($cat['market_id'], $cat['outcome_code'])]],
             ['X-User-Access-Token' => 'tok', 'X-Request-Id' => 'not-a-number'],
         )
@@ -104,7 +104,7 @@ final class PredictionSubmitApiTest extends TestCase
         $cat = CatalogSeeder::openHomeWinMarket();
         $idem = self::SNOWFLAKE_BASE + 1;
 
-        $res = $this->submit(
+        $res = $this->place(
             ['lines' => [$this->line($cat['market_id'], $cat['outcome_code'])]],
             ['X-User-Access-Token' => 'tok', 'X-Request-Id' => (string) $idem],
         );
@@ -127,14 +127,14 @@ final class PredictionSubmitApiTest extends TestCase
         $cat = CatalogSeeder::openHomeWinMarket();
         $idem = self::SNOWFLAKE_BASE + 2;
 
-        $first = $this->submit(
+        $first = $this->place(
             ['lines' => [$this->line($cat['market_id'], $cat['outcome_code'])]],
             ['X-User-Access-Token' => 'tok', 'X-Request-Id' => (string) $idem],
         )->assertCreated();
 
         $orderId = (int) $first->json('data.order.id');
 
-        $second = $this->submit(
+        $second = $this->place(
             ['lines' => [$this->line($cat['market_id'], $cat['outcome_code'])]],
             ['X-User-Access-Token' => 'tok', 'X-Request-Id' => (string) $idem],
         );

@@ -11,7 +11,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 /**
- * Public leaderboard: uid + reputation score only (no off-app links).
+ * Public leaderboard: uid + score (from points balance).
  */
 class PredictionLeaderboardController extends Controller
 {

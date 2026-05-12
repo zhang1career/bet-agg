@@ -7,14 +7,14 @@ namespace App\Services\mall\settlement;
 use App\Enums\BetLineResult;
 use App\Enums\BetOrderStatus;
 use App\Models\BetOrder;
-use App\Services\mall\ReputationLedgerService;
+use App\Services\mall\PointsLedgerService;
 use Paganini\Batch\Contracts\BatchItemHandlerContract;
 use Paganini\Batch\DTO\BatchItem;
 use RuntimeException;
 
 final readonly class SettlementBatchItemHandler implements BatchItemHandlerContract
 {
-    public function __construct(private ReputationLedgerService $reputation) {}
+    public function __construct(private PointsLedgerService $pointsLedger) {}
 
     public function handle(BatchItem $item, array $jobPayload): void
     {
@@ -73,9 +73,9 @@ final readonly class SettlementBatchItemHandler implements BatchItemHandlerContr
         $order->save();
 
         if ($nextOrder === BetOrderStatus::Won) {
-            $this->reputation->creditWin((int) $order->uid, $orderId);
+            $this->pointsLedger->creditWin((int) $order->uid, $orderId);
         } elseif ($nextOrder === BetOrderStatus::Lost) {
-            $this->reputation->debitLoss((int) $order->uid, $orderId);
+            $this->pointsLedger->debitLoss((int) $order->uid, $orderId);
         }
     }
 }

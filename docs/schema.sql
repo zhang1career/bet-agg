@@ -1,4 +1,4 @@
--- bet_agg schema (reputation-based prediction; no points / odds columns)
+-- bet_agg schema (prediction + points tables; settlement deltas on points_balance / points_flow)
 -- MySQL 5.7+ / utf8mb4
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
@@ -41,12 +41,12 @@ CREATE TABLE IF NOT EXISTS `order_item` (
 CREATE TABLE IF NOT EXISTS `points_balance` (
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `uid` bigint(20) unsigned NOT NULL DEFAULT '0' COMMENT 'user ID',
-  `balance` bigint(20) NOT NULL DEFAULT '0' COMMENT 'reputation (not redeemable)',
+  `balance` bigint(20) NOT NULL DEFAULT '0' COMMENT 'user points score (non-currency in current flows)',
   `ct` bigint(20) unsigned NOT NULL DEFAULT '0',
   `ut` bigint(20) unsigned NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE KEY `uni_points_balance_uid` (`uid`) USING BTREE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC COMMENT='User reputation';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC COMMENT='User points balance';
 
 CREATE TABLE IF NOT EXISTS `points_flow` (
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
@@ -59,7 +59,7 @@ CREATE TABLE IF NOT EXISTS `points_flow` (
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE KEY `uni_points_flow_oid_state` (`oid`,`state`),
   KEY `idx_points_flow_uid` (`uid`) USING BTREE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC COMMENT='Settlement-driven reputation ledger';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC COMMENT='Settlement-driven points ledger';
 
 CREATE TABLE IF NOT EXISTS `biz_game` (
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,

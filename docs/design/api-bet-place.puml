@@ -20,31 +20,24 @@ endif
 :Return user payload;
 |BetPlaceController|
 :**requirePlaceRequestId** (**X-Request-Id** positive decimal);
-:Validate body **lines** (exactly one line,\nmarket_id, outcome_code, stake_points, expected_odds_millis);
+:Validate body **lines** (exactly one line,\nmarket_id, outcome_code);
 
 |BetPlaceService|
 :If idempotent row exists\n(**BetOrderRepo::findWithLinesByUserIdem**)\nthen return replay;
-:Read **bookmaker_uid** from config;
 note right
   Repo steps below run inside
   **DB::transaction**
 end note
 |MarketRepo|
-:**lockWithGameAndSubjectsForBet**(market_id);
+:**lockWithGameAndSubjectsForPrediction**(market_id);
 |SyntheticMatchMarket|
-:Resolve odds for **outcome_code**;
-if (game/market not open or odds mismatch?) then (yes)
-  :throw domain exceptions\n(**SelectionNotAccepting**, **OddsMoved**, etc.);
+:Assert **outcome_code** valid for market (**assertValidOutcome**);
+if (game/market not open or invalid outcome?) then (yes)
+  :throw domain exceptions\n(e.g. **SelectionNotAccepting**);
   stop
 endif
-|PointsBalanceRepo|
-:Lock/create player balance;
-:Debit stake (insufficient → **InsufficientPointsException**);
 |BetOrderRepo|
 :Insert **BetOrder** + **BetOrderLine**;
-:Insert **PointsFlow** (stake);
-|BetPlaceService|
-:Injected **PointsAdminService** — **creditBookmakerAcceptedStake**\n(service layer only: repo does not call services);
 
 |BetPlaceController|
 :Call **MallDictionaryService** resolve(['bet_order_status']);

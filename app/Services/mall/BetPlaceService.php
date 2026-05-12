@@ -18,9 +18,9 @@ use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
 /**
- * Records a single-outcome prediction before settlement; no stake or odds.
+ * Records a single-outcome selection before settlement (current catalog: no stake or odds on the order line).
  */
-final readonly class PredictionSubmitService
+final readonly class BetPlaceService
 {
     public function __construct(
         private SyntheticMatchMarket $synthetic,
@@ -32,7 +32,7 @@ final readonly class PredictionSubmitService
      * @param  list<array{market_id: int, outcome_code: string}>  $lines
      * @return array{order: BetOrder, is_replay: bool}
      */
-    public function submit(int $uid, int $idemKey, array $lines): array
+    public function place(int $uid, int $idemKey, array $lines): array
     {
         if ($uid < 1) {
             throw new RuntimeException('Invalid uid.');
@@ -41,7 +41,7 @@ final readonly class PredictionSubmitService
             throw new RuntimeException('Idempotency key must be a positive integer.');
         }
         if (count($lines) !== 1) {
-            throw new RuntimeException('Only single-outcome predictions are supported.');
+            throw new RuntimeException('Only single-outcome selections are supported.');
         }
 
         $existingOrder = $this->findExistingByIdemKey($uid, $idemKey);
@@ -55,7 +55,7 @@ final readonly class PredictionSubmitService
                 $marketId = (int) ($line['market_id'] ?? 0);
                 $outcomeCode = trim((string) ($line['outcome_code'] ?? ''));
                 if ($marketId < 1 || $outcomeCode === '') {
-                    throw new RuntimeException('Invalid prediction line.');
+                    throw new RuntimeException('Invalid bet line.');
                 }
 
                 $market = $this->loadAndValidateMarketLeg($marketId, $outcomeCode);

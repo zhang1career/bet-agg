@@ -4,32 +4,32 @@ declare(strict_types=1);
 
 namespace App\Services\mall;
 
-use App\Enums\ReputationFlowKind;
+use App\Enums\PointsFlowKind;
 use App\Models\PointsFlow;
 use App\Repos\mall\PointsBalanceRepo;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Applies settlement reputation deltas; idempotent per (oid, state) on {@code points_flow}.
+ * Applies settlement score deltas on {@code points_balance} / {@code points_flow}; idempotent per (oid, state).
  */
-final readonly class ReputationLedgerService
+final readonly class PointsLedgerService
 {
     public function __construct(private PointsBalanceRepo $profiles) {}
 
     public function creditWin(int $uid, int $betOrderId): void
     {
-        $delta = max(1, (int) config('bet_agg.reputation.delta_win'));
-        $this->applyOnce($uid, $betOrderId, $delta, ReputationFlowKind::WinCredit);
+        $delta = max(1, (int) config('bet_agg.points.delta_win'));
+        $this->applyOnce($uid, $betOrderId, $delta, PointsFlowKind::WinCredit);
     }
 
     public function debitLoss(int $uid, int $betOrderId): void
     {
-        $loss = max(1, (int) config('bet_agg.reputation.delta_lose'));
+        $loss = max(1, (int) config('bet_agg.points.delta_lose'));
 
-        $this->applyOnce($uid, $betOrderId, -$loss, ReputationFlowKind::LossDebit);
+        $this->applyOnce($uid, $betOrderId, -$loss, PointsFlowKind::LossDebit);
     }
 
-    private function applyOnce(int $uid, int $betOrderId, int $delta, ReputationFlowKind $kind): void
+    private function applyOnce(int $uid, int $betOrderId, int $delta, PointsFlowKind $kind): void
     {
         DB::transaction(function () use ($uid, $betOrderId, $delta, $kind): void {
             $exists = PointsFlow::query()

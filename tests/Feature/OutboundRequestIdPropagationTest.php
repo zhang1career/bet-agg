@@ -36,7 +36,7 @@ final class OutboundRequestIdPropagationTest extends TestCase
         $this->withHeaders([
             'X-User-Access-Token' => 'jwt.test.token',
             OutboundRequestIdMiddleware::HEADER => 'req-corr-abc-123',
-        ])->getJson('/api/bet/reputation')->assertOk();
+        ])->getJson('/api/bet/points')->assertOk();
 
         Http::assertSent(static function ($request): bool {
             return $request->url() === 'http://foundation.local/api/user/me'

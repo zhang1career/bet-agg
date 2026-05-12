@@ -104,7 +104,7 @@ final class OpenApiRoutesContractTest extends TestCase
     public static function examplePayloadProvider(): array
     {
         return [
-            ['BetSubmitBody'],
+            ['BetPlaceBody'],
             ['ApiEnvelopeSuccess'],
         ];
     }

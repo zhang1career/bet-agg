@@ -32,14 +32,10 @@ return [
         'unauthorized_code' => ResponseConstant::RET_UNAUTHORIZED,
     ],
 
-    'orders' => [
-        'pending_payment_timeout_ms' => (int) env('BET_PENDING_PAYMENT_TIMEOUT_MS', 1_800_000),
-    ],
-
-    'reputation' => [
-        /** Reputation score delta on correct prediction (non-currency). */
-        'delta_win' => (int) env('BET_REPUTATION_DELTA_WIN', 10),
+    'points' => [
+        /** Score delta on correct prediction (settlement win). */
+        'delta_win' => (int) env('BET_POINTS_DELTA_WIN', 100),
         /** Magnitude subtracted on incorrect prediction (positive config; applied as negative delta). */
-        'delta_lose' => (int) env('BET_REPUTATION_DELTA_LOSE', 5),
+        'delta_lose' => (int) env('BET_POINTS_DELTA_LOSE', 50),
     ],
 ];

@@ -121,7 +121,7 @@ class AdminPointsController extends Controller
             DB::transaction(function () use ($uid, $initial): void {
                 $p = PointsBalance::query()->where('uid', $uid)->lockForUpdate()->first();
                 if ($p !== null) {
-                    throw new RuntimeException('Reputation profile already exists for this user.');
+                    throw new RuntimeException('Points account already exists for this user.');
                 }
                 $row = new PointsBalance(['uid' => $uid, 'balance' => $initial]);
                 $row->save();
@@ -132,7 +132,7 @@ class AdminPointsController extends Controller
                 ->withInput();
         }
 
-        return redirect()->route('admin.points.index', ['tab' => 'balances'])->with('status', 'Reputation profile created.');
+        return redirect()->route('admin.points.index', ['tab' => 'balances'])->with('status', 'Points account created.');
     }
 
     public function adjust(Request $request): RedirectResponse
@@ -149,7 +149,7 @@ class AdminPointsController extends Controller
             DB::transaction(function () use ($uid, $delta): void {
                 $p = PointsBalance::query()->where('uid', $uid)->lockForUpdate()->first();
                 if ($p === null) {
-                    throw new RuntimeException('Reputation profile not found for this user.');
+                    throw new RuntimeException('Points account not found for this user.');
                 }
                 $p->balance = $p->balance + $delta;
                 $p->save();
@@ -160,7 +160,7 @@ class AdminPointsController extends Controller
                 ->withInput();
         }
 
-        return redirect()->route('admin.points.index', ['tab' => 'balances'])->with('status', 'Reputation score updated.');
+        return redirect()->route('admin.points.index', ['tab' => 'balances'])->with('status', 'Points balance updated.');
     }
 
     public function destroyBalance(int $id): RedirectResponse

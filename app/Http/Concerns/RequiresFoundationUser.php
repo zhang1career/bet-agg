@@ -20,7 +20,7 @@ use Psr\SimpleCache\InvalidArgumentException;
  * {@code Authorization: Bearer} for this header — that scheme is reserved elsewhere).
  *
  * The consuming class must expose {@see UserFoundationGateway} as a constructor-promoted
- * property {@code $foundationGateway} (same pattern as {@see PredictionSubmitController}).
+ * property {@code $foundationGateway} (same pattern as {@see BetPlaceController}).
  */
 trait RequiresFoundationUser
 {
