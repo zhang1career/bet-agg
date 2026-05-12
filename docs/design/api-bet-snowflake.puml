@@ -6,7 +6,7 @@ skinparam ActivityBorderColor #333333
 
 |Client|
 start
-:POST /api/bet/snowflake\nHeader **X-User-Access-Token** (raw JWT);
+:POST /api/bet/snowflake\nHeader **X-User-Access-Token** only (raw JWT; no Bearer prefix);
 
 |SnowflakeIdController|
 :requireAuthenticatedUser() via **RequiresFoundationUser**;

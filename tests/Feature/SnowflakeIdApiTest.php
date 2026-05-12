@@ -53,6 +53,16 @@ final class SnowflakeIdApiTest extends TestCase
         });
     }
 
+    public function test_authorization_bearer_without_x_header_is_unauthorized(): void
+    {
+        config()->set('bet_agg.snowflake.access_key', 'k');
+
+        $this->withHeaders(['Authorization' => 'Bearer unrelated-bearer-purpose'])
+            ->postJson('/api/bet/snowflake')
+            ->assertStatus(401)
+            ->assertJsonPath('errorCode', ResponseConstant::RET_UNAUTHORIZED);
+    }
+
     public function test_requires_access_token(): void
     {
         config()->set('bet_agg.snowflake.access_key', 'k');

@@ -43,8 +43,8 @@ endif
 |BetOrderRepo|
 :Insert **BetOrder** + **BetOrderLine**;
 :Insert **PointsFlow** (stake);
-|PointsAdminService|
-:**creditBookmakerAcceptedStake**;
+|BetPlaceService|
+:Injected **PointsAdminService** — **creditBookmakerAcceptedStake**\n(service layer only: repo does not call services);
 
 |BetPlaceController|
 :Call **MallDictionaryService** resolve(['bet_order_status']);

@@ -16,6 +16,9 @@ use Psr\SimpleCache\InvalidArgumentException;
 /**
  * Shared Foundation user resolution for API controllers.
  *
+ * Authenticated endpoints require {@code X-User-Access-Token} only (raw JWT; do not reuse
+ * {@code Authorization: Bearer} for this header — that scheme is reserved elsewhere).
+ *
  * The consuming class must expose {@see UserFoundationGateway} as a constructor-promoted
  * property {@code $foundationGateway} (same pattern as {@see PredictionSubmitController}).
  */

@@ -2,7 +2,7 @@
     "openapi": "3.0.3",
     "info": {
         "title": "bet-agg HTTP API",
-        "description": "Prediction + reputation service (no stakes, no odds, no redeemable balance). Public JSON under `/api/bet/*` plus `/api/openapi.json` and `/up`. Auth: gateway forwards `Authorization: Bearer` as `X-User-Access-Token` (raw JWT); bet-agg validates `X-User-Access-Token` only. `POST /api/bet/snowflake` mints `data.id` for `X-Request-Id` on `POST /api/bet/submit` (idempotency). Responses use ApiResponse envelope: `data`, `errorCode`, `message`, `_req_id`.",
+        "description": "Prediction + reputation service (no stakes, no odds, no redeemable balance). Public JSON under `/api/bet/*` plus `/api/openapi.json` and `/up`. Auth to **bet-agg** is **`X-User-Access-Token` only** (raw JWT, no Bearer prefix): copy the user token into this header upstream; **`Authorization` is not validated** for foundation user login on these routes (Bearer is reserved for other gateways). `POST /api/bet/snowflake` mints `data.id` for `X-Request-Id` on `POST /api/bet/submit` (idempotency). Responses use ApiResponse envelope: `data`, `errorCode`, `message`, `_req_id`.",
         "version": "2.0.0"
     },
     "servers": [
@@ -27,17 +27,11 @@
     ],
     "components": {
         "securitySchemes": {
-            "BearerAuth": {
-                "type": "http",
-                "scheme": "bearer",
-                "bearerFormat": "JWT",
-                "description": "User access token at gateway edge."
-            },
             "UserAccessToken": {
                 "type": "apiKey",
                 "in": "header",
                 "name": "X-User-Access-Token",
-                "description": "Raw JWT reaching bet-agg."
+                "description": "Foundation user JWT (raw). Required for authenticated bet routes."
             }
         },
         "schemas": {
@@ -651,9 +645,6 @@
                 "summary": "My prediction orders",
                 "security": [
                     {
-                        "BearerAuth": []
-                    },
-                    {
                         "UserAccessToken": []
                     }
                 ],
@@ -699,9 +690,6 @@
                 ],
                 "summary": "Order detail",
                 "security": [
-                    {
-                        "BearerAuth": []
-                    },
                     {
                         "UserAccessToken": []
                     }
@@ -749,9 +737,6 @@
                 "summary": "My reputation score",
                 "security": [
                     {
-                        "BearerAuth": []
-                    },
-                    {
                         "UserAccessToken": []
                     }
                 ],
@@ -788,9 +773,6 @@
                 "summary": "Mint snowflake id",
                 "security": [
                     {
-                        "BearerAuth": []
-                    },
-                    {
                         "UserAccessToken": []
                     }
                 ],
@@ -826,9 +808,6 @@
                 ],
                 "summary": "Submit prediction",
                 "security": [
-                    {
-                        "BearerAuth": []
-                    },
                     {
                         "UserAccessToken": []
                     }

@@ -6,10 +6,7 @@ skinparam ActivityBorderColor #333333
 
 |Client|
 start
-:GET /api/bet/orders\nor GET /api/bet/orders/{id}\nAuth (either):\n**Authorization: Bearer** login token\nor **X-User-Access-Token:** raw token (no Bearer prefix)\n(if both sent, **X-User-Access-Token** wins);
-
-|AcceptBearerAccessToken|
-:If **X-User-Access-Token** empty\nand **Authorization** is **Bearer** scheme,\ncopy Bearer token into **X-User-Access-Token**;
+:GET /api/bet/orders\nor GET /api/bet/orders/{id}\nHeader **X-User-Access-Token** only (raw JWT; no Bearer prefix);
 
 |PredictionOrderController|
 :requireAuthenticatedUser() via **RequiresFoundationUser**;
