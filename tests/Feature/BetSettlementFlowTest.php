@@ -12,7 +12,6 @@ use App\Models\PointsBalance;
 use App\Models\PointsFlow;
 use App\Services\mall\BetPlaceService;
 use App\Services\mall\BetSettlementService;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Paganini\Batch\DTO\BatchRunResult;
 use Paganini\Batch\Enums\JobStatus;
@@ -22,8 +21,6 @@ use Tests\TestCase;
 
 final class BetSettlementFlowTest extends TestCase
 {
-    use RefreshDatabase;
-
     private const SNOWFLAKE_BASE = 7_300_000_000_000_000;
 
     protected function setUp(): void
@@ -112,6 +109,25 @@ final class BetSettlementFlowTest extends TestCase
         $this->assertSame(BetOrderStatus::Lost, $order->status);
 
         $this->assertSame(95, (int) PointsBalance::query()->where('uid', 42)->value('balance'));
+        $this->assertSame(1, (int) PointsFlow::query()
+            ->where('oid', $orderId)
+            ->where('state', PointsFlowKind::LossDebit->value)
+            ->count());
+    }
+
+    public function test_loser_settlement_debits_from_zero_balance(): void
+    {
+        $ids = $this->seedFixture();
+        $orderId = $this->submitWithIds($ids, 6, MatchOutcomeCode::HomeWin->value);
+
+        $this->assertSame(0, (int) PointsBalance::query()->where('uid', 42)->value('balance'));
+
+        $result = $this->recordAndSettle($ids['game_local_id'], [MatchOutcomeCode::AwayWin->value]);
+        $this->assertSame(JobStatus::Completed, $result->status);
+
+        $order = BetOrder::query()->whereKey($orderId)->firstOrFail();
+        $this->assertSame(BetOrderStatus::Lost, $order->status);
+        $this->assertSame(-5, (int) PointsBalance::query()->where('uid', 42)->value('balance'));
         $this->assertSame(1, (int) PointsFlow::query()
             ->where('oid', $orderId)
             ->where('state', PointsFlowKind::LossDebit->value)

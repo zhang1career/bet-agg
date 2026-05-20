@@ -6,6 +6,7 @@ use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
+use Tests\Support\BetAggSchema;
 
 abstract class TestCase extends BaseTestCase
 {
@@ -87,6 +88,10 @@ abstract class TestCase extends BaseTestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        if ($this->app->environment('testing')) {
+            BetAggSchema::apply();
+        }
 
         Http::fake(self::cmsGatewayGameFakes());
     }
