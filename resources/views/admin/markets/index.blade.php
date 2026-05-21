@@ -34,7 +34,10 @@
                                 <a href="{{ route('admin.games.show', $m->gid) }}">{{ ($cmsByRawId[(int) ($m->game?->raw_id ?? 0)] ?? [])['title'] ?? '—' }}</a>
                             </td>
                             <td>{{ $m->name }}</td>
-                            <td class="small font-monospace">{{ $m->type->value }}</td>
+                            <td class="small">
+                                <span data-mall-dict-code="market_type" data-mall-dict-value="{{ $m->type->value }}">{{ $m->type->value }}</span>
+                                <span class="text-muted font-monospace">({{ $m->type->value }})</span>
+                            </td>
                             <td>
                                 @include('admin.partials.status_label', ['kind' => 'market', 'value' => $m->status])
                                 <span class="text-muted">({{ $m->status }})</span>

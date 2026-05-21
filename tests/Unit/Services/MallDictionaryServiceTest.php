@@ -45,6 +45,20 @@ final class MallDictionaryServiceTest extends TestCase
         $this->assertSame('pending', $first['k']);
     }
 
+    public function test_resolve_market_type_uses_dictionary_labels(): void
+    {
+        $svc = new MallDictionaryService;
+
+        $out = $svc->resolve(['market_type']);
+
+        $this->assertArrayHasKey('market_type', $out);
+        $rows = $out['market_type'];
+        $this->assertNotEmpty($rows);
+        $first = $rows[0];
+        $this->assertSame('0', $first['v']);
+        $this->assertSame('胜平负', $first['k']);
+    }
+
     public function test_resolve_returns_only_requested_known_codes(): void
     {
         $svc = new MallDictionaryService;

@@ -9,6 +9,7 @@ use App\Enums\BetLineResult;
 use App\Enums\BetOrderStatus;
 use App\Enums\GameStatus;
 use App\Enums\MarketStatus;
+use App\Enums\MarketType;
 use App\Enums\SettleJobStatus;
 use BackedEnum;
 use InvalidArgumentException;
@@ -20,6 +21,7 @@ final class MallDictionaryService
     private const CODE_TO_ENUM = [
         'bet_order_status' => BetOrderStatus::class,
         'market_status' => MarketStatus::class,
+        'market_type' => MarketType::class,
         'game_status' => GameStatus::class,
         'order_item_result' => BetLineResult::class,
         'settle_job_status' => SettleJobStatus::class,
