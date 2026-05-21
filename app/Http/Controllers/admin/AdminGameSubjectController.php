@@ -17,9 +17,16 @@ class AdminGameSubjectController extends Controller
     public function index(Request $request): View
     {
         $perPage = min(50, max(1, (int) $request->query('per_page', 20)));
-        $subjects = GameSubject::query()
+        $groupFilter = $this->parseGroupFilter($request->query('group'));
+
+        $subjectsQuery = GameSubject::query()
+            ->with(['groups' => static fn ($q) => $q->orderBy('code')])
             ->withCount('groups')
-            ->orderBy('name')
+            ->orderBy('name');
+        if ($groupFilter !== null) {
+            $subjectsQuery->whereHas('groups', static fn ($q) => $q->where('code', $groupFilter));
+        }
+        $subjects = $subjectsQuery
             ->paginate($perPage)
             ->withQueryString();
 
@@ -41,10 +48,21 @@ class AdminGameSubjectController extends Controller
         return view('admin.game-subjects.index', [
             'subjects' => $subjects,
             'groups' => $groups,
+            'listGroupFilter' => $groupFilter,
             'mallCreate' => $mallCreate,
             'modalSubject' => $modalSubject,
             'modalSelectedGroupIds' => $modalSelectedGroupIds,
         ]);
+    }
+
+    private function parseGroupFilter(mixed $raw): ?string
+    {
+        if (! is_string($raw)) {
+            return null;
+        }
+        $code = trim($raw);
+
+        return $code === '' ? null : $code;
     }
 
     public function store(Request $request): RedirectResponse
