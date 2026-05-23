@@ -242,6 +242,288 @@
                         "type": "integer"
                     }
                 }
+            },
+            "BetSettleOutcomes": {
+                "type": "object",
+                "required": [
+                    "winners",
+                    "voids"
+                ],
+                "properties": {
+                    "winners": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "voids": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "BetGameGroupRef": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "code"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "code": {
+                        "type": "string"
+                    }
+                }
+            },
+            "BetGameListItem": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "cms_id",
+                    "status",
+                    "side_a_subject_id",
+                    "side_b_subject_id",
+                    "side_a_name",
+                    "side_b_name",
+                    "settle_outcomes",
+                    "ut",
+                    "title",
+                    "description",
+                    "banner"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "description": "Local biz_game id."
+                    },
+                    "cms_id": {
+                        "type": "integer",
+                        "description": "CMS game raw id."
+                    },
+                    "status": {
+                        "type": "integer"
+                    },
+                    "side_a_subject_id": {
+                        "type": "integer",
+                        "nullable": true
+                    },
+                    "side_b_subject_id": {
+                        "type": "integer",
+                        "nullable": true
+                    },
+                    "side_a_name": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "side_b_name": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "settle_outcomes": {
+                        "$ref": "#/components/schemas/BetSettleOutcomes"
+                    },
+                    "ut": {
+                        "type": "integer",
+                        "description": "Updated-at millis."
+                    },
+                    "title": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "description": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "banner": {
+                        "type": "string",
+                        "nullable": true
+                    }
+                }
+            },
+            "BetGameDetail": {
+                "allOf": [
+                    {
+                        "$ref": "#/components/schemas/BetGameListItem"
+                    },
+                    {
+                        "type": "object",
+                        "required": [
+                            "main_media",
+                            "starts_at",
+                            "groups"
+                        ],
+                        "properties": {
+                            "main_media": {
+                                "type": "string",
+                                "nullable": true
+                            },
+                            "starts_at": {
+                                "type": "integer",
+                                "nullable": true,
+                                "description": "Scheduled start time (epoch millis) from CMS."
+                            },
+                            "groups": {
+                                "type": "array",
+                                "items": {
+                                    "$ref": "#/components/schemas/BetGameGroupRef"
+                                }
+                            }
+                        }
+                    }
+                ]
+            },
+            "BetNestedGame": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "cms_id",
+                    "status",
+                    "side_a_subject_id",
+                    "side_b_subject_id",
+                    "side_a_name",
+                    "side_b_name",
+                    "ut",
+                    "title",
+                    "description",
+                    "banner",
+                    "starts_at"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "cms_id": {
+                        "type": "integer"
+                    },
+                    "status": {
+                        "type": "integer"
+                    },
+                    "side_a_subject_id": {
+                        "type": "integer",
+                        "nullable": true
+                    },
+                    "side_b_subject_id": {
+                        "type": "integer",
+                        "nullable": true
+                    },
+                    "side_a_name": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "side_b_name": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "ut": {
+                        "type": "integer"
+                    },
+                    "title": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "description": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "banner": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "starts_at": {
+                        "type": "integer",
+                        "nullable": true,
+                        "description": "Scheduled start time (epoch millis) from CMS."
+                    }
+                }
+            },
+            "BetMarketListItem": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "game_id",
+                    "type",
+                    "name",
+                    "status",
+                    "ut",
+                    "game"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "game_id": {
+                        "type": "integer"
+                    },
+                    "type": {
+                        "type": "integer"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "type": "integer"
+                    },
+                    "ut": {
+                        "type": "integer"
+                    },
+                    "game": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/BetNestedGame"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    }
+                }
+            },
+            "BetMarketDetail": {
+                "allOf": [
+                    {
+                        "$ref": "#/components/schemas/BetMarketListItem"
+                    },
+                    {
+                        "type": "object",
+                        "required": [
+                            "selections"
+                        ],
+                        "properties": {
+                            "selections": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "additionalProperties": true
+                                }
+                            }
+                        }
+                    }
+                ]
+            },
+            "BetCatalogListData": {
+                "type": "object",
+                "required": [
+                    "items",
+                    "pagination",
+                    "_dict"
+                ],
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "items": {}
+                    },
+                    "pagination": {
+                        "$ref": "#/components/schemas/ListPagination"
+                    },
+                    "_dict": {
+                        "type": "object",
+                        "additionalProperties": true
+                    }
+                }
             }
         },
         "examples": {
@@ -338,7 +620,22 @@
                                         {
                                             "properties": {
                                                 "data": {
-                                                    "type": "object"
+                                                    "allOf": [
+                                                        {
+                                                            "$ref": "#/components/schemas/BetCatalogListData"
+                                                        },
+                                                        {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "items": {
+                                                                    "type": "array",
+                                                                    "items": {
+                                                                        "$ref": "#/components/schemas/BetGameListItem"
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    ]
                                                 }
                                             }
                                         }
@@ -379,7 +676,20 @@
                                         {
                                             "properties": {
                                                 "data": {
-                                                    "type": "object"
+                                                    "allOf": [
+                                                        {
+                                                            "$ref": "#/components/schemas/BetGameDetail"
+                                                        },
+                                                        {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "_dict": {
+                                                                    "type": "object",
+                                                                    "additionalProperties": true
+                                                                }
+                                                            }
+                                                        }
+                                                    ]
                                                 }
                                             }
                                         }
@@ -447,7 +757,22 @@
                                         {
                                             "properties": {
                                                 "data": {
-                                                    "type": "object"
+                                                    "allOf": [
+                                                        {
+                                                            "$ref": "#/components/schemas/BetCatalogListData"
+                                                        },
+                                                        {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "items": {
+                                                                    "type": "array",
+                                                                    "items": {
+                                                                        "$ref": "#/components/schemas/BetMarketListItem"
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    ]
                                                 }
                                             }
                                         }
@@ -488,7 +813,20 @@
                                         {
                                             "properties": {
                                                 "data": {
-                                                    "type": "object"
+                                                    "allOf": [
+                                                        {
+                                                            "$ref": "#/components/schemas/BetMarketDetail"
+                                                        },
+                                                        {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "_dict": {
+                                                                    "type": "object",
+                                                                    "additionalProperties": true
+                                                                }
+                                                            }
+                                                        }
+                                                    ]
                                                 }
                                             }
                                         }

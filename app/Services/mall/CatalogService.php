@@ -174,7 +174,7 @@ final readonly class CatalogService
 
         if ($detail) {
             $row['main_media'] = $cmsRow !== null ? $this->cmsStringOrNull($cmsRow['main_media'] ?? null) : null;
-            $row['start_at'] = $cmsRow !== null ? $this->cmsStartsAtMillisOrNull($cmsRow['starts_at'] ?? null) : null;
+            $row['starts_at'] = $this->cmsStartsAtFromRow($cmsRow);
             $row['groups'] = $groups ?? [];
         }
 
@@ -217,6 +217,7 @@ final readonly class CatalogService
     {
         $merged = $this->serializeGameRow($game, $cmsRow, false);
         unset($merged['settle_outcomes']);
+        $merged['starts_at'] = $this->cmsStartsAtFromRow($cmsRow);
 
         return $merged;
     }
@@ -281,6 +282,14 @@ final readonly class CatalogService
         }
 
         return $value;
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $cmsRow
+     */
+    private function cmsStartsAtFromRow(?array $cmsRow): ?int
+    {
+        return $cmsRow !== null ? $this->cmsStartsAtMillisOrNull($cmsRow['starts_at'] ?? null) : null;
     }
 
     private function cmsStartsAtMillisOrNull(mixed $value): ?int
