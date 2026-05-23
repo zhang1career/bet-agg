@@ -7,6 +7,7 @@ use App\Http\Controllers\api\PredictionDictController;
 use App\Http\Controllers\api\PredictionGameController;
 use App\Http\Controllers\api\PredictionLeaderboardController;
 use App\Http\Controllers\api\PredictionMarketController;
+use App\Http\Controllers\api\PredictionMarketQuoteController;
 use App\Http\Controllers\api\PredictionOrderController;
 use App\Http\Controllers\api\SnowflakeIdController;
 use Illuminate\Support\Facades\Route;
@@ -23,6 +24,8 @@ Route::prefix('bet')->group(function () {
     Route::get('dict', PredictionDictController::class);
     Route::get('games', [PredictionGameController::class, 'index']);
     Route::get('games/{game_id}', [PredictionGameController::class, 'show'])->whereNumber('game_id');
+    Route::get('markets/quotes', [PredictionMarketQuoteController::class, 'batch']);
+    Route::get('markets/{market_id}/quote/history', [PredictionMarketQuoteController::class, 'history'])->whereNumber('market_id');
     Route::get('markets', [PredictionMarketController::class, 'index']);
     Route::get('markets/{market_id}', [PredictionMarketController::class, 'show'])->whereNumber('market_id');
     Route::get('leaderboard', [PredictionLeaderboardController::class, 'index']);

@@ -28,6 +28,7 @@ final readonly class BetPlaceService
         private BetOrderRepo $orders,
         private MarketRepo $markets,
         private PointsBalanceRepo $pointsBalances,
+        private MarketQuoteService $marketQuote,
     ) {}
 
     /**
@@ -70,6 +71,7 @@ final readonly class BetPlaceService
 
                 $order = $this->insertOrder($uid, $idemKey);
                 $this->insertLine($order, $market, $game, $outcomeCode);
+                $this->marketQuote->recordPick($marketId, $outcomeCode, (int) $order->ct);
 
                 return ['order' => $order->load('lines'), 'is_replay' => false];
             });

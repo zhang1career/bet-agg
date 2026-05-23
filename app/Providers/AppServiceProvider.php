@@ -15,6 +15,7 @@ use App\Services\api_gw\ResolvedXxlJobAdminAddress;
 use App\Services\mall\BetPlaceService;
 use App\Services\mall\BetSettlementService;
 use App\Services\mall\CatalogService;
+use App\Services\mall\MarketQuoteService;
 use App\Services\mall\PointsAdminService;
 use App\Services\mall\PointsLedgerService;
 use App\Services\mall\serv_fd\CmsGameClient;
@@ -80,6 +81,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(CmsGameClient::class, static fn () => CmsGameClient::fromConfig());
 
         $this->app->singleton(CatalogService::class);
+        $this->app->singleton(MarketQuoteService::class);
         $this->app->singleton(PointsAdminService::class);
         $this->app->singleton(PointsLedgerService::class);
         $this->app->singleton(BetPlaceService::class);

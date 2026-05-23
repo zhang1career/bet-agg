@@ -1150,6 +1150,32 @@
                     }
                 }
             }
+        },
+        "/api/openapi.json": {
+            "get": {
+                "tags": [
+                    "Meta"
+                ],
+                "summary": "OpenAPI document",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
+        },
+        "/up": {
+            "get": {
+                "tags": [
+                    "Health"
+                ],
+                "summary": "Liveness probe",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
         }
     }
 }

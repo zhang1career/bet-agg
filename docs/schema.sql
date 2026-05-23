@@ -91,6 +91,36 @@ CREATE TABLE IF NOT EXISTS `biz_market` (
 
 -- Data exporting was unselected.
 
+-- Dumping structure for table bet_agg.biz_market_quote
+CREATE TABLE IF NOT EXISTS `biz_market_quote` (
+  `mid` bigint(20) unsigned NOT NULL COMMENT 'market ID',
+  `outcome_code` varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'home_win | draw | away_win',
+  `pick_count` bigint(20) unsigned NOT NULL DEFAULT '0' COMMENT '累计有效预测数',
+  `share_bp` int(10) unsigned NOT NULL DEFAULT '0' COMMENT '占比万分比 0-10000',
+  `ut` bigint(20) unsigned NOT NULL DEFAULT '0' COMMENT 'Update time in Unix milliseconds',
+  PRIMARY KEY (`mid`,`outcome_code`) USING BTREE,
+  KEY `idx_market_quote_ut` (`ut`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC COMMENT='盘口当前预测分布快照';
+
+-- Data exporting was unselected.
+
+-- Dumping structure for table bet_agg.biz_market_quote_hist
+CREATE TABLE IF NOT EXISTS `biz_market_quote_hist` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `mid` bigint(20) unsigned NOT NULL COMMENT 'market ID',
+  `bucket_start` bigint(20) unsigned NOT NULL COMMENT '桶起始 Unix ms',
+  `interval_code` tinyint(3) unsigned NOT NULL COMMENT '1=1h, 2=1d',
+  `outcome_code` varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `pick_count` bigint(20) unsigned NOT NULL DEFAULT '0' COMMENT '桶结束时累计数',
+  `share_bp` int(10) unsigned NOT NULL DEFAULT '0' COMMENT '桶结束时占比万分比',
+  `ct` bigint(20) unsigned NOT NULL DEFAULT '0' COMMENT 'Create time in Unix milliseconds',
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE KEY `uni_quote_hist_bucket` (`mid`,`interval_code`,`bucket_start`,`outcome_code`),
+  KEY `idx_quote_hist_mid_time` (`mid`,`interval_code`,`bucket_start`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC COMMENT='盘口预测分布历史（按时间桶）';
+
+-- Data exporting was unselected.
+
 -- Dumping structure for table bet_agg.order_item
 CREATE TABLE IF NOT EXISTS `order_item` (
                                             `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,

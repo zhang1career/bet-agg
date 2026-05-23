@@ -111,6 +111,29 @@ CREATE TABLE IF NOT EXISTS biz_market (
 )
 SQL,
             <<<'SQL'
+CREATE TABLE IF NOT EXISTS biz_market_quote (
+  mid INTEGER NOT NULL,
+  outcome_code TEXT NOT NULL,
+  pick_count INTEGER NOT NULL DEFAULT 0,
+  share_bp INTEGER NOT NULL DEFAULT 0,
+  ut INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (mid, outcome_code)
+)
+SQL,
+            <<<'SQL'
+CREATE TABLE IF NOT EXISTS biz_market_quote_hist (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  mid INTEGER NOT NULL,
+  bucket_start INTEGER NOT NULL,
+  interval_code INTEGER NOT NULL,
+  outcome_code TEXT NOT NULL,
+  pick_count INTEGER NOT NULL DEFAULT 0,
+  share_bp INTEGER NOT NULL DEFAULT 0,
+  ct INTEGER NOT NULL DEFAULT 0
+)
+SQL,
+            'CREATE UNIQUE INDEX IF NOT EXISTS uni_quote_hist_bucket ON biz_market_quote_hist (mid, interval_code, bucket_start, outcome_code)',
+            <<<'SQL'
 CREATE TABLE IF NOT EXISTS x (
   pid INTEGER NOT NULL DEFAULT 0,
   gid INTEGER NOT NULL DEFAULT 0,
