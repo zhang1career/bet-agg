@@ -6,9 +6,9 @@ namespace App\Services\mall;
 
 use App\Enums\MatchOutcomeCode;
 use App\Enums\QuoteHistInterval;
-use App\Models\Market;
 use App\Models\MarketQuote;
 use App\Repos\mall\MarketQuoteRepo;
+use App\Repos\mall\MarketRepo;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
@@ -20,6 +20,7 @@ final readonly class MarketQuoteService
 
     public function __construct(
         private MarketQuoteRepo $quotes,
+        private MarketRepo $markets,
     ) {}
 
     /**
@@ -53,7 +54,7 @@ final readonly class MarketQuoteService
         ?int $toMillis,
         ?string $outcomeCode,
     ): array {
-        if (Market::query()->whereKey($marketId)->doesntExist()) {
+        if (! $this->markets->existsById($marketId)) {
             throw new NotFoundHttpException('Market not found.');
         }
 

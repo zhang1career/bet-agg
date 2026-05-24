@@ -109,15 +109,21 @@ final class SettlementBatchPlanProviderTest extends TestCase
 
     public function test_make_plan_from_pending_marks_settled_and_emits_orders(): void
     {
-        $game = $this->makeGamePartialMock(['save']);
+        $game = $this->makeGamePartialMock([]);
         $game->forceFill([
             'status' => Game::STATUS_PENDING_SETTLEMENT,
             'settle_outcomes' => SettleOutcomes::pack(['home_win'], ['away_win']),
         ]);
-        $game->expects($this->once())->method('save')->willReturn(true);
 
         $games = $this->createMock(GameRepo::class);
         $games->method('lockForUpdate')->willReturn($game);
+        $games->expects($this->once())
+            ->method('markSettled')
+            ->with($game, $this->greaterThan(0))
+            ->willReturnCallback(static function (Game $lockedGame, int $nowMillis): void {
+                $lockedGame->status = Game::STATUS_SETTLED;
+                $lockedGame->ut = $nowMillis;
+            });
 
         $markets = $this->createMock(MarketRepo::class);
         $markets->expects($this->once())
@@ -148,15 +154,15 @@ final class SettlementBatchPlanProviderTest extends TestCase
     public function test_make_plan_when_already_settled_skips_save_and_markets_update(): void
     {
         $packed = SettleOutcomes::pack(['home_win'], []);
-        $game = $this->makeGamePartialMock(['save']);
+        $game = $this->makeGamePartialMock([]);
         $game->forceFill([
             'status' => Game::STATUS_SETTLED,
             'settle_outcomes' => $packed,
         ]);
-        $game->expects($this->never())->method('save');
 
         $games = $this->createMock(GameRepo::class);
         $games->method('lockForUpdate')->willReturn($game);
+        $games->expects($this->never())->method('markSettled');
 
         $markets = $this->createMock(MarketRepo::class);
         $markets->expects($this->never())->method('markAllSettledForGame');

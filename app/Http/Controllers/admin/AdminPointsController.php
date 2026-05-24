@@ -5,21 +5,19 @@ declare(strict_types=1);
 namespace App\Http\Controllers\admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\PointsBalance;
-use App\Models\PointsFlow;
+use App\Services\mall\PointsService;
 use App\Services\user\GatewayUserByIdClient;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
-use RuntimeException;
 
 class AdminPointsController extends Controller
 {
     private const MAX_USER_IDS_PER_BATCH = 50;
 
     public function __construct(
+        private readonly PointsService $points,
         private readonly GatewayUserByIdClient $gatewayUserById,
     ) {}
 
@@ -29,21 +27,17 @@ class AdminPointsController extends Controller
         $perPage = min(50, max(1, (int) $request->query('per_page', 15)));
 
         if ($tab === 'balances') {
-            $balances = PointsBalance::query()->orderByDesc('id')->paginate($perPage)->withQueryString();
-
             return view('admin.points.index', [
                 'tab' => $tab,
-                'balances' => $balances,
+                'balances' => $this->points->paginateBalances($perPage),
                 'flows' => null,
             ]);
         }
 
-        $flows = PointsFlow::query()->orderByDesc('id')->paginate($perPage)->withQueryString();
-
         return view('admin.points.index', [
             'tab' => $tab,
             'balances' => null,
-            'flows' => $flows,
+            'flows' => $this->points->paginateFlows($perPage),
         ]);
     }
 
@@ -88,23 +82,21 @@ class AdminPointsController extends Controller
             return response()->json(['message' => 'Too many user_ids.'], 422);
         }
 
-        $users = $this->gatewayUserById->fetchMany($ids);
-
-        return response()->json(['users' => $users]);
+        return response()->json(['users' => $this->gatewayUserById->fetchMany($ids)]);
     }
 
     public function showBalance(int $id): View
     {
-        $row = PointsBalance::query()->findOrFail($id);
-
-        return view('admin.points.balances.show', ['balance' => $row]);
+        return view('admin.points.balances.show', [
+            'balance' => $this->points->findBalanceForShow($id),
+        ]);
     }
 
     public function showFlow(int $id): View
     {
-        $row = PointsFlow::query()->findOrFail($id);
-
-        return view('admin.points.flows.show', ['flow' => $row]);
+        return view('admin.points.flows.show', [
+            'flow' => $this->points->findFlowForShow($id),
+        ]);
     }
 
     public function storeAccount(Request $request): RedirectResponse
@@ -114,21 +106,13 @@ class AdminPointsController extends Controller
             'balance' => 'nullable|integer',
         ]);
 
-        $uid = (int) $d['uid'];
-        $initial = (int) ($d['balance'] ?? 0);
-
-        try {
-            DB::transaction(function () use ($uid, $initial): void {
-                $p = PointsBalance::query()->where('uid', $uid)->lockForUpdate()->first();
-                if ($p !== null) {
-                    throw new RuntimeException('Points account already exists for this user.');
-                }
-                $row = new PointsBalance(['uid' => $uid, 'balance' => $initial]);
-                $row->save();
-            });
-        } catch (RuntimeException $e) {
+        $errors = $this->points->createAccount(
+            (int) $d['uid'],
+            (int) ($d['balance'] ?? 0),
+        );
+        if ($errors !== null) {
             return redirect()->route('admin.points.index', ['tab' => 'balances'])
-                ->withErrors(['account' => $e->getMessage()])
+                ->withErrors($errors)
                 ->withInput();
         }
 
@@ -142,21 +126,10 @@ class AdminPointsController extends Controller
             'delta_points' => 'required|integer|not_in:0',
         ]);
 
-        $uid = (int) $d['uid'];
-        $delta = (int) $d['delta_points'];
-
-        try {
-            DB::transaction(function () use ($uid, $delta): void {
-                $p = PointsBalance::query()->where('uid', $uid)->lockForUpdate()->first();
-                if ($p === null) {
-                    throw new RuntimeException('Points account not found for this user.');
-                }
-                $p->balance = $p->balance + $delta;
-                $p->save();
-            });
-        } catch (RuntimeException $e) {
+        $errors = $this->points->adjustBalance((int) $d['uid'], (int) $d['delta_points']);
+        if ($errors !== null) {
             return redirect()->route('admin.points.index', ['tab' => 'balances'])
-                ->withErrors(['adjust' => $e->getMessage()])
+                ->withErrors($errors)
                 ->withInput();
         }
 
@@ -165,8 +138,7 @@ class AdminPointsController extends Controller
 
     public function destroyBalance(int $id): RedirectResponse
     {
-        $row = PointsBalance::query()->findOrFail($id);
-        $row->delete();
+        $this->points->deleteBalance($id);
 
         return redirect()->route('admin.points.index', ['tab' => 'balances'])->with('status', 'Profile deleted.');
     }

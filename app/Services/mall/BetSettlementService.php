@@ -78,11 +78,69 @@ final readonly class BetSettlementService
             }
 
             $now = Game::nowMillis();
-            $game->settle_outcomes = SettleOutcomes::pack($winners, $voids);
-            $game->status = Game::STATUS_PENDING_SETTLEMENT;
-            $game->ut = $now;
-            $game->save();
+            $this->games->markPendingSettlement($game, SettleOutcomes::pack($winners, $voids), $now);
         });
+    }
+
+    /**
+     * Scheduler entry: run payout batch for every game pending settlement.
+     *
+     * @return array{
+     *     games: list<array<string, mixed>>,
+     *     any_failure: bool
+     * }
+     */
+    public function applyPendingSettlements(): array
+    {
+        $games = $this->games->listPendingSettlement();
+
+        if ($games->isEmpty()) {
+            return ['games' => [], 'any_failure' => false];
+        }
+
+        $payload = ['games' => []];
+        $anyFailure = false;
+
+        foreach ($games as $game) {
+            $gid = (int) $game->id;
+            try {
+                $result = $this->applyGameResult($gid);
+                Log::debug('[bet-settle] applyPendingSettlements', [
+                    'game_id' => $gid,
+                    'job_id' => $result->jobId,
+                    'total' => $result->total,
+                    'success' => $result->successCount,
+                    'failure' => $result->failureCount,
+                ]);
+                $payload['games'][] = [
+                    'game_id' => $gid,
+                    'job_id' => $result->jobId,
+                    'total' => $result->total,
+                    'success_count' => $result->successCount,
+                    'failure_count' => $result->failureCount,
+                    'status' => $result->status->value,
+                ];
+                if ($result->failureCount > 0) {
+                    $anyFailure = true;
+                }
+            } catch (RuntimeException $e) {
+                Log::warning('[bet-settle] applyPendingSettlements failed for game '.$gid.': '.$e->getMessage());
+                $anyFailure = true;
+                $payload['games'][] = [
+                    'game_id' => $gid,
+                    'error' => $e->getMessage(),
+                ];
+            } catch (Throwable $e) {
+                Log::error('[bet-settle] applyPendingSettlements error for game '.$gid.': '.$e->getMessage());
+                $anyFailure = true;
+                $payload['games'][] = [
+                    'game_id' => $gid,
+                    'error' => $e->getMessage(),
+                ];
+            }
+        }
+
+        return ['games' => $payload['games'], 'any_failure' => $anyFailure];
     }
 
     /**
@@ -166,8 +224,7 @@ final readonly class BetSettlementService
                     if ($order->status !== BetOrderStatus::Accepted) {
                         return;
                     }
-                    $order->status = BetOrderStatus::SettlementFailed;
-                    $order->save();
+                    $this->orders->saveStatus($order, BetOrderStatus::SettlementFailed);
                 });
             } catch (Throwable $e) {
                 Log::error('[bet-settle] failed to park order in SettlementFailed', [

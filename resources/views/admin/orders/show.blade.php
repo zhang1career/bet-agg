@@ -56,7 +56,7 @@
         </tr>
         </thead>
         <tbody>
-        @foreach($order->items as $item)
+        @foreach($order->lines as $item)
             <tr>
                 <td class="small">
                     @if($item->relationLoaded('market') && $item->market)

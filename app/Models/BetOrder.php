@@ -52,12 +52,4 @@ class BetOrder extends Model
     {
         return $this->hasMany(OrderItem::class, 'oid');
     }
-
-    /**
-     * @return HasMany<OrderItem, $this>
-     */
-    public function items(): HasMany
-    {
-        return $this->lines();
-    }
 }

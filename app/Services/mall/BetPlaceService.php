@@ -5,14 +5,13 @@ declare(strict_types=1);
 namespace App\Services\mall;
 
 use App\Enums\BetLineResult;
-use App\Enums\BetOrderStatus;
 use App\Exceptions\bet\SelectionNotAcceptingException;
 use App\Models\BetOrder;
 use App\Models\Game;
 use App\Models\Market;
-use App\Models\OrderItem;
 use App\Repos\mall\BetOrderRepo;
 use App\Repos\mall\MarketRepo;
+use App\Repos\mall\OrderItemRepo;
 use App\Repos\mall\PointsBalanceRepo;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
@@ -26,6 +25,7 @@ final readonly class BetPlaceService
     public function __construct(
         private SyntheticMatchMarket $synthetic,
         private BetOrderRepo $orders,
+        private OrderItemRepo $orderItems,
         private MarketRepo $markets,
         private PointsBalanceRepo $pointsBalances,
         private MarketQuoteService $marketQuote,
@@ -69,7 +69,7 @@ final readonly class BetPlaceService
 
                 $this->pointsBalances->ensureLockedProfile($uid);
 
-                $order = $this->insertOrder($uid, $idemKey);
+                $order = $this->orders->createAccepted($uid, $idemKey);
                 $this->insertLine($order, $market, $game, $outcomeCode);
                 $this->marketQuote->recordPick($marketId, $outcomeCode, (int) $order->ct);
 
@@ -116,18 +116,6 @@ final readonly class BetPlaceService
         return $market;
     }
 
-    private function insertOrder(int $uid, int $idemKey): BetOrder
-    {
-        $order = new BetOrder([
-            'uid' => $uid,
-            'idem_key' => $idemKey,
-            'status' => BetOrderStatus::Accepted,
-        ]);
-        $order->save();
-
-        return $order;
-    }
-
     private function insertLine(
         BetOrder $order,
         Market $market,
@@ -144,14 +132,13 @@ final readonly class BetPlaceService
             }
         }
 
-        $line = new OrderItem([
-            'oid' => $order->id,
-            'mid' => $market->id,
-            'selection' => ['code' => $outcomeCode],
-            'pick_label' => $label,
-            'result' => BetLineResult::Pending,
-        ]);
-        $line->save();
+        $this->orderItems->createForOrder(
+            (int) $order->id,
+            $market->id,
+            ['code' => $outcomeCode],
+            $label,
+            BetLineResult::Pending,
+        );
     }
 
     private function isUniqueViolation(QueryException $e): bool

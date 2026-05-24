@@ -36,15 +36,23 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
     Route::post('uploads', [AdminUploadController::class, 'store'])->name('uploads.store');
 
-    Route::resource('games', AdminGameController::class)->except(['create', 'edit']);
+    Route::resource('games', AdminGameController::class)
+        ->except(['create', 'edit'])
+        ->parameters(['game' => 'id']);
 
-    Route::resource('game-groups', AdminGameGroupController::class)->except(['create', 'edit']);
+    Route::resource('game-groups', AdminGameGroupController::class)
+        ->except(['create', 'edit'])
+        ->parameters(['game_group' => 'id']);
 
-    Route::resource('game-subjects', AdminGameSubjectController::class)->except(['create', 'edit']);
+    Route::resource('game-subjects', AdminGameSubjectController::class)
+        ->except(['create', 'edit'])
+        ->parameters(['game_subject' => 'id']);
 
-    Route::resource('markets', AdminMarketController::class)->except(['create', 'edit']);
+    Route::resource('markets', AdminMarketController::class)
+        ->except(['create', 'edit'])
+        ->parameters(['market' => 'id']);
 
-    Route::get('settlement', [AdminSettlementController::class, 'create'])->name('settlement.create');
+    Route::redirect('settlement', '/admin/games?mall_settlement=1')->name('settlement.create');
     Route::post('settlement', [AdminSettlementController::class, 'store'])->name('settlement.store');
 
     Route::get('orders', [AdminOrderController::class, 'index'])->name('orders.index');

@@ -9,7 +9,8 @@ use App\Http\Controllers\api\PredictionMarketController;
 use App\Models\Game;
 use App\Models\GameSubject;
 use App\Models\Market;
-use App\Repos\mall\CatalogRepo;
+use App\Repos\mall\GameRepo;
+use App\Repos\mall\MarketRepo;
 use App\Services\mall\serv_fd\CmsGameClient;
 use App\Support\SettleOutcomes;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -25,7 +26,8 @@ final readonly class CatalogService
     public function __construct(
         private CmsGameClient $cmsGames,
         private SyntheticMatchMarket $synthetic,
-        private CatalogRepo $catalog,
+        private GameRepo $games,
+        private MarketRepo $markets,
         private MarketQuoteService $marketQuote,
     ) {}
 
@@ -38,7 +40,7 @@ final readonly class CatalogService
     public function listGames(GameListFilter $filter, int $page, int $perPage): array
     {
         /** @var LengthAwarePaginator<int, Game> $p */
-        $p = $this->catalog->paginateGames($filter, $page, $perPage);
+        $p = $this->games->paginateForCatalog($filter, $page, $perPage);
 
         /** @var list<Game> $games */
         $games = $p->items();
@@ -63,7 +65,7 @@ final readonly class CatalogService
      */
     public function getGameDetail(int $localId): array
     {
-        $game = $this->catalog->findGameForDetail($localId);
+        $game = $this->games->findForCatalogDetail($localId);
         if ($game === null) {
             throw new NotFoundHttpException('Game not found.');
         }
@@ -88,7 +90,7 @@ final readonly class CatalogService
     public function listMarkets(MarketListFilter $filter, int $page, int $perPage, bool $includeQuote = false): array
     {
         /** @var LengthAwarePaginator<int, Market> $p */
-        $p = $this->catalog->paginateMarkets($filter, $page, $perPage);
+        $p = $this->markets->paginateForCatalog($filter, $page, $perPage);
 
         $marketsOnPage = $p->items();
         $cmsByRawId = $this->cmsGamesByRawIds($this->uniqueRawIdsFromMarkets($marketsOnPage));
@@ -118,7 +120,7 @@ final readonly class CatalogService
      */
     public function getMarketDetail(int $id): array
     {
-        $market = $this->catalog->findMarketForDetail($id);
+        $market = $this->markets->findForCatalogDetail($id);
         if ($market === null) {
             throw new NotFoundHttpException('Market not found.');
         }
@@ -148,7 +150,7 @@ final readonly class CatalogService
             return [];
         }
 
-        $markets = $this->catalog->marketsWithGamesForLegs($marketIds);
+        $markets = $this->markets->withGamesForLegs($marketIds);
 
         $byMarket = [];
         foreach ($marketIds as $mid) {

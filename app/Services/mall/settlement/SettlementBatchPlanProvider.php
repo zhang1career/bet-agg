@@ -52,9 +52,7 @@ final class SettlementBatchPlanProvider implements BatchPlanProviderContract
 
         if ($status === Game::STATUS_PENDING_SETTLEMENT) {
             $now = Game::nowMillis();
-            $game->status = Game::STATUS_SETTLED;
-            $game->ut = $now;
-            $game->save();
+            $this->games->markSettled($game, $now);
             $this->markets->markAllSettledForGame($this->gameId, $now);
         }
 

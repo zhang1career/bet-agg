@@ -6,7 +6,7 @@ namespace App\Services\mall\settlement;
 
 use App\Enums\BetLineResult;
 use App\Enums\BetOrderStatus;
-use App\Models\BetOrder;
+use App\Repos\mall\BetOrderRepo;
 use App\Services\mall\PointsLedgerService;
 use Paganini\Batch\Contracts\BatchItemHandlerContract;
 use Paganini\Batch\DTO\BatchItem;
@@ -14,7 +14,10 @@ use RuntimeException;
 
 final readonly class SettlementBatchItemHandler implements BatchItemHandlerContract
 {
-    public function __construct(private PointsLedgerService $pointsLedger) {}
+    public function __construct(
+        private BetOrderRepo $orders,
+        private PointsLedgerService $pointsLedger,
+    ) {}
 
     public function handle(BatchItem $item, array $jobPayload): void
     {
@@ -23,8 +26,7 @@ final readonly class SettlementBatchItemHandler implements BatchItemHandlerContr
             throw new RuntimeException('Invalid settlement item ref.');
         }
 
-        /** @var BetOrder|null $order */
-        $order = BetOrder::query()->whereKey($orderId)->with('lines')->lockForUpdate()->first();
+        $order = $this->orders->findLockedWithLines($orderId);
         if ($order === null) {
             throw new RuntimeException('Bet order not found: '.$orderId);
         }
@@ -66,11 +68,7 @@ final readonly class SettlementBatchItemHandler implements BatchItemHandlerContr
             throw new RuntimeException('Invalid bet order status transition for order '.$orderId);
         }
 
-        $line->result = $nextLine;
-        $line->save();
-
-        $order->status = $nextOrder;
-        $order->save();
+        $this->orders->applySettlementOutcome($order, $line, $nextLine, $nextOrder);
 
         if ($nextOrder === BetOrderStatus::Won) {
             $this->pointsLedger->creditWin((int) $order->uid, $orderId);

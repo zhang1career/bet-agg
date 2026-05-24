@@ -5,64 +5,36 @@ declare(strict_types=1);
 namespace App\Http\Controllers\admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Game;
-use App\Models\GameGroup;
-use App\Models\GameSubject;
+use App\Services\mall\GameSubjectAdminService;
+use App\Support\AdminGroupIds;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class AdminGameSubjectController extends Controller
 {
+    public function __construct(
+        private readonly GameSubjectAdminService $subjectAdmin,
+    ) {}
+
     public function index(Request $request): View
     {
         $perPage = min(50, max(1, (int) $request->query('per_page', 20)));
-        $groupFilter = $this->parseGroupFilter($request->query('group'));
-
-        $subjectsQuery = GameSubject::query()
-            ->with(['groups' => static fn ($q) => $q->orderBy('code')])
-            ->withCount('groups')
-            ->orderBy('name');
-        if ($groupFilter !== null) {
-            $subjectsQuery->whereHas('groups', static fn ($q) => $q->where('code', $groupFilter));
-        }
-        $subjects = $subjectsQuery
-            ->paginate($perPage)
-            ->withQueryString();
-
-        $groups = GameGroup::query()->orderBy('code')->get();
-
+        $groupFilter = GameSubjectAdminService::parseGroupFilter($request->query('group'));
         $mallCreate = $request->boolean('mall_create');
         $mallEditId = (int) $request->query('mall_edit', 0);
-        $modalSubject = null;
-        $modalSelectedGroupIds = [];
-        if ($mallEditId >= 1) {
-            $modalSubject = GameSubject::query()->with('groups')->find($mallEditId);
-            if ($modalSubject instanceof GameSubject) {
-                $modalSelectedGroupIds = $modalSubject->groups->pluck('id')->map(static fn ($id): int => (int) $id)->all();
-            } else {
-                $modalSubject = null;
-            }
-        }
+        $modalSubject = $mallEditId >= 1 ? $this->subjectAdmin->findForModal($mallEditId) : null;
 
         return view('admin.game-subjects.index', [
-            'subjects' => $subjects,
-            'groups' => $groups,
+            'subjects' => $this->subjectAdmin->paginateIndex($groupFilter, $perPage),
+            'groups' => $this->subjectAdmin->listGroups(),
             'listGroupFilter' => $groupFilter,
             'mallCreate' => $mallCreate,
             'modalSubject' => $modalSubject,
-            'modalSelectedGroupIds' => $modalSelectedGroupIds,
+            'modalSelectedGroupIds' => $modalSubject !== null
+                ? $modalSubject->groups->pluck('id')->map(static fn ($id): int => (int) $id)->all()
+                : [],
         ]);
-    }
-
-    private function parseGroupFilter(mixed $raw): ?string
-    {
-        if (! is_string($raw)) {
-            return null;
-        }
-        $code = trim($raw);
-
-        return $code === '' ? null : $code;
     }
 
     public function store(Request $request): RedirectResponse
@@ -73,28 +45,24 @@ class AdminGameSubjectController extends Controller
             'group_ids' => 'array',
             'group_ids.*' => 'integer|exists:biz_game_group,id',
         ]);
-        $name = trim((string) $v['name']);
-        $icon = trim((string) ($v['icon_path'] ?? ''));
-        $groupIds = array_values(array_unique(array_map('intval', $v['group_ids'] ?? [])));
 
-        $subject = new GameSubject([
-            'name' => $name,
-            'icon' => $icon,
-        ]);
-        $subject->save();
-        $subject->groups()->sync($groupIds);
+        $this->subjectAdmin->create(
+            trim((string) $v['name']),
+            trim((string) ($v['icon_path'] ?? '')),
+            AdminGroupIds::fromValidated($v),
+        );
 
         return redirect()->route('admin.game-subjects.index')->with('status', '赛事主体已创建。');
     }
 
-    public function show(GameSubject $gameSubject): View
+    public function show(int $id): View
     {
-        $gameSubject->load(['groups' => static fn ($q) => $q->orderBy('code')]);
-
-        return view('admin.game-subjects.show', ['subject' => $gameSubject]);
+        return view('admin.game-subjects.show', [
+            'subject' => $this->subjectAdmin->findForShow($id),
+        ]);
     }
 
-    public function update(Request $request, GameSubject $gameSubject): RedirectResponse
+    public function update(Request $request, int $id): RedirectResponse
     {
         $v = $request->validate([
             'name' => 'required|string|max:256',
@@ -102,26 +70,25 @@ class AdminGameSubjectController extends Controller
             'group_ids' => 'array',
             'group_ids.*' => 'integer|exists:biz_game_group,id',
         ]);
-        $gameSubject->name = trim((string) $v['name']);
-        $gameSubject->icon = trim((string) ($v['icon_path'] ?? ''));
-        $gameSubject->save();
 
-        $groupIds = array_values(array_unique(array_map('intval', $v['group_ids'] ?? [])));
-        $gameSubject->groups()->sync($groupIds);
+        $this->subjectAdmin->update(
+            $id,
+            trim((string) $v['name']),
+            trim((string) ($v['icon_path'] ?? '')),
+            AdminGroupIds::fromValidated($v),
+        );
 
         return redirect()->route('admin.game-subjects.index')->with('status', '已保存。');
     }
 
-    public function destroy(GameSubject $gameSubject): RedirectResponse
+    public function destroy(int $id): RedirectResponse
     {
-        if (Game::query()->where('side_a_subj_id', $gameSubject->id)->orWhere('side_b_subj_id', $gameSubject->id)->exists()) {
+        $errors = $this->subjectAdmin->delete($id);
+        if ($errors !== null) {
             return redirect()
-                ->route('admin.game-subjects.show', $gameSubject)
-                ->withErrors(['delete' => '有赛事仍引用该主体为 A/B 方，无法删除。']);
+                ->route('admin.game-subjects.show', $id)
+                ->withErrors($errors);
         }
-
-        $gameSubject->groups()->detach();
-        $gameSubject->delete();
 
         return redirect()->route('admin.game-subjects.index')->with('status', '已删除。');
     }

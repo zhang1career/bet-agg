@@ -7,6 +7,7 @@ namespace App\Http\Controllers\admin;
 use App\Http\Controllers\Controller;
 use App\Models\Game;
 use App\Services\mall\BetSettlementService;
+use App\Services\mall\GameAdminService;
 use App\Support\SettlementPayloadResolver;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -16,14 +17,10 @@ use Throwable;
 class AdminSettlementController extends Controller
 {
     public function __construct(
+        private readonly GameAdminService $gameAdmin,
         private readonly SettlementPayloadResolver $payloadResolver,
         private readonly BetSettlementService $settlementService,
     ) {}
-
-    public function create(): RedirectResponse
-    {
-        return redirect()->route('admin.games.index', ['mall_settlement' => 1]);
-    }
 
     public function store(Request $request): RedirectResponse
     {
@@ -32,7 +29,7 @@ class AdminSettlementController extends Controller
             'result_payload' => ['required', 'string', 'max:128'],
         ]);
 
-        $game = Game::query()->whereKey((int) $v['game_id'])->firstOrFail();
+        $game = $this->gameAdmin->findForSettlement((int) $v['game_id']);
 
         if ($game->status !== Game::STATUS_OPEN) {
             return redirect()

@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Services\mall;
 
 use App\Enums\PointsFlowKind;
-use App\Models\PointsFlow;
 use App\Repos\mall\PointsBalanceRepo;
+use App\Repos\mall\PointsFlowRepo;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -14,7 +14,10 @@ use Illuminate\Support\Facades\DB;
  */
 final readonly class PointsLedgerService
 {
-    public function __construct(private PointsBalanceRepo $profiles) {}
+    public function __construct(
+        private PointsBalanceRepo $profiles,
+        private PointsFlowRepo $flows,
+    ) {}
 
     public function creditWin(int $uid, int $betOrderId): void
     {
@@ -32,25 +35,13 @@ final readonly class PointsLedgerService
     private function applyOnce(int $uid, int $betOrderId, int $delta, PointsFlowKind $kind): void
     {
         DB::transaction(function () use ($uid, $betOrderId, $delta, $kind): void {
-            $exists = PointsFlow::query()
-                ->where('oid', $betOrderId)
-                ->where('state', $kind->value)
-                ->exists();
-            if ($exists) {
+            if ($this->flows->existsForOrderAndState($betOrderId, $kind)) {
                 return;
             }
 
             $profile = $this->profiles->ensureLockedProfile($uid);
-            $profile->balance = (int) $profile->balance + $delta;
-            $profile->save();
-
-            $flow = new PointsFlow([
-                'uid' => $uid,
-                'oid' => $betOrderId,
-                'amount' => $delta,
-                'state' => $kind,
-            ]);
-            $flow->save();
+            $this->profiles->addToBalance($profile, $delta);
+            $this->flows->create($uid, $betOrderId, $delta, $kind);
         });
     }
 }

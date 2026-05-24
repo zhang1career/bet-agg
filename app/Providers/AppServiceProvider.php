@@ -16,7 +16,7 @@ use App\Services\mall\BetPlaceService;
 use App\Services\mall\BetSettlementService;
 use App\Services\mall\CatalogService;
 use App\Services\mall\MarketQuoteService;
-use App\Services\mall\PointsAdminService;
+use App\Services\mall\PointsService;
 use App\Services\mall\PointsLedgerService;
 use App\Services\mall\serv_fd\CmsGameClient;
 use App\Services\mall\settlement\LaravelDbTransactionRunner;
@@ -82,7 +82,7 @@ class AppServiceProvider extends ServiceProvider
 
         $this->app->singleton(CatalogService::class);
         $this->app->singleton(MarketQuoteService::class);
-        $this->app->singleton(PointsAdminService::class);
+        $this->app->singleton(PointsService::class);
         $this->app->singleton(PointsLedgerService::class);
         $this->app->singleton(BetPlaceService::class);
         $this->app->singleton(SettlementBatchItemHandler::class);
