@@ -114,7 +114,7 @@
                 <h3 class="h6 mb-0">{{ __('console.settlement_overview.section_title') }}</h3>
                 @php
                     $settlementGamesIndex = ['mall_settlement' => 1];
-                    if ($game->status === \App\Models\Game::STATUS_OPEN && $game->side_a_subject_id && $game->side_b_subject_id) {
+                    if ($game->status === \App\Models\Game::STATUS_OPEN && $game->side_a_subj_id && $game->side_b_subj_id) {
                         $settlementGamesIndex['mall_settlement_game'] = $game->id;
                     }
                 @endphp

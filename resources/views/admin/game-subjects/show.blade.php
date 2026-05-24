@@ -21,6 +21,28 @@
     @if($errors->has('delete'))
         <div class="alert alert-danger">{{ $errors->first('delete') }}</div>
     @endif
+    @php $cdnBase = rtrim((string) config('services.cloudfront.domain'), '/'); @endphp
+    <div class="mall-console-card card shadow-sm mb-3">
+        <div class="card-body">
+            <dl class="row mb-0">
+                <dt class="col-sm-3">{{ __('console.game_subjects.label_icon') }}</dt>
+                <dd class="col-sm-9">
+                    @php $subjectIcon = trim((string) $subject->icon); @endphp
+                    @if($subjectIcon !== '')
+                        <code class="small">{{ $subjectIcon }}</code>
+                        @if($cdnBase !== '')
+                            <div class="mt-2">
+                                <img src="{{ $cdnBase.'/'.ltrim($subjectIcon, '/') }}" alt="{{ $subject->name }}"
+                                     class="img-thumbnail" style="max-height: 4rem;">
+                            </div>
+                        @endif
+                    @else
+                        <span class="text-muted">—</span>
+                    @endif
+                </dd>
+            </dl>
+        </div>
+    </div>
     <div class="mall-console-card card shadow-sm">
         <div class="card-body">
             <h3 class="h6">{{ __('console.game_subjects.related_groups') }} <small class="text-muted">y</small></h3>

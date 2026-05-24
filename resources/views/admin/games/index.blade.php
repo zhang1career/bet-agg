@@ -77,8 +77,8 @@
                             $cmsRow = $cmsByRawId[(int) $game->raw_id] ?? [];
                             $startsMs = isset($cmsRow['starts_at']) ? (int) $cmsRow['starts_at'] : 0;
                             $canSettle = $game->status === \App\Models\Game::STATUS_OPEN
-                                && $game->side_a_subject_id !== null
-                                && $game->side_b_subject_id !== null;
+                                && $game->side_a_subj_id !== null
+                                && $game->side_b_subj_id !== null;
                         @endphp
                         <tr>
                             <td>
@@ -281,8 +281,8 @@
                                 'allGroups' => $allGroups,
                                 'allSubjects' => $allSubjects,
                                 'selectedGroupIds' => $modalEditSelectedGroups,
-                                'selectedSideA' => $game->side_a_subject_id,
-                                'selectedSideB' => $game->side_b_subject_id,
+                                'selectedSideA' => $game->side_a_subj_id,
+                                'selectedSideB' => $game->side_b_subj_id,
                                 'idSuf' => '_ge',
                             ])
                             <div class="mb-3">

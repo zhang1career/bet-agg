@@ -12,12 +12,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * Local betting aggregate for a CMS game: {@code raw_id} is the external game id;
- * title, media, kickoff in CMS. Sides reference {@see GameSubject} as **A** and **B** ({@code side_a_subject_id} / {@code side_b_subject_id}), without implying home/away.
+ * title, media, kickoff in CMS. Sides reference {@see GameSubject} as **A** and **B** ({@code side_a_subj_id} / {@code side_b_subj_id}), without implying home/away.
  *
  * @property int $id
  * @property int $raw_id
- * @property int|null $side_a_subject_id
- * @property int|null $side_b_subject_id
+ * @property int|null $side_a_subj_id
+ * @property int|null $side_b_subj_id
  * @property int $status
  * @property array{winners?: list<string>, voids?: list<string>}|null $settle_outcomes JSON: {@code winners} = payout legs, {@code voids} = refund legs.
  * @property int $ct
@@ -42,8 +42,8 @@ class Game extends Model
 
     protected $fillable = [
         'raw_id',
-        'side_a_subject_id',
-        'side_b_subject_id',
+        'side_a_subj_id',
+        'side_b_subj_id',
         'status',
         'settle_outcomes',
         'ct',
@@ -53,8 +53,8 @@ class Game extends Model
     protected $casts = [
         'id' => 'integer',
         'raw_id' => 'integer',
-        'side_a_subject_id' => 'integer',
-        'side_b_subject_id' => 'integer',
+        'side_a_subj_id' => 'integer',
+        'side_b_subj_id' => 'integer',
         'status' => 'integer',
         'settle_outcomes' => 'array',
         'ct' => 'integer',
@@ -66,7 +66,7 @@ class Game extends Model
      */
     public function sideASubject(): BelongsTo
     {
-        return $this->belongsTo(GameSubject::class, 'side_a_subject_id');
+        return $this->belongsTo(GameSubject::class, 'side_a_subj_id');
     }
 
     /**
@@ -74,7 +74,7 @@ class Game extends Model
      */
     public function sideBSubject(): BelongsTo
     {
-        return $this->belongsTo(GameSubject::class, 'side_b_subject_id');
+        return $this->belongsTo(GameSubject::class, 'side_b_subj_id');
     }
 
     /**

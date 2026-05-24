@@ -37,16 +37,16 @@ CREATE TABLE IF NOT EXISTS `bet_order` (
 CREATE TABLE IF NOT EXISTS `biz_game` (
                                           `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
     `raw_id` bigint(20) unsigned NOT NULL DEFAULT '0' COMMENT 'cms game ID',
-    `side_a_subject_id` bigint(20) unsigned NOT NULL DEFAULT '0' COMMENT '主场侧',
-    `side_b_subject_id` bigint(20) unsigned NOT NULL DEFAULT '0' COMMENT '客场侧',
+    `side_a_subj_id` bigint(20) unsigned NOT NULL DEFAULT '0' COMMENT '主场侧',
+    `side_b_subj_id` bigint(20) unsigned NOT NULL DEFAULT '0' COMMENT '客场侧',
     `status` tinyint(1) unsigned NOT NULL DEFAULT '0' COMMENT '0-init, 1-open, 2-closed, 3-settled, 4-pending settlement',
     `settle_outcomes` text COLLATE utf8mb4_unicode_ci COMMENT 'json',
     `ct` bigint(20) unsigned NOT NULL DEFAULT '0' COMMENT 'Create time in Unix milliseconds',
     `ut` bigint(20) unsigned NOT NULL DEFAULT '0' COMMENT 'Update time in Unix milliseconds',
     PRIMARY KEY (`id`) USING BTREE,
     UNIQUE KEY `uni_bet_game_raw` (`raw_id`),
-    KEY `idx_bet_game_side_a` (`side_a_subject_id`),
-    KEY `idx_bet_game_side_b` (`side_b_subject_id`),
+    KEY `idx_bet_game_side_a` (`side_a_subj_id`),
+    KEY `idx_bet_game_side_b` (`side_b_subj_id`),
     KEY `idx_bet_game_status` (`status`,`id`)
     ) ENGINE=InnoDB AUTO_INCREMENT=10000010 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC COMMENT='业务竞赛';
 
@@ -68,6 +68,7 @@ CREATE TABLE IF NOT EXISTS `biz_game_group` (
 CREATE TABLE IF NOT EXISTS `biz_game_subject` (
                                                   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
     `name` varchar(256) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '' COMMENT '球队/选手等展示名',
+    `icon` varchar(1024) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '' COMMENT 'OSS object key (team/participant emblem)',
     `ct` bigint(20) unsigned NOT NULL DEFAULT '0',
     `ut` bigint(20) unsigned NOT NULL DEFAULT '0',
     PRIMARY KEY (`id`)

@@ -7,6 +7,7 @@ namespace App\Services\mall;
 use App\Http\Controllers\api\PredictionGameController;
 use App\Http\Controllers\api\PredictionMarketController;
 use App\Models\Game;
+use App\Models\GameSubject;
 use App\Models\Market;
 use App\Repos\mall\CatalogRepo;
 use App\Services\mall\serv_fd\CmsGameClient;
@@ -172,10 +173,12 @@ final readonly class CatalogService
             'id' => $game->id,
             'cms_id' => $game->raw_id,
             'status' => $game->status,
-            'side_a_subject_id' => $game->side_a_subject_id !== null ? (int) $game->side_a_subject_id : null,
-            'side_b_subject_id' => $game->side_b_subject_id !== null ? (int) $game->side_b_subject_id : null,
+            'side_a_subj_id' => $game->side_a_subj_id !== null ? (int) $game->side_a_subj_id : null,
+            'side_b_subj_id' => $game->side_b_subj_id !== null ? (int) $game->side_b_subj_id : null,
             'side_a_name' => $game->sideASubject !== null ? (string) $game->sideASubject->name : null,
             'side_b_name' => $game->sideBSubject !== null ? (string) $game->sideBSubject->name : null,
+            'side_a_icon' => $this->subjectIconOrNull($game->sideASubject),
+            'side_b_icon' => $this->subjectIconOrNull($game->sideBSubject),
             'settle_outcomes' => SettleOutcomes::forApi(
                 is_array($game->settle_outcomes) ? $game->settle_outcomes : null,
             ),
@@ -304,6 +307,17 @@ final readonly class CatalogService
         }
 
         return $value;
+    }
+
+    private function subjectIconOrNull(?GameSubject $subject): ?string
+    {
+        if ($subject === null) {
+            return null;
+        }
+
+        $icon = trim((string) $subject->icon);
+
+        return $icon !== '' ? $icon : null;
     }
 
     /**

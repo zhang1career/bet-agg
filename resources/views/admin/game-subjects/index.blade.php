@@ -87,6 +87,10 @@
                             <label class="form-label" for="gsc_name">{{ __('console.game_subjects.label_name') }}</label>
                             <input type="text" name="name" id="gsc_name" class="form-control" required maxlength="256" value="{{ old('name') }}">
                         </div>
+                        @include('admin.game-subjects.partials.icon-upload', [
+                            'mediaIdPfx' => 'gsc',
+                            'icon_path' => old('icon_path', ''),
+                        ])
                         <div class="mb-3">
                             <label class="form-label" for="gsc_group_ids">{{ __('console.game_subjects.label_groups') }} <small class="text-muted">{{ __('console.game_subjects.groups_multi') }}</small></label>
                             <select name="group_ids[]" id="gsc_group_ids" class="form-select" multiple size="8">
@@ -129,6 +133,10 @@
                                 <label class="form-label" for="gse_name">{{ __('console.game_subjects.label_name') }}</label>
                                 <input type="text" name="name" id="gse_name" class="form-control" required maxlength="256" value="{{ old('name', $modalSubject->name) }}">
                             </div>
+                            @include('admin.game-subjects.partials.icon-upload', [
+                                'mediaIdPfx' => 'gse',
+                                'icon_path' => old('icon_path', $modalSubject->icon),
+                            ])
                             <div class="mb-3">
                                 <label class="form-label" for="gse_group_ids">{{ __('console.game_subjects.label_groups') }} <small class="text-muted">y</small></label>
                                 <select name="group_ids[]" id="gse_group_ids" class="form-select" multiple size="8">

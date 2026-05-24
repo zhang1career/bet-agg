@@ -73,8 +73,8 @@ SQL,
 CREATE TABLE IF NOT EXISTS biz_game (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   raw_id INTEGER NOT NULL DEFAULT 0,
-  side_a_subject_id INTEGER,
-  side_b_subject_id INTEGER,
+  side_a_subj_id INTEGER,
+  side_b_subj_id INTEGER,
   status INTEGER NOT NULL DEFAULT 0,
   settle_outcomes TEXT,
   ct INTEGER NOT NULL DEFAULT 0,
@@ -95,6 +95,7 @@ SQL,
 CREATE TABLE IF NOT EXISTS biz_game_subject (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL DEFAULT '',
+  icon TEXT NOT NULL DEFAULT '',
   ct INTEGER NOT NULL DEFAULT 0,
   ut INTEGER NOT NULL DEFAULT 0
 )

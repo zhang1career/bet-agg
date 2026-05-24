@@ -137,8 +137,8 @@ class AdminGameController extends Controller
     {
         $v = $request->validate($this->gameFormRules(forCreate: true));
         $groupIds = $this->normalizedGroupIds($v);
-        $sideA = $this->normalizedOptionalSubjectId($v['side_a_subject_id'] ?? null);
-        $sideB = $this->normalizedOptionalSubjectId($v['side_b_subject_id'] ?? null);
+        $sideA = $this->normalizedOptionalSubjectId($v['side_a_subj_id'] ?? null);
+        $sideB = $this->normalizedOptionalSubjectId($v['side_b_subj_id'] ?? null);
         $sideErrors = $this->sideSubjectValidationErrors($groupIds, $sideA, $sideB);
         if ($sideErrors !== []) {
             return redirect()->route('admin.games.index', ['mall_create' => 1])
@@ -169,8 +169,8 @@ class AdminGameController extends Controller
 
         $game = new Game([
             'raw_id' => $rawId,
-            'side_a_subject_id' => $sideA,
-            'side_b_subject_id' => $sideB,
+            'side_a_subj_id' => $sideA,
+            'side_b_subj_id' => $sideB,
             'status' => (int) $v['status'],
         ]);
         $game->save();
@@ -205,8 +205,8 @@ class AdminGameController extends Controller
     {
         $v = $request->validate($this->gameFormRules(forCreate: false));
         $groupIds = $this->normalizedGroupIds($v);
-        $sideA = $this->normalizedOptionalSubjectId($v['side_a_subject_id'] ?? null);
-        $sideB = $this->normalizedOptionalSubjectId($v['side_b_subject_id'] ?? null);
+        $sideA = $this->normalizedOptionalSubjectId($v['side_a_subj_id'] ?? null);
+        $sideB = $this->normalizedOptionalSubjectId($v['side_b_subj_id'] ?? null);
         $sideErrors = $this->sideSubjectValidationErrors($groupIds, $sideA, $sideB);
         if ($sideErrors !== []) {
             return redirect()->route('admin.games.index', ['mall_edit' => $game->id])
@@ -235,8 +235,8 @@ class AdminGameController extends Controller
             }
         }
 
-        $game->side_a_subject_id = $sideA;
-        $game->side_b_subject_id = $sideB;
+        $game->side_a_subj_id = $sideA;
+        $game->side_b_subj_id = $sideB;
         $game->status = (int) $v['status'];
         $game->save();
         $game->groups()->sync($groupIds);
@@ -402,8 +402,8 @@ class AdminGameController extends Controller
             'main_image_path' => ['nullable', 'string', 'max:1024'],
             'group_ids' => ['required', 'array', 'min:1'],
             'group_ids.*' => ['integer', Rule::exists('biz_game_group', 'id')],
-            'side_a_subject_id' => ['nullable', 'integer', Rule::exists('biz_game_subject', 'id')],
-            'side_b_subject_id' => ['nullable', 'integer', Rule::exists('biz_game_subject', 'id')],
+            'side_a_subj_id' => ['nullable', 'integer', Rule::exists('biz_game_subject', 'id')],
+            'side_b_subj_id' => ['nullable', 'integer', Rule::exists('biz_game_subject', 'id')],
             'status' => ['required', 'integer', Rule::in([
                 Game::STATUS_OPEN,
                 Game::STATUS_CLOSED,
@@ -461,7 +461,7 @@ class AdminGameController extends Controller
                 ->whereHas('groups', static fn ($q) => $q->whereIn('biz_game_group.id', $groupIds))
                 ->exists();
             if (! $ok) {
-                $errors['side_'.strtolower($label).'_subject_id'] = [
+                $errors['side_'.strtolower($label).'_subj_id'] = [
                     'The selected side '.$label.' subject is not in any of the chosen groups.',
                 ];
             }

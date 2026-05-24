@@ -69,13 +69,18 @@ class AdminGameSubjectController extends Controller
     {
         $v = $request->validate([
             'name' => 'required|string|max:256',
+            'icon_path' => 'nullable|string|max:1024',
             'group_ids' => 'array',
             'group_ids.*' => 'integer|exists:biz_game_group,id',
         ]);
         $name = trim((string) $v['name']);
+        $icon = trim((string) ($v['icon_path'] ?? ''));
         $groupIds = array_values(array_unique(array_map('intval', $v['group_ids'] ?? [])));
 
-        $subject = new GameSubject(['name' => $name]);
+        $subject = new GameSubject([
+            'name' => $name,
+            'icon' => $icon,
+        ]);
         $subject->save();
         $subject->groups()->sync($groupIds);
 
@@ -93,10 +98,12 @@ class AdminGameSubjectController extends Controller
     {
         $v = $request->validate([
             'name' => 'required|string|max:256',
+            'icon_path' => 'nullable|string|max:1024',
             'group_ids' => 'array',
             'group_ids.*' => 'integer|exists:biz_game_group,id',
         ]);
         $gameSubject->name = trim((string) $v['name']);
+        $gameSubject->icon = trim((string) ($v['icon_path'] ?? ''));
         $gameSubject->save();
 
         $groupIds = array_values(array_unique(array_map('intval', $v['group_ids'] ?? [])));
@@ -107,7 +114,7 @@ class AdminGameSubjectController extends Controller
 
     public function destroy(GameSubject $gameSubject): RedirectResponse
     {
-        if (Game::query()->where('side_a_subject_id', $gameSubject->id)->orWhere('side_b_subject_id', $gameSubject->id)->exists()) {
+        if (Game::query()->where('side_a_subj_id', $gameSubject->id)->orWhere('side_b_subj_id', $gameSubject->id)->exists()) {
             return redirect()
                 ->route('admin.game-subjects.show', $gameSubject)
                 ->withErrors(['delete' => '有赛事仍引用该主体为 A/B 方，无法删除。']);

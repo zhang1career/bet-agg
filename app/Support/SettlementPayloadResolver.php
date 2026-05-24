@@ -25,7 +25,7 @@ final class SettlementPayloadResolver
         if ($payload === '') {
             throw new RuntimeException('Empty settlement payload.');
         }
-        if ($game->side_a_subject_id === null || $game->side_b_subject_id === null) {
+        if ($game->side_a_subj_id === null || $game->side_b_subj_id === null) {
             throw new RuntimeException('Game is missing side A/B subjects.');
         }
 
@@ -48,8 +48,8 @@ final class SettlementPayloadResolver
         if ($sid < 1) {
             throw new RuntimeException('Invalid subject id in payload.');
         }
-        $a = (int) $game->side_a_subject_id;
-        $b = (int) $game->side_b_subject_id;
+        $a = (int) $game->side_a_subj_id;
+        $b = (int) $game->side_b_subj_id;
         if ($sid === $a) {
             return ['winners' => [MatchOutcomeCode::HomeWin->value], 'voids' => []];
         }

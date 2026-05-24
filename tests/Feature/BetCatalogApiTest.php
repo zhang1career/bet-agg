@@ -7,6 +7,7 @@ namespace Tests\Feature;
 use App\Enums\MarketType;
 use App\Models\Game;
 use App\Models\GameGroup;
+use App\Models\GameSubject;
 use App\Models\Market;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\CatalogSeeder;
@@ -138,6 +139,37 @@ final class BetCatalogApiTest extends TestCase
         $sorted = $ids;
         sort($sorted);
         $this->assertSame($sorted, $ids);
+    }
+
+    public function test_markets_list_includes_subject_icons_on_nested_game(): void
+    {
+        $home = new GameSubject([
+            'name' => 'Icon Home',
+            'icon' => 'subj_icon/home.png',
+        ]);
+        $home->save();
+        $away = new GameSubject([
+            'name' => 'Icon Away',
+            'icon' => '',
+        ]);
+        $away->save();
+
+        $game = CatalogSeeder::seedGame((int) $home->id, (int) $away->id);
+        $market = new Market([
+            'gid' => $game->id,
+            'type' => MarketType::OneX2,
+            'name' => 'Full-time 1X2',
+            'status' => Market::STATUS_OPEN,
+        ]);
+        $market->save();
+
+        $res = $this->getJson('/api/bet/markets?game_id='.$game->id);
+        $res->assertOk();
+        $nested = $res->json('data.items.0.game');
+        $this->assertSame('subj_icon/home.png', $nested['side_a_icon']);
+        $this->assertNull($nested['side_b_icon']);
+        $this->assertSame('Icon Home', $nested['side_a_name']);
+        $this->assertSame('Icon Away', $nested['side_b_name']);
     }
 
     public function test_markets_list_omits_selections_and_filters_by_local_game_id(): void

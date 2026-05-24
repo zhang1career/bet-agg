@@ -28,8 +28,8 @@ final readonly class AdminSettlementFormViewData
     {
         $games = Game::query()
             ->where('status', Game::STATUS_OPEN)
-            ->whereNotNull('side_a_subject_id')
-            ->whereNotNull('side_b_subject_id')
+            ->whereNotNull('side_a_subj_id')
+            ->whereNotNull('side_b_subj_id')
             ->with(['sideASubject', 'sideBSubject'])
             ->orderByDesc('id')
             ->limit(500)
@@ -52,8 +52,8 @@ final readonly class AdminSettlementFormViewData
      */
     private function outcomeOptionsForGame(Game $game): array
     {
-        $aId = (int) $game->side_a_subject_id;
-        $bId = (int) $game->side_b_subject_id;
+        $aId = (int) $game->side_a_subj_id;
+        $bId = (int) $game->side_b_subj_id;
         $aName = $game->sideASubject?->name ?? (string) __('console.settlement.side_a_placeholder');
         $bName = $game->sideBSubject?->name ?? (string) __('console.settlement.side_b_placeholder');
 

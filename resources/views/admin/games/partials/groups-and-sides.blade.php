@@ -5,8 +5,8 @@
         $groupIdsForOld = [];
     }
     $groupIdsForOld = array_map('intval', $groupIdsForOld);
-    $sideA = old('side_a_subject_id', $selectedSideA ?? '');
-    $sideB = old('side_b_subject_id', $selectedSideB ?? '');
+    $sideA = old('side_a_subj_id', $selectedSideA ?? '');
+    $sideB = old('side_b_subj_id', $selectedSideB ?? '');
 @endphp
 <div class="mb-3">
     <label class="form-label" for="game_group_ids{{ $idSuf }}">{{ __('console.games_partials.group_label') }}</label>
@@ -24,8 +24,8 @@
 </div>
 
 <div class="mb-3">
-    <label class="form-label" for="side_a_subject_id{{ $idSuf }}">{{ __('console.games_partials.side_a') }}</label>
-    <select name="side_a_subject_id" id="side_a_subject_id{{ $idSuf }}" class="form-select @error('side_a_subject_id') is-invalid @enderror">
+    <label class="form-label" for="side_a_subj_id{{ $idSuf }}">{{ __('console.games_partials.side_a') }}</label>
+    <select name="side_a_subj_id" id="side_a_subj_id{{ $idSuf }}" class="form-select @error('side_a_subj_id') is-invalid @enderror">
         <option value="">{{ __('console.games_partials.none_selected') }}</option>
         @foreach($allSubjects as $subj)
             @php
@@ -39,13 +39,13 @@
             </option>
         @endforeach
     </select>
-    @error('side_a_subject_id')
+    @error('side_a_subj_id')
         <div class="invalid-feedback d-block">{{ $message }}</div>
     @enderror
 </div>
 <div class="mb-3">
-    <label class="form-label" for="side_b_subject_id{{ $idSuf }}">{{ __('console.games_partials.side_b') }}</label>
-    <select name="side_b_subject_id" id="side_b_subject_id{{ $idSuf }}" class="form-select @error('side_b_subject_id') is-invalid @enderror">
+    <label class="form-label" for="side_b_subj_id{{ $idSuf }}">{{ __('console.games_partials.side_b') }}</label>
+    <select name="side_b_subj_id" id="side_b_subj_id{{ $idSuf }}" class="form-select @error('side_b_subj_id') is-invalid @enderror">
         <option value="">{{ __('console.games_partials.none_selected') }}</option>
         @foreach($allSubjects as $subj)
             @php
@@ -59,7 +59,7 @@
             </option>
         @endforeach
     </select>
-    @error('side_b_subject_id')
+    @error('side_b_subj_id')
         <div class="invalid-feedback d-block">{{ $message }}</div>
     @enderror
 </div>
@@ -68,8 +68,8 @@
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             var grp = document.getElementById(@json('game_group_ids'.$idSuf));
-            var a = document.getElementById(@json('side_a_subject_id'.$idSuf));
-            var b = document.getElementById(@json('side_b_subject_id'.$idSuf));
+            var a = document.getElementById(@json('side_a_subj_id'.$idSuf));
+            var b = document.getElementById(@json('side_b_subj_id'.$idSuf));
             if (!grp || !a || !b) return;
 
             function selectedGroupIdSet() {

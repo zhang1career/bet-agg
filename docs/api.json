@@ -285,10 +285,12 @@
                     "id",
                     "cms_id",
                     "status",
-                    "side_a_subject_id",
-                    "side_b_subject_id",
+                    "side_a_subj_id",
+                    "side_b_subj_id",
                     "side_a_name",
                     "side_b_name",
+                    "side_a_icon",
+                    "side_b_icon",
                     "settle_outcomes",
                     "ut",
                     "title",
@@ -307,11 +309,11 @@
                     "status": {
                         "type": "integer"
                     },
-                    "side_a_subject_id": {
+                    "side_a_subj_id": {
                         "type": "integer",
                         "nullable": true
                     },
-                    "side_b_subject_id": {
+                    "side_b_subj_id": {
                         "type": "integer",
                         "nullable": true
                     },
@@ -322,6 +324,16 @@
                     "side_b_name": {
                         "type": "string",
                         "nullable": true
+                    },
+                    "side_a_icon": {
+                        "type": "string",
+                        "nullable": true,
+                        "description": "OSS object key for side A subject emblem (e.g. subj_icon/{uuid}.png)."
+                    },
+                    "side_b_icon": {
+                        "type": "string",
+                        "nullable": true,
+                        "description": "OSS object key for side B subject emblem."
                     },
                     "settle_outcomes": {
                         "$ref": "#/components/schemas/BetSettleOutcomes"
@@ -382,10 +394,12 @@
                     "id",
                     "cms_id",
                     "status",
-                    "side_a_subject_id",
-                    "side_b_subject_id",
+                    "side_a_subj_id",
+                    "side_b_subj_id",
                     "side_a_name",
                     "side_b_name",
+                    "side_a_icon",
+                    "side_b_icon",
                     "ut",
                     "title",
                     "description",
@@ -402,11 +416,11 @@
                     "status": {
                         "type": "integer"
                     },
-                    "side_a_subject_id": {
+                    "side_a_subj_id": {
                         "type": "integer",
                         "nullable": true
                     },
-                    "side_b_subject_id": {
+                    "side_b_subj_id": {
                         "type": "integer",
                         "nullable": true
                     },
@@ -417,6 +431,16 @@
                     "side_b_name": {
                         "type": "string",
                         "nullable": true
+                    },
+                    "side_a_icon": {
+                        "type": "string",
+                        "nullable": true,
+                        "description": "OSS object key for side A subject emblem."
+                    },
+                    "side_b_icon": {
+                        "type": "string",
+                        "nullable": true,
+                        "description": "OSS object key for side B subject emblem."
                     },
                     "ut": {
                         "type": "integer"

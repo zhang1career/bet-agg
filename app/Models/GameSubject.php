@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
  *
  * @property int $id
  * @property string $name
+ * @property string $icon OSS object key (e.g. {@code subj_icon/{uuid}.png})
  * @property int $ct
  * @property int $ut
  * @property-read Collection<int, GameGroup> $groups
@@ -26,11 +27,12 @@ class GameSubject extends Model
 
     protected $table = 'biz_game_subject';
 
-    protected $fillable = ['name', 'ct', 'ut'];
+    protected $fillable = ['name', 'icon', 'ct', 'ut'];
 
     protected $casts = [
         'id' => 'integer',
         'name' => 'string',
+        'icon' => 'string',
         'ct' => 'integer',
         'ut' => 'integer',
     ];

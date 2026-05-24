@@ -18,7 +18,7 @@ use ValueError;
 final readonly class MallOssUploadService
 {
     /** @var list<string> */
-    public const GAME_MEDIA_SEGMENTS = ['banner', 'main_media'];
+    public const GAME_MEDIA_SEGMENTS = ['banner', 'main_media', 'subj_icon'];
 
     public function __construct(private ResolvedApiGatewayBaseUrl $resolvedFoundationBaseUrl) {}
 

@@ -85,8 +85,8 @@ final class CatalogSeeder
         $game = new Game([
             'raw_id' => $rawId,
             'status' => Game::STATUS_OPEN,
-            'side_a_subject_id' => $sideA,
-            'side_b_subject_id' => $sideB,
+            'side_a_subj_id' => $sideA,
+            'side_b_subj_id' => $sideB,
         ]);
         $game->save();
 
