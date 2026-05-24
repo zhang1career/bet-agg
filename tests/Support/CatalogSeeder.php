@@ -67,7 +67,7 @@ final class CatalogSeeder
         $market = new Market([
             'gid' => $game->id,
             'type' => MarketType::OneX2,
-            'name' => '胜平负',
+            'name' => '1X2',
             'status' => Market::STATUS_OPEN,
         ]);
         $market->save();

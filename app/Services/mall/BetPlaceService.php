@@ -13,6 +13,7 @@ use App\Models\Market;
 use App\Models\OrderItem;
 use App\Repos\mall\BetOrderRepo;
 use App\Repos\mall\MarketRepo;
+use App\Repos\mall\PointsBalanceRepo;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -26,6 +27,8 @@ final readonly class BetPlaceService
         private SyntheticMatchMarket $synthetic,
         private BetOrderRepo $orders,
         private MarketRepo $markets,
+        private PointsBalanceRepo $pointsBalances,
+        private MarketQuoteService $marketQuote,
     ) {}
 
     /**
@@ -64,8 +67,11 @@ final readonly class BetPlaceService
                     throw new SelectionNotAcceptingException($marketId, $outcomeCode, 'game missing');
                 }
 
+                $this->pointsBalances->ensureLockedProfile($uid);
+
                 $order = $this->insertOrder($uid, $idemKey);
                 $this->insertLine($order, $market, $game, $outcomeCode);
+                $this->marketQuote->recordPick($marketId, $outcomeCode, (int) $order->ct);
 
                 return ['order' => $order->load('lines'), 'is_replay' => false];
             });

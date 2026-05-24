@@ -3,6 +3,9 @@
 @section('title', __('console.pages.game_subjects'))
 
 @section('content')
+    @php
+        $retainQs = request()->except('page');
+    @endphp
     <div class="mall-list-toolbar d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
         <h2 class="h5 mb-0">{{ __('console.list.subjects') }} <small class="text-muted">{{ __('console.list.subjects_note') }}</small></h2>
         <a href="{{ route('admin.game-subjects.index', ['mall_create' => 1]) }}" class="btn btn-primary btn-sm">{{ __('console.btn.new') }}</a>
@@ -16,6 +19,24 @@
                     <tr>
                         <th>{{ __('console.table.id') }}</th>
                         <th>{{ __('console.table.name') }}</th>
+                        <th>
+                            <form method="get" action="{{ route('admin.game-subjects.index') }}" class="d-flex flex-column gap-1 mb-0">
+                                @foreach($retainQs as $k => $v)
+                                    @continue(in_array($k, ['group', 'mall_create', 'mall_edit'], true))
+                                    @if(is_array($v))
+                                        @continue
+                                    @endif
+                                    <input type="hidden" name="{{ $k }}" value="{{ $v }}">
+                                @endforeach
+                                <span class="text-nowrap">{{ __('console.table.group') }}</span>
+                                <select name="group" id="game_subjects_filter_group" class="form-select form-select-sm" style="width: auto; min-width: 9rem;" onchange="this.form.submit()">
+                                    <option value="" @selected($listGroupFilter === null)>{{ __('console.game_subjects.filter_group_all') }}</option>
+                                    @foreach($groups as $g)
+                                        <option value="{{ $g->code }}" @selected($listGroupFilter === $g->code)>{{ $g->code }}</option>
+                                    @endforeach
+                                </select>
+                            </form>
+                        </th>
                         <th class="text-end">{{ __('console.table.group_count') }}</th>
                         <th class="text-end text-nowrap">{{ __('console.table.actions') }}</th>
                     </tr>
@@ -25,6 +46,13 @@
                         <tr>
                             <td><a href="{{ route('admin.game-subjects.show', $s) }}" class="font-monospace">{{ $s->id }}</a></td>
                             <td>{{ $s->name }}</td>
+                            <td class="font-monospace">
+                                @forelse($s->groups as $g)
+                                    <code>{{ $g->code }}</code>@if(!$loop->last)<span class="text-muted">, </span>@endif
+                                @empty
+                                    <span class="text-muted">—</span>
+                                @endforelse
+                            </td>
                             <td class="text-end font-monospace">{{ $s->groups_count }}</td>
                             <td class="text-end text-nowrap">
                                 <a href="{{ route('admin.game-subjects.index', ['mall_edit' => $s->id]) }}"

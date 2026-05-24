@@ -7,7 +7,7 @@ namespace Tests\Feature;
 use App\Enums\BetOrderStatus;
 use App\Enums\MatchOutcomeCode;
 use App\Models\BetOrder;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use App\Models\PointsBalance;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Testing\TestResponse;
 use Paganini\Constants\ResponseConstant;
@@ -16,8 +16,6 @@ use Tests\TestCase;
 
 final class BetPlaceApiTest extends TestCase
 {
-    use RefreshDatabase;
-
     private const SNOWFLAKE_BASE = 7_200_000_000_000_000;
 
     protected function setUp(): void
@@ -121,7 +119,23 @@ final class BetPlaceApiTest extends TestCase
         $this->assertSame($orderId, (int) BetOrder::query()->where('uid', 42)->where('idem_key', $idem)->value('id'));
     }
 
-    public function test_replay_returns_original_order(): void
+    public function test_place_creates_zero_points_balance_row(): void
+    {
+        $this->fakeUserMe(42);
+        $cat = CatalogSeeder::openHomeWinMarket();
+        $idem = self::SNOWFLAKE_BASE + 3;
+
+        $this->place(
+            ['lines' => [$this->line($cat['market_id'], $cat['outcome_code'])]],
+            ['X-User-Access-Token' => 'tok', 'X-Request-Id' => (string) $idem],
+        )->assertCreated();
+
+        $row = PointsBalance::query()->where('uid', 42)->first();
+        $this->assertNotNull($row);
+        $this->assertSame(0, (int) $row->balance);
+    }
+
+    public function test_replay_does_not_create_duplicate_points_balance_row(): void
     {
         $this->fakeUserMe(42);
         $cat = CatalogSeeder::openHomeWinMarket();
@@ -144,5 +158,6 @@ final class BetPlaceApiTest extends TestCase
             ->assertJsonPath('data.order.id', $orderId);
 
         $this->assertSame(1, BetOrder::query()->where('uid', 42)->count());
+        $this->assertSame(1, PointsBalance::query()->where('uid', 42)->count());
     }
 }

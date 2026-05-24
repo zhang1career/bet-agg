@@ -242,6 +242,435 @@
                         "type": "integer"
                     }
                 }
+            },
+            "BetSettleOutcomes": {
+                "type": "object",
+                "required": [
+                    "winners",
+                    "voids"
+                ],
+                "properties": {
+                    "winners": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "voids": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "BetGameGroupRef": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "code"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "code": {
+                        "type": "string"
+                    }
+                }
+            },
+            "BetGameListItem": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "cms_id",
+                    "status",
+                    "side_a_subject_id",
+                    "side_b_subject_id",
+                    "side_a_name",
+                    "side_b_name",
+                    "settle_outcomes",
+                    "ut",
+                    "title",
+                    "description",
+                    "banner"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "description": "Local biz_game id."
+                    },
+                    "cms_id": {
+                        "type": "integer",
+                        "description": "CMS game raw id."
+                    },
+                    "status": {
+                        "type": "integer"
+                    },
+                    "side_a_subject_id": {
+                        "type": "integer",
+                        "nullable": true
+                    },
+                    "side_b_subject_id": {
+                        "type": "integer",
+                        "nullable": true
+                    },
+                    "side_a_name": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "side_b_name": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "settle_outcomes": {
+                        "$ref": "#/components/schemas/BetSettleOutcomes"
+                    },
+                    "ut": {
+                        "type": "integer",
+                        "description": "Updated-at millis."
+                    },
+                    "title": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "description": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "banner": {
+                        "type": "string",
+                        "nullable": true
+                    }
+                }
+            },
+            "BetGameDetail": {
+                "allOf": [
+                    {
+                        "$ref": "#/components/schemas/BetGameListItem"
+                    },
+                    {
+                        "type": "object",
+                        "required": [
+                            "main_media",
+                            "starts_at",
+                            "groups"
+                        ],
+                        "properties": {
+                            "main_media": {
+                                "type": "string",
+                                "nullable": true
+                            },
+                            "starts_at": {
+                                "type": "integer",
+                                "nullable": true,
+                                "description": "Scheduled start time (epoch millis) from CMS."
+                            },
+                            "groups": {
+                                "type": "array",
+                                "items": {
+                                    "$ref": "#/components/schemas/BetGameGroupRef"
+                                }
+                            }
+                        }
+                    }
+                ]
+            },
+            "BetNestedGame": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "cms_id",
+                    "status",
+                    "side_a_subject_id",
+                    "side_b_subject_id",
+                    "side_a_name",
+                    "side_b_name",
+                    "ut",
+                    "title",
+                    "description",
+                    "banner",
+                    "starts_at"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "cms_id": {
+                        "type": "integer"
+                    },
+                    "status": {
+                        "type": "integer"
+                    },
+                    "side_a_subject_id": {
+                        "type": "integer",
+                        "nullable": true
+                    },
+                    "side_b_subject_id": {
+                        "type": "integer",
+                        "nullable": true
+                    },
+                    "side_a_name": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "side_b_name": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "ut": {
+                        "type": "integer"
+                    },
+                    "title": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "description": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "banner": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "starts_at": {
+                        "type": "integer",
+                        "nullable": true,
+                        "description": "Scheduled start time (epoch millis) from CMS."
+                    }
+                }
+            },
+            "BetMarketListItem": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "game_id",
+                    "type",
+                    "name",
+                    "status",
+                    "ut",
+                    "game"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "game_id": {
+                        "type": "integer"
+                    },
+                    "type": {
+                        "type": "integer"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "type": "integer"
+                    },
+                    "ut": {
+                        "type": "integer"
+                    },
+                    "game": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/BetNestedGame"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    }
+                }
+            },
+            "BetMarketDetail": {
+                "allOf": [
+                    {
+                        "$ref": "#/components/schemas/BetMarketListItem"
+                    },
+                    {
+                        "type": "object",
+                        "required": [
+                            "selections"
+                        ],
+                        "properties": {
+                            "selections": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "additionalProperties": true
+                                }
+                            }
+                        }
+                    }
+                ]
+            },
+            "BetMarketQuoteOutcome": {
+                "type": "object",
+                "required": [
+                    "outcome_code",
+                    "pick_count",
+                    "share_bp"
+                ],
+                "properties": {
+                    "outcome_code": {
+                        "type": "string",
+                        "enum": [
+                            "home_win",
+                            "draw",
+                            "away_win"
+                        ]
+                    },
+                    "pick_count": {
+                        "type": "integer"
+                    },
+                    "share_bp": {
+                        "type": "integer",
+                        "description": "Crowd share in basis points (sum to 10000 when total_picks > 0)."
+                    }
+                }
+            },
+            "BetMarketQuoteSnapshot": {
+                "type": "object",
+                "required": [
+                    "as_of",
+                    "total_picks",
+                    "outcomes"
+                ],
+                "properties": {
+                    "as_of": {
+                        "type": "integer",
+                        "nullable": true,
+                        "description": "Last update epoch millis; null when total_picks is 0."
+                    },
+                    "total_picks": {
+                        "type": "integer"
+                    },
+                    "outcomes": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/BetMarketQuoteOutcome"
+                        }
+                    }
+                }
+            },
+            "BetMarketQuoteBatchItem": {
+                "type": "object",
+                "required": [
+                    "market_id",
+                    "quote"
+                ],
+                "properties": {
+                    "market_id": {
+                        "type": "integer"
+                    },
+                    "quote": {
+                        "$ref": "#/components/schemas/BetMarketQuoteSnapshot"
+                    }
+                }
+            },
+            "BetMarketQuoteBatchData": {
+                "type": "object",
+                "required": [
+                    "items"
+                ],
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/BetMarketQuoteBatchItem"
+                        }
+                    }
+                }
+            },
+            "BetMarketQuoteHistPoint": {
+                "type": "object",
+                "required": [
+                    "t",
+                    "pick_count",
+                    "share_bp"
+                ],
+                "properties": {
+                    "t": {
+                        "type": "integer",
+                        "description": "Bucket start epoch millis."
+                    },
+                    "pick_count": {
+                        "type": "integer"
+                    },
+                    "share_bp": {
+                        "type": "integer"
+                    }
+                }
+            },
+            "BetMarketQuoteHistSeries": {
+                "type": "object",
+                "required": [
+                    "outcome_code",
+                    "points"
+                ],
+                "properties": {
+                    "outcome_code": {
+                        "type": "string",
+                        "enum": [
+                            "home_win",
+                            "draw",
+                            "away_win"
+                        ]
+                    },
+                    "points": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/BetMarketQuoteHistPoint"
+                        }
+                    }
+                }
+            },
+            "BetMarketQuoteHistData": {
+                "type": "object",
+                "required": [
+                    "market_id",
+                    "interval",
+                    "series"
+                ],
+                "properties": {
+                    "market_id": {
+                        "type": "integer"
+                    },
+                    "interval": {
+                        "type": "string",
+                        "enum": [
+                            "1h",
+                            "1d"
+                        ]
+                    },
+                    "series": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/BetMarketQuoteHistSeries"
+                        }
+                    }
+                }
+            },
+            "BetCatalogListData": {
+                "type": "object",
+                "required": [
+                    "items",
+                    "pagination",
+                    "_dict"
+                ],
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "items": {}
+                    },
+                    "pagination": {
+                        "$ref": "#/components/schemas/ListPagination"
+                    },
+                    "_dict": {
+                        "type": "object",
+                        "additionalProperties": true
+                    }
+                }
             }
         },
         "examples": {
@@ -269,81 +698,6 @@
         }
     },
     "paths": {
-        "/up": {
-            "get": {
-                "tags": [
-                    "Health"
-                ],
-                "summary": "Health check",
-                "responses": {
-                    "200": {
-                        "description": "OK"
-                    }
-                }
-            }
-        },
-        "/api/openapi.json": {
-            "get": {
-                "tags": [
-                    "Meta"
-                ],
-                "summary": "OpenAPI 3 document",
-                "responses": {
-                    "200": {
-                        "description": "Spec",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/bet/dict": {
-            "get": {
-                "tags": [
-                    "Meta"
-                ],
-                "summary": "Dictionary lookup",
-                "parameters": [
-                    {
-                        "name": "codes",
-                        "in": "query",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "allOf": [
-                                        {
-                                            "$ref": "#/components/schemas/ApiEnvelope"
-                                        },
-                                        {
-                                            "properties": {
-                                                "data": {
-                                                    "type": "object",
-                                                    "additionalProperties": true
-                                                }
-                                            }
-                                        }
-                                    ]
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/api/bet/games": {
             "get": {
                 "tags": [
@@ -413,7 +767,22 @@
                                         {
                                             "properties": {
                                                 "data": {
-                                                    "type": "object"
+                                                    "allOf": [
+                                                        {
+                                                            "$ref": "#/components/schemas/BetCatalogListData"
+                                                        },
+                                                        {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "items": {
+                                                                    "type": "array",
+                                                                    "items": {
+                                                                        "$ref": "#/components/schemas/BetGameListItem"
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    ]
                                                 }
                                             }
                                         }
@@ -454,7 +823,20 @@
                                         {
                                             "properties": {
                                                 "data": {
-                                                    "type": "object"
+                                                    "allOf": [
+                                                        {
+                                                            "$ref": "#/components/schemas/BetGameDetail"
+                                                        },
+                                                        {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "_dict": {
+                                                                    "type": "object",
+                                                                    "additionalProperties": true
+                                                                }
+                                                            }
+                                                        }
+                                                    ]
                                                 }
                                             }
                                         }
@@ -522,7 +904,66 @@
                                         {
                                             "properties": {
                                                 "data": {
-                                                    "type": "object"
+                                                    "allOf": [
+                                                        {
+                                                            "$ref": "#/components/schemas/BetCatalogListData"
+                                                        },
+                                                        {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "items": {
+                                                                    "type": "array",
+                                                                    "items": {
+                                                                        "$ref": "#/components/schemas/BetMarketListItem"
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    ]
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/bet/markets/quotes": {
+            "get": {
+                "tags": [
+                    "Prediction"
+                ],
+                "summary": "Batch market quote snapshots",
+                "description": "Crowd pick distribution per market, in request order. Unknown markets return an empty snapshot.",
+                "parameters": [
+                    {
+                        "name": "market_ids",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "maxLength": 4096
+                        },
+                        "description": "Comma-separated market ids (1–100 valid ids)."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiEnvelope"
+                                        },
+                                        {
+                                            "properties": {
+                                                "data": {
+                                                    "$ref": "#/components/schemas/BetMarketQuoteBatchData"
                                                 }
                                             }
                                         }
@@ -563,7 +1004,105 @@
                                         {
                                             "properties": {
                                                 "data": {
-                                                    "type": "object"
+                                                    "allOf": [
+                                                        {
+                                                            "$ref": "#/components/schemas/BetMarketDetail"
+                                                        },
+                                                        {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "_dict": {
+                                                                    "type": "object",
+                                                                    "additionalProperties": true
+                                                                }
+                                                            }
+                                                        }
+                                                    ]
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/bet/markets/{market_id}/quote/history": {
+            "get": {
+                "tags": [
+                    "Prediction"
+                ],
+                "summary": "Market quote history",
+                "description": "Time-bucketed crowd pick distribution. Default window is the last 7 days ending at `to` (or now).",
+                "parameters": [
+                    {
+                        "name": "market_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "from",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0
+                        },
+                        "description": "Range start epoch millis."
+                    },
+                    {
+                        "name": "to",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0
+                        },
+                        "description": "Range end epoch millis."
+                    },
+                    {
+                        "name": "interval",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "1h",
+                                "1d"
+                            ],
+                            "default": "1h"
+                        }
+                    },
+                    {
+                        "name": "outcome_code",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "home_win",
+                                "draw",
+                                "away_win"
+                            ]
+                        },
+                        "description": "Filter to one outcome; omit for all 1X2 legs."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiEnvelope"
+                                        },
+                                        {
+                                            "properties": {
+                                                "data": {
+                                                    "$ref": "#/components/schemas/BetMarketQuoteHistData"
                                                 }
                                             }
                                         }
@@ -884,6 +1423,32 @@
                                 }
                             }
                         }
+                    }
+                }
+            }
+        },
+        "/api/openapi.json": {
+            "get": {
+                "tags": [
+                    "Meta"
+                ],
+                "summary": "OpenAPI document",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
+        },
+        "/up": {
+            "get": {
+                "tags": [
+                    "Health"
+                ],
+                "summary": "Liveness probe",
+                "responses": {
+                    "200": {
+                        "description": "OK"
                     }
                 }
             }

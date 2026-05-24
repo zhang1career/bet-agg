@@ -35,6 +35,7 @@ class PredictionMarketController extends Controller
 
         $page = max(1, (int) $request->query('page', 1));
         $perPage = min(50, max(1, (int) $request->query('per_page', 15)));
+        $includeQuote = trim((string) $request->query('include', '')) === 'quote';
 
         $filter = new MarketListFilter(
             statuses: $this->parseStatusList($request->query('status')),
@@ -43,8 +44,8 @@ class PredictionMarketController extends Controller
             onlyMarketsUnderOpenGame: ! $request->has('status') && ! $request->has('game_id'),
         );
 
-        $pack = $this->catalog->listMarkets($filter, $page, $perPage);
-        $pack['_dict'] = $this->dict->resolve(['market_status', 'game_status']);
+        $pack = $this->catalog->listMarkets($filter, $page, $perPage, $includeQuote);
+        $pack['_dict'] = $this->dict->resolve(['market_status', 'game_status', 'market_type']);
 
         $this->logHandledApiRequest($request, ['handler' => 'prediction.markets.index']);
 
@@ -54,7 +55,7 @@ class PredictionMarketController extends Controller
     public function show(Request $request, int $market_id): JsonResponse
     {
         $row = $this->catalog->getMarketDetail($market_id);
-        $row['_dict'] = $this->dict->resolve(['market_status', 'game_status']);
+        $row['_dict'] = $this->dict->resolve(['market_status', 'game_status', 'market_type']);
 
         $this->logHandledApiRequest($request, ['handler' => 'prediction.markets.show', 'market_id' => $market_id]);
 

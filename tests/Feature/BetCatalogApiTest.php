@@ -42,7 +42,7 @@ final class BetCatalogApiTest extends TestCase
         $this->assertSame('cms/banner.png', $row['banner']);
         $this->assertArrayNotHasKey('name', $row);
         $this->assertArrayNotHasKey('main_media', $row);
-        $this->assertArrayNotHasKey('start_at', $row);
+        $this->assertArrayNotHasKey('starts_at', $row);
         $this->assertArrayHasKey('_dict', $res->json('data'));
         $this->assertArrayHasKey('game_status', $res->json('data._dict'));
     }
@@ -63,7 +63,7 @@ final class BetCatalogApiTest extends TestCase
         $this->assertSame('CMS description 303', $res->json('data.description'));
         $this->assertSame('cms/banner.png', $res->json('data.banner'));
         $this->assertSame('cms/cover.png', $res->json('data.main_media'));
-        $this->assertSame(1_700_000_000_000, $res->json('data.start_at'));
+        $this->assertSame(1_700_000_000_000, $res->json('data.starts_at'));
         $this->assertArrayNotHasKey('name', $res->json('data'));
         $this->assertSame(['winners' => [], 'voids' => []], $res->json('data.settle_outcomes'));
         $this->assertSame([], $res->json('data.groups'));
@@ -153,8 +153,16 @@ final class BetCatalogApiTest extends TestCase
         $this->assertGreaterThanOrEqual(2, count($items));
         foreach ($items as $row) {
             $this->assertArrayNotHasKey('selections', $row);
+            $this->assertArrayHasKey('game', $row);
+            $this->assertSame(1_700_000_000_000, $row['game']['starts_at']);
         }
         $this->assertArrayHasKey('_dict', $resAll->json('data'));
+        $dict = $resAll->json('data._dict');
+        $this->assertArrayHasKey('market_status', $dict);
+        $this->assertArrayHasKey('game_status', $dict);
+        $this->assertArrayHasKey('market_type', $dict);
+        $this->assertSame('0', $dict['market_type'][0]['v']);
+        $this->assertSame('1X2', $dict['market_type'][0]['k']);
 
         $localGameId = (int) $otherMarket->gid;
         $resOne = $this->getJson('/api/bet/markets?game_id='.$localGameId);
@@ -186,8 +194,15 @@ final class BetCatalogApiTest extends TestCase
         $rawId = (int) $market->game->raw_id;
         $this->assertSame('CMS game '.$rawId, $res->json('data.game.title'));
         $this->assertArrayNotHasKey('main_media', $res->json('data.game'));
-        $this->assertArrayNotHasKey('start_at', $res->json('data.game'));
+        $this->assertSame(1_700_000_000_000, $res->json('data.game.starts_at'));
         $this->assertArrayHasKey('selections', $res->json('data'));
+        $this->assertArrayHasKey('quote', $res->json('data'));
+        $dict = $res->json('data._dict');
+        $this->assertArrayHasKey('market_status', $dict);
+        $this->assertArrayHasKey('game_status', $dict);
+        $this->assertArrayHasKey('market_type', $dict);
+        $this->assertSame('0', $dict['market_type'][0]['v']);
+        $this->assertSame('1X2', $dict['market_type'][0]['k']);
         $selections = $res->json('data.selections');
         $this->assertCount(3, $selections);
         $this->assertSame('home_win', $selections[0]['outcome_code']);

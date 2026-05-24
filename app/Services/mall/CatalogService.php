@@ -25,6 +25,7 @@ final readonly class CatalogService
         private CmsGameClient $cmsGames,
         private SyntheticMatchMarket $synthetic,
         private CatalogRepo $catalog,
+        private MarketQuoteService $marketQuote,
     ) {}
 
     /**
@@ -83,17 +84,24 @@ final readonly class CatalogService
      *
      * @throws ConnectionException
      */
-    public function listMarkets(MarketListFilter $filter, int $page, int $perPage): array
+    public function listMarkets(MarketListFilter $filter, int $page, int $perPage, bool $includeQuote = false): array
     {
         /** @var LengthAwarePaginator<int, Market> $p */
         $p = $this->catalog->paginateMarkets($filter, $page, $perPage);
 
         $marketsOnPage = $p->items();
         $cmsByRawId = $this->cmsGamesByRawIds($this->uniqueRawIdsFromMarkets($marketsOnPage));
+        $quotes = $includeQuote
+            ? $this->marketQuote->snapshotsForMarkets(array_map(static fn (Market $m): int => $m->id, $marketsOnPage))
+            : [];
 
         $items = [];
         foreach ($marketsOnPage as $market) {
-            $items[] = $this->serializeMarketRow($market, null, $cmsByRawId);
+            $row = $this->serializeMarketRow($market, null, $cmsByRawId);
+            if ($includeQuote) {
+                $row['quote'] = $quotes[$market->id] ?? MarketQuoteService::emptySnapshot();
+            }
+            $items[] = $row;
         }
 
         return [
@@ -120,7 +128,13 @@ final readonly class CatalogService
             $market->game !== null ? [(int) $market->game->raw_id] : [],
         );
 
-        return $this->serializeMarketRow($market, $selections, $cmsByRawId);
+        return $this->serializeMarketRow(
+            $market,
+            $selections,
+            $cmsByRawId,
+            $this->marketQuote->snapshotsForMarkets([$market->id])[$market->id]
+                ?? MarketQuoteService::emptySnapshot(),
+        );
     }
 
     /**
@@ -174,7 +188,7 @@ final readonly class CatalogService
 
         if ($detail) {
             $row['main_media'] = $cmsRow !== null ? $this->cmsStringOrNull($cmsRow['main_media'] ?? null) : null;
-            $row['start_at'] = $cmsRow !== null ? $this->cmsStartsAtMillisOrNull($cmsRow['starts_at'] ?? null) : null;
+            $row['starts_at'] = $this->cmsStartsAtFromRow($cmsRow);
             $row['groups'] = $groups ?? [];
         }
 
@@ -184,10 +198,15 @@ final readonly class CatalogService
     /**
      * @param  list<array<string, mixed>>|null  $selections
      * @param  array<int, array<string, mixed>>  $cmsByRawId
+     * @param  array<string, mixed>|null  $quote
      * @return array<string, mixed>
      */
-    private function serializeMarketRow(Market $market, ?array $selections, array $cmsByRawId): array
-    {
+    private function serializeMarketRow(
+        Market $market,
+        ?array $selections,
+        array $cmsByRawId,
+        ?array $quote = null,
+    ): array {
         $game = $market->game;
 
         $nestedCms = $game === null ? null : ($cmsByRawId[(int) $game->raw_id] ?? null);
@@ -205,6 +224,9 @@ final readonly class CatalogService
         if ($selections !== null) {
             $row['selections'] = $selections;
         }
+        if ($quote !== null) {
+            $row['quote'] = $quote;
+        }
 
         return $row;
     }
@@ -217,6 +239,7 @@ final readonly class CatalogService
     {
         $merged = $this->serializeGameRow($game, $cmsRow, false);
         unset($merged['settle_outcomes']);
+        $merged['starts_at'] = $this->cmsStartsAtFromRow($cmsRow);
 
         return $merged;
     }
@@ -281,6 +304,14 @@ final readonly class CatalogService
         }
 
         return $value;
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $cmsRow
+     */
+    private function cmsStartsAtFromRow(?array $cmsRow): ?int
+    {
+        return $cmsRow !== null ? $this->cmsStartsAtMillisOrNull($cmsRow['starts_at'] ?? null) : null;
     }
 
     private function cmsStartsAtMillisOrNull(mixed $value): ?int
