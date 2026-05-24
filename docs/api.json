@@ -504,6 +504,153 @@
                     }
                 ]
             },
+            "BetMarketQuoteOutcome": {
+                "type": "object",
+                "required": [
+                    "outcome_code",
+                    "pick_count",
+                    "share_bp"
+                ],
+                "properties": {
+                    "outcome_code": {
+                        "type": "string",
+                        "enum": [
+                            "home_win",
+                            "draw",
+                            "away_win"
+                        ]
+                    },
+                    "pick_count": {
+                        "type": "integer"
+                    },
+                    "share_bp": {
+                        "type": "integer",
+                        "description": "Crowd share in basis points (sum to 10000 when total_picks > 0)."
+                    }
+                }
+            },
+            "BetMarketQuoteSnapshot": {
+                "type": "object",
+                "required": [
+                    "as_of",
+                    "total_picks",
+                    "outcomes"
+                ],
+                "properties": {
+                    "as_of": {
+                        "type": "integer",
+                        "nullable": true,
+                        "description": "Last update epoch millis; null when total_picks is 0."
+                    },
+                    "total_picks": {
+                        "type": "integer"
+                    },
+                    "outcomes": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/BetMarketQuoteOutcome"
+                        }
+                    }
+                }
+            },
+            "BetMarketQuoteBatchItem": {
+                "type": "object",
+                "required": [
+                    "market_id",
+                    "quote"
+                ],
+                "properties": {
+                    "market_id": {
+                        "type": "integer"
+                    },
+                    "quote": {
+                        "$ref": "#/components/schemas/BetMarketQuoteSnapshot"
+                    }
+                }
+            },
+            "BetMarketQuoteBatchData": {
+                "type": "object",
+                "required": [
+                    "items"
+                ],
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/BetMarketQuoteBatchItem"
+                        }
+                    }
+                }
+            },
+            "BetMarketQuoteHistPoint": {
+                "type": "object",
+                "required": [
+                    "t",
+                    "pick_count",
+                    "share_bp"
+                ],
+                "properties": {
+                    "t": {
+                        "type": "integer",
+                        "description": "Bucket start epoch millis."
+                    },
+                    "pick_count": {
+                        "type": "integer"
+                    },
+                    "share_bp": {
+                        "type": "integer"
+                    }
+                }
+            },
+            "BetMarketQuoteHistSeries": {
+                "type": "object",
+                "required": [
+                    "outcome_code",
+                    "points"
+                ],
+                "properties": {
+                    "outcome_code": {
+                        "type": "string",
+                        "enum": [
+                            "home_win",
+                            "draw",
+                            "away_win"
+                        ]
+                    },
+                    "points": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/BetMarketQuoteHistPoint"
+                        }
+                    }
+                }
+            },
+            "BetMarketQuoteHistData": {
+                "type": "object",
+                "required": [
+                    "market_id",
+                    "interval",
+                    "series"
+                ],
+                "properties": {
+                    "market_id": {
+                        "type": "integer"
+                    },
+                    "interval": {
+                        "type": "string",
+                        "enum": [
+                            "1h",
+                            "1d"
+                        ]
+                    },
+                    "series": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/BetMarketQuoteHistSeries"
+                        }
+                    }
+                }
+            },
             "BetCatalogListData": {
                 "type": "object",
                 "required": [
@@ -784,6 +931,50 @@
                 }
             }
         },
+        "/api/bet/markets/quotes": {
+            "get": {
+                "tags": [
+                    "Prediction"
+                ],
+                "summary": "Batch market quote snapshots",
+                "description": "Crowd pick distribution per market, in request order. Unknown markets return an empty snapshot.",
+                "parameters": [
+                    {
+                        "name": "market_ids",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "maxLength": 4096
+                        },
+                        "description": "Comma-separated market ids (1–100 valid ids)."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiEnvelope"
+                                        },
+                                        {
+                                            "properties": {
+                                                "data": {
+                                                    "$ref": "#/components/schemas/BetMarketQuoteBatchData"
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/bet/markets/{market_id}": {
             "get": {
                 "tags": [
@@ -827,6 +1018,91 @@
                                                             }
                                                         }
                                                     ]
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/bet/markets/{market_id}/quote/history": {
+            "get": {
+                "tags": [
+                    "Prediction"
+                ],
+                "summary": "Market quote history",
+                "description": "Time-bucketed crowd pick distribution. Default window is the last 7 days ending at `to` (or now).",
+                "parameters": [
+                    {
+                        "name": "market_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "from",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0
+                        },
+                        "description": "Range start epoch millis."
+                    },
+                    {
+                        "name": "to",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0
+                        },
+                        "description": "Range end epoch millis."
+                    },
+                    {
+                        "name": "interval",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "1h",
+                                "1d"
+                            ],
+                            "default": "1h"
+                        }
+                    },
+                    {
+                        "name": "outcome_code",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "home_win",
+                                "draw",
+                                "away_win"
+                            ]
+                        },
+                        "description": "Filter to one outcome; omit for all 1X2 legs."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiEnvelope"
+                                        },
+                                        {
+                                            "properties": {
+                                                "data": {
+                                                    "$ref": "#/components/schemas/BetMarketQuoteHistData"
                                                 }
                                             }
                                         }
