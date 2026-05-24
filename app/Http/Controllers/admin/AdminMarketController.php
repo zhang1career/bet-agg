@@ -85,7 +85,7 @@ class AdminMarketController extends Controller
         $market = new Market([
             'gid' => (int) $v['game_id'],
             'type' => MarketType::from((int) $v['type']),
-            'name' => trim((string) $v['name']) !== '' ? trim((string) $v['name']) : '胜平负',
+            'name' => trim((string) $v['name']) !== '' ? trim((string) $v['name']) : '1X2',
             'status' => MarketStatus::from((int) $v['status'])->value,
         ]);
         $market->save();

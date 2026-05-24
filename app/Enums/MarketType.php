@@ -14,7 +14,7 @@ enum MarketType: int implements HasDictionaryLabel
     public function label(): string
     {
         return match ($this) {
-            self::OneX2 => '胜平负',
+            self::OneX2 => '1X2',
         };
     }
 }

@@ -56,7 +56,7 @@ final class MallDictionaryServiceTest extends TestCase
         $this->assertNotEmpty($rows);
         $first = $rows[0];
         $this->assertSame('0', $first['v']);
-        $this->assertSame('胜平负', $first['k']);
+        $this->assertSame('1X2', $first['k']);
     }
 
     public function test_resolve_returns_only_requested_known_codes(): void

@@ -80,7 +80,7 @@ CREATE TABLE IF NOT EXISTS `biz_market` (
                                             `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
     `gid` bigint(20) unsigned NOT NULL DEFAULT '0' COMMENT 'game ID',
     `name` varchar(256) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '' COMMENT '盘口名称',
-    `type` tinyint(3) unsigned NOT NULL DEFAULT '0' COMMENT '盘口类型，0 = 胜平负',
+    `type` tinyint(3) unsigned NOT NULL DEFAULT '0' COMMENT '盘口类型，0 = 1X2',
     `status` tinyint(1) unsigned NOT NULL DEFAULT '0' COMMENT '0-init, 1-open, 2-suspended, 3-settled',
     `ct` bigint(20) unsigned NOT NULL DEFAULT '0' COMMENT 'Create time in Unix milliseconds',
     `ut` bigint(20) unsigned NOT NULL DEFAULT '0' COMMENT 'Update time in Unix milliseconds',
