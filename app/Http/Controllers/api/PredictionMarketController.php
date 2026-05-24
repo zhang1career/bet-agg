@@ -45,7 +45,7 @@ class PredictionMarketController extends Controller
         );
 
         $pack = $this->catalog->listMarkets($filter, $page, $perPage, $includeQuote);
-        $pack['_dict'] = $this->dict->resolve(['market_status', 'game_status']);
+        $pack['_dict'] = $this->dict->resolve(['market_status', 'game_status', 'market_type']);
 
         $this->logHandledApiRequest($request, ['handler' => 'prediction.markets.index']);
 
@@ -55,7 +55,7 @@ class PredictionMarketController extends Controller
     public function show(Request $request, int $market_id): JsonResponse
     {
         $row = $this->catalog->getMarketDetail($market_id);
-        $row['_dict'] = $this->dict->resolve(['market_status', 'game_status']);
+        $row['_dict'] = $this->dict->resolve(['market_status', 'game_status', 'market_type']);
 
         $this->logHandledApiRequest($request, ['handler' => 'prediction.markets.show', 'market_id' => $market_id]);
 

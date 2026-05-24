@@ -157,6 +157,12 @@ final class BetCatalogApiTest extends TestCase
             $this->assertSame(1_700_000_000_000, $row['game']['starts_at']);
         }
         $this->assertArrayHasKey('_dict', $resAll->json('data'));
+        $dict = $resAll->json('data._dict');
+        $this->assertArrayHasKey('market_status', $dict);
+        $this->assertArrayHasKey('game_status', $dict);
+        $this->assertArrayHasKey('market_type', $dict);
+        $this->assertSame('0', $dict['market_type'][0]['v']);
+        $this->assertSame('胜平负', $dict['market_type'][0]['k']);
 
         $localGameId = (int) $otherMarket->gid;
         $resOne = $this->getJson('/api/bet/markets?game_id='.$localGameId);
@@ -191,6 +197,12 @@ final class BetCatalogApiTest extends TestCase
         $this->assertSame(1_700_000_000_000, $res->json('data.game.starts_at'));
         $this->assertArrayHasKey('selections', $res->json('data'));
         $this->assertArrayHasKey('quote', $res->json('data'));
+        $dict = $res->json('data._dict');
+        $this->assertArrayHasKey('market_status', $dict);
+        $this->assertArrayHasKey('game_status', $dict);
+        $this->assertArrayHasKey('market_type', $dict);
+        $this->assertSame('0', $dict['market_type'][0]['v']);
+        $this->assertSame('胜平负', $dict['market_type'][0]['k']);
         $selections = $res->json('data.selections');
         $this->assertCount(3, $selections);
         $this->assertSame('home_win', $selections[0]['outcome_code']);
