@@ -12,6 +12,7 @@ use App\Repos\mall\SettlementConsoleRepo;
 use App\Services\mall\serv_fd\CmsGameClient;
 use App\Support\AdminGameSelectOptionLabels;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator as PaginatorImpl;
 use Illuminate\Support\Collection;
 use Paganini\Aggregation\Exceptions\DownstreamServiceException;
@@ -30,6 +31,69 @@ final readonly class GameAdminService
         private SettlementConsoleRepo $settlementConsole,
         private AdminGameSelectOptionLabels $gameSelectLabels,
     ) {}
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function indexViewData(Request $request): array
+    {
+        $perPage = min(50, max(1, (int) $request->query('per_page', 20)));
+        $sort = (string) $request->query('sort', 'id');
+        if (! in_array($sort, ['id', 'starts_at'], true)) {
+            $sort = 'id';
+        }
+        $dir = strtolower((string) $request->query('dir', ''));
+        if (! in_array($dir, ['asc', 'desc'], true)) {
+            $dir = $sort === 'starts_at' ? 'asc' : 'desc';
+        }
+        $statusFilter = self::parseOptionalStatusFilter($request->query('status'));
+
+        $list = $this->paginateIndexList(
+            $statusFilter,
+            $sort,
+            $dir,
+            $perPage,
+            $request->url(),
+            max(1, (int) $request->query('page', 1)),
+        );
+
+        $mallCreate = $request->boolean('mall_create');
+        $mallEditId = (int) $request->query('mall_edit', 0);
+        $mallSettlement = $request->boolean('mall_settlement');
+        $mallSettlementGamePrefill = (int) $request->query('mall_settlement_game', 0);
+
+        $formOptions = ($mallCreate || $mallEditId >= 1)
+            ? $this->formSelectOptions()
+            : ['allGroups' => collect(), 'allSubjects' => collect()];
+
+        $modal = $mallEditId >= 1
+            ? $this->modalEditContext($mallEditId)
+            : ['game' => null, 'cms' => null, 'selectedGroupIds' => []];
+
+        $settlementForm = $this->settlementFormViewData();
+
+        return [
+            'games' => $list['games'],
+            'cmsByRawId' => $list['cmsByRawId'],
+            'mallCreate' => $mallCreate,
+            'mallEditId' => $mallEditId,
+            'mallSettlement' => $mallSettlement,
+            'mallSettlementGamePrefill' => $mallSettlementGamePrefill >= 1 ? $mallSettlementGamePrefill : null,
+            'modalEditGame' => $modal['game'],
+            'modalEditCms' => $modal['cms'],
+            'modalEditSelectedGroups' => $modal['selectedGroupIds'],
+            'allGroups' => $formOptions['allGroups'],
+            'allSubjects' => $formOptions['allSubjects'],
+            'listSort' => $sort,
+            'listDir' => $dir,
+            'listStatusFilter' => $statusFilter,
+            'gamesListTruncated' => $list['gamesListTruncated'],
+            'gamesListCap' => self::LIST_CMS_MERGE_CAP,
+            'settlementOpenGames' => $settlementForm['games'],
+            'settlementOutcomesByGame' => $settlementForm['outcomesByGame'],
+            'settlementGameSelectLabels' => $settlementForm['gameSelectLabels'],
+        ];
+    }
 
     /**
      * @return array{
@@ -96,7 +160,7 @@ final readonly class GameAdminService
 
         return [
             'game' => $game,
-            'cms' => $this->fetchCmsGameOrNull($game->raw_id),
+            'cms' => $this->cmsGames->findOrNull($game->raw_id),
             'selectedGroupIds' => $game->groups->pluck('id')->map(static fn ($id): int => (int) $id)->all(),
         ];
     }
@@ -139,7 +203,7 @@ final readonly class GameAdminService
 
         return [
             'game' => $game,
-            'cms_game' => $this->fetchCmsGameOrNull($game->raw_id),
+            'cms_game' => $this->cmsGames->findOrNull($game->raw_id),
             'settlementOrderCounts' => $this->settlementConsole->distinctOrderCountsByStatusForGame($gid),
             'settlementLineCounts' => $this->settlementConsole->lineResultCountsForGame($gid),
             'settlementJobs' => $this->settlementConsole->recentJobsForGame($gid),
@@ -222,7 +286,7 @@ final readonly class GameAdminService
             throw new NotFoundHttpException();
         }
 
-        $cmsGame = $this->fetchCmsGameOrNull($game->raw_id);
+        $cmsGame = $this->cmsGames->findOrNull($game->raw_id);
         if (is_array($cmsGame)) {
             if (trim((string) ($validated['name'] ?? '')) === '') {
                 return ['name' => ['Title is required when the CMS record can be loaded.']];
@@ -269,18 +333,6 @@ final readonly class GameAdminService
         return null;
     }
 
-    private function fetchCmsGameOrNull(int $rawId): ?array
-    {
-        if ($rawId < 1) {
-            return null;
-        }
-        try {
-            return $this->cmsGames->find($rawId);
-        } catch (Throwable) {
-            return null;
-        }
-    }
-
     public static function parseOptionalStatusFilter(mixed $raw): ?int
     {
         if ($raw === null || $raw === '') {
@@ -319,21 +371,21 @@ final readonly class GameAdminService
      */
     private function cmsByRawIdsForGames(Collection $games): array
     {
-        $rawIds = $games
+        return $this->cmsGames->findManyByIdOrEmpty($this->rawIdsFromGames($games));
+    }
+
+    /**
+     * @param  Collection<int, Game>  $games
+     * @return list<int>
+     */
+    private function rawIdsFromGames(Collection $games): array
+    {
+        return $games
             ->map(static fn (Game $g): int => $g->raw_id)
             ->unique()
             ->filter(static fn (int $r): bool => $r >= 1)
             ->values()
             ->all();
-        if ($rawIds === []) {
-            return [];
-        }
-
-        try {
-            return $this->cmsGames->findManyById($rawIds);
-        } catch (Throwable) {
-            return [];
-        }
     }
 
     /**
@@ -351,20 +403,7 @@ final readonly class GameAdminService
 
         $rows = $this->games->listForAdminStartsAtMerge($statusFilter, self::LIST_CMS_MERGE_CAP);
 
-        $rawIds = $rows
-            ->map(static fn (Game $g): int => $g->raw_id)
-            ->unique()
-            ->filter(static fn (int $r): bool => $r >= 1)
-            ->values()
-            ->all();
-
-        $cmsByRawId = [];
-        try {
-            if ($rawIds !== []) {
-                $cmsByRawId = $this->cmsGames->findManyById($rawIds);
-            }
-        } catch (Throwable) {
-        }
+        $cmsByRawId = $this->cmsGames->findManyByIdOrEmpty($this->rawIdsFromGames($rows));
 
         $withMeta = $rows->map(function (Game $g) use ($cmsByRawId): array {
             $ms = (int) (($cmsByRawId[$g->raw_id] ?? [])['starts_at'] ?? 0);

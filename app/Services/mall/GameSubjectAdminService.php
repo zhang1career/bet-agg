@@ -55,22 +55,22 @@ final readonly class GameSubjectAdminService
     /**
      * @param  list<int>  $groupIds
      */
-    public function create(string $name, string $icon, array $groupIds): void
+    public function create(string $name, string $icon, string $info, array $groupIds): void
     {
-        $this->subjects->createForAdmin($name, $icon, $groupIds);
+        $this->subjects->createForAdmin($name, $icon, $info, $groupIds);
     }
 
     /**
      * @param  list<int>  $groupIds
      */
-    public function update(int $id, string $name, string $icon, array $groupIds): void
+    public function update(int $id, string $name, string $icon, string $info, array $groupIds): void
     {
         $subject = $this->subjects->findForAdmin($id);
         if ($subject === null) {
             throw new NotFoundHttpException();
         }
 
-        $this->subjects->updateForAdmin($subject, $name, $icon, $groupIds);
+        $this->subjects->updateForAdmin($subject, $name, $icon, $info, $groupIds);
     }
 
     /**

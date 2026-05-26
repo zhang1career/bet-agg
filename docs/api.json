@@ -291,6 +291,8 @@
                     "side_b_name",
                     "side_a_icon",
                     "side_b_icon",
+                    "side_a_info",
+                    "side_b_info",
                     "settle_outcomes",
                     "ut",
                     "title",
@@ -334,6 +336,16 @@
                         "type": "string",
                         "nullable": true,
                         "description": "OSS object key for side B subject emblem."
+                    },
+                    "side_a_info": {
+                        "type": "string",
+                        "nullable": true,
+                        "description": "Rich-text HTML introduction for side A subject."
+                    },
+                    "side_b_info": {
+                        "type": "string",
+                        "nullable": true,
+                        "description": "Rich-text HTML introduction for side B subject."
                     },
                     "settle_outcomes": {
                         "$ref": "#/components/schemas/BetSettleOutcomes"
@@ -400,6 +412,8 @@
                     "side_b_name",
                     "side_a_icon",
                     "side_b_icon",
+                    "side_a_info",
+                    "side_b_info",
                     "ut",
                     "title",
                     "description",
@@ -441,6 +455,16 @@
                         "type": "string",
                         "nullable": true,
                         "description": "OSS object key for side B subject emblem."
+                    },
+                    "side_a_info": {
+                        "type": "string",
+                        "nullable": true,
+                        "description": "Rich-text HTML introduction for side A subject."
+                    },
+                    "side_b_info": {
+                        "type": "string",
+                        "nullable": true,
+                        "description": "Rich-text HTML introduction for side B subject."
                     },
                     "ut": {
                         "type": "integer"

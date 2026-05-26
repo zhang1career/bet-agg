@@ -181,6 +181,8 @@ final readonly class CatalogService
             'side_b_name' => $game->sideBSubject !== null ? (string) $game->sideBSubject->name : null,
             'side_a_icon' => $this->subjectIconOrNull($game->sideASubject),
             'side_b_icon' => $this->subjectIconOrNull($game->sideBSubject),
+            'side_a_info' => $this->subjectInfoOrNull($game->sideASubject),
+            'side_b_info' => $this->subjectInfoOrNull($game->sideBSubject),
             'settle_outcomes' => SettleOutcomes::forApi(
                 is_array($game->settle_outcomes) ? $game->settle_outcomes : null,
             ),
@@ -320,6 +322,17 @@ final readonly class CatalogService
         $icon = trim((string) $subject->icon);
 
         return $icon !== '' ? $icon : null;
+    }
+
+    private function subjectInfoOrNull(?GameSubject $subject): ?string
+    {
+        if ($subject === null) {
+            return null;
+        }
+
+        $info = trim((string) $subject->info);
+
+        return $info !== '' ? $info : null;
     }
 
     /**

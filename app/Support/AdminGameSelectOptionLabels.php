@@ -7,12 +7,7 @@ namespace App\Support;
 use App\Models\Game;
 use App\Services\mall\serv_fd\CmsGameClient;
 use Illuminate\Support\Collection;
-use Throwable;
 
-/**
- * Human-readable labels for admin game selects: CMS {@see CmsGameClient::findManyById} title
- * keyed by {@see Game::raw_id}, mapped to local {@see Game::id}.
- */
 final readonly class AdminGameSelectOptionLabels
 {
     public function __construct(
@@ -21,7 +16,7 @@ final readonly class AdminGameSelectOptionLabels
 
     /**
      * @param  iterable<Game>  $games
-     * @return array<int, string> Local primary key to label for each game
+     * @return array<int, string>
      */
     public function mapByLocalId(iterable $games): array
     {
@@ -30,18 +25,12 @@ final readonly class AdminGameSelectOptionLabels
             return [];
         }
 
-        $cmsByRawId = [];
-        try {
-            $rawIds = $list
-                ->map(static fn (Game $g): int => (int) $g->raw_id)
-                ->unique()
-                ->values()
-                ->all();
-            if ($rawIds !== []) {
-                $cmsByRawId = $this->cmsGames->findManyById($rawIds);
-            }
-        } catch (Throwable) {
-        }
+        $rawIds = $list
+            ->map(static fn (Game $g): int => (int) $g->raw_id)
+            ->unique()
+            ->values()
+            ->all();
+        $cmsByRawId = $this->cmsGames->findManyByIdOrEmpty($rawIds);
 
         $out = [];
         foreach ($list as $game) {

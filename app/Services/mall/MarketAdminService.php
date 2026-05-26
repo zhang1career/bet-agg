@@ -14,7 +14,6 @@ use App\Services\mall\serv_fd\CmsGameClient;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Throwable;
 
 final readonly class MarketAdminService
 {
@@ -53,15 +52,7 @@ final readonly class MarketAdminService
             ->filter(static fn (int $r): bool => $r >= 1)
             ->values()
             ->all();
-        if ($rawIds === []) {
-            return [];
-        }
-
-        try {
-            return $this->cmsGames->findManyById($rawIds);
-        } catch (Throwable) {
-            return [];
-        }
+        return $this->cmsGames->findManyByIdOrEmpty($rawIds);
     }
 
     /**

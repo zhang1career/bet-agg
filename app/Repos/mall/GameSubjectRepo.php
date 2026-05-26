@@ -65,11 +65,12 @@ class GameSubjectRepo
     /**
      * @param  list<int>  $groupIds
      */
-    public function createForAdmin(string $name, string $icon, array $groupIds): GameSubject
+    public function createForAdmin(string $name, string $icon, string $info, array $groupIds): GameSubject
     {
         $subject = new GameSubject([
             'name' => $name,
             'icon' => $icon,
+            'info' => $info,
         ]);
         $subject->save();
         $subject->groups()->sync($groupIds);
@@ -80,10 +81,11 @@ class GameSubjectRepo
     /**
      * @param  list<int>  $groupIds
      */
-    public function updateForAdmin(GameSubject $subject, string $name, string $icon, array $groupIds): void
+    public function updateForAdmin(GameSubject $subject, string $name, string $icon, string $info, array $groupIds): void
     {
         $subject->name = $name;
         $subject->icon = $icon;
+        $subject->info = $info;
         $subject->save();
         $subject->groups()->sync($groupIds);
     }

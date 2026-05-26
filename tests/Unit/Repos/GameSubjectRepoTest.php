@@ -24,10 +24,11 @@ final class GameSubjectRepoTest extends TestCase
         $group = new GameGroup(['code' => 'subj-grp-'.uniqid('', true)]);
         $group->save();
 
-        $subject = $this->subjects->createForAdmin('Alpha', 'icon.png', [(int) $group->id]);
+        $subject = $this->subjects->createForAdmin('Alpha', 'icon.png', '<p>Intro</p>', [(int) $group->id]);
 
         $subject->refresh();
         $this->assertSame('Alpha', $subject->name);
+        $this->assertSame('<p>Intro</p>', $subject->info);
         $this->assertSame([(int) $group->id], $subject->groups->pluck('id')->all());
     }
 
@@ -38,7 +39,7 @@ final class GameSubjectRepoTest extends TestCase
         $groupB = new GameGroup(['code' => 'gb-'.uniqid('', true)]);
         $groupB->save();
 
-        $subject = $this->subjects->createForAdmin('Beta', '', [(int) $groupA->id]);
+        $subject = $this->subjects->createForAdmin('Beta', '', '', [(int) $groupA->id]);
 
         $this->assertTrue($this->subjects->existsInAnyOfGroups((int) $subject->id, [(int) $groupA->id]));
         $this->assertFalse($this->subjects->existsInAnyOfGroups((int) $subject->id, [(int) $groupB->id]));
@@ -48,7 +49,7 @@ final class GameSubjectRepoTest extends TestCase
     {
         $group = new GameGroup(['code' => 'del-subj-'.uniqid('', true)]);
         $group->save();
-        $subject = $this->subjects->createForAdmin('Gamma', '', [(int) $group->id]);
+        $subject = $this->subjects->createForAdmin('Gamma', '', '', [(int) $group->id]);
 
         $this->subjects->detachGroupsAndDelete($subject);
 

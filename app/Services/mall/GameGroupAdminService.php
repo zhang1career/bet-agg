@@ -9,7 +9,6 @@ use App\Repos\mall\GameGroupRepo;
 use App\Services\mall\serv_fd\CmsGameClient;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Throwable;
 
 final readonly class GameGroupAdminService
 {
@@ -56,11 +55,7 @@ final readonly class GameGroupAdminService
             return [];
         }
 
-        try {
-            return $this->cmsGames->findManyById($rawIds);
-        } catch (Throwable) {
-            return [];
-        }
+        return $this->cmsGames->findManyByIdOrEmpty($rawIds);
     }
 
     public function create(string $code): void

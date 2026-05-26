@@ -21,62 +21,7 @@ class AdminGameController extends Controller
 
     public function index(Request $request): View
     {
-        $perPage = min(50, max(1, (int) $request->query('per_page', 20)));
-        $sort = (string) $request->query('sort', 'id');
-        if (! in_array($sort, ['id', 'starts_at'], true)) {
-            $sort = 'id';
-        }
-        $dir = strtolower((string) $request->query('dir', ''));
-        if (! in_array($dir, ['asc', 'desc'], true)) {
-            $dir = $sort === 'starts_at' ? 'asc' : 'desc';
-        }
-        $statusFilter = GameAdminService::parseOptionalStatusFilter($request->query('status'));
-
-        $list = $this->gameAdmin->paginateIndexList(
-            $statusFilter,
-            $sort,
-            $dir,
-            $perPage,
-            $request->url(),
-            max(1, (int) $request->query('page', 1)),
-        );
-
-        $mallCreate = $request->boolean('mall_create');
-        $mallEditId = (int) $request->query('mall_edit', 0);
-        $mallSettlement = $request->boolean('mall_settlement');
-        $mallSettlementGamePrefill = (int) $request->query('mall_settlement_game', 0);
-
-        $formOptions = ($mallCreate || $mallEditId >= 1)
-            ? $this->gameAdmin->formSelectOptions()
-            : ['allGroups' => collect(), 'allSubjects' => collect()];
-
-        $modal = $mallEditId >= 1
-            ? $this->gameAdmin->modalEditContext($mallEditId)
-            : ['game' => null, 'cms' => null, 'selectedGroupIds' => []];
-
-        $settlementForm = $this->gameAdmin->settlementFormViewData();
-
-        return view('admin.games.index', [
-            'games' => $list['games'],
-            'cmsByRawId' => $list['cmsByRawId'],
-            'mallCreate' => $mallCreate,
-            'mallEditId' => $mallEditId,
-            'mallSettlement' => $mallSettlement,
-            'mallSettlementGamePrefill' => $mallSettlementGamePrefill >= 1 ? $mallSettlementGamePrefill : null,
-            'modalEditGame' => $modal['game'],
-            'modalEditCms' => $modal['cms'],
-            'modalEditSelectedGroups' => $modal['selectedGroupIds'],
-            'allGroups' => $formOptions['allGroups'],
-            'allSubjects' => $formOptions['allSubjects'],
-            'listSort' => $sort,
-            'listDir' => $dir,
-            'listStatusFilter' => $statusFilter,
-            'gamesListTruncated' => $list['gamesListTruncated'],
-            'gamesListCap' => GameAdminService::LIST_CMS_MERGE_CAP,
-            'settlementOpenGames' => $settlementForm['games'],
-            'settlementOutcomesByGame' => $settlementForm['outcomesByGame'],
-            'settlementGameSelectLabels' => $settlementForm['gameSelectLabels'],
-        ]);
+        return view('admin.games.index', $this->gameAdmin->indexViewData($request));
     }
 
     public function store(Request $request): RedirectResponse

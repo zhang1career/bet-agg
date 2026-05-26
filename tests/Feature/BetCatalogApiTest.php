@@ -146,11 +146,13 @@ final class BetCatalogApiTest extends TestCase
         $home = new GameSubject([
             'name' => 'Icon Home',
             'icon' => 'subj_icon/home.png',
+            'info' => '<p>Home team intro</p>',
         ]);
         $home->save();
         $away = new GameSubject([
             'name' => 'Icon Away',
             'icon' => '',
+            'info' => '<p>Away team intro</p>',
         ]);
         $away->save();
 
@@ -170,6 +172,37 @@ final class BetCatalogApiTest extends TestCase
         $this->assertNull($nested['side_b_icon']);
         $this->assertSame('Icon Home', $nested['side_a_name']);
         $this->assertSame('Icon Away', $nested['side_b_name']);
+        $this->assertSame('<p>Home team intro</p>', $nested['side_a_info']);
+        $this->assertSame('<p>Away team intro</p>', $nested['side_b_info']);
+    }
+
+    public function test_market_show_includes_side_info_on_nested_game(): void
+    {
+        $home = new GameSubject([
+            'name' => 'Info Home',
+            'info' => '<p>Side A details</p>',
+        ]);
+        $home->save();
+        $away = new GameSubject([
+            'name' => 'Info Away',
+            'info' => '',
+        ]);
+        $away->save();
+
+        $game = CatalogSeeder::seedGame((int) $home->id, (int) $away->id);
+        $market = new Market([
+            'gid' => $game->id,
+            'type' => MarketType::OneX2,
+            'name' => 'Full-time 1X2',
+            'status' => Market::STATUS_OPEN,
+        ]);
+        $market->save();
+
+        $res = $this->getJson('/api/bet/markets/'.$market->id);
+        $res->assertOk();
+        $nested = $res->json('data.game');
+        $this->assertSame('<p>Side A details</p>', $nested['side_a_info']);
+        $this->assertNull($nested['side_b_info']);
     }
 
     public function test_markets_list_omits_selections_and_filters_by_local_game_id(): void

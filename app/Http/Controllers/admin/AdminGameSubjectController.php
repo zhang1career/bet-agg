@@ -42,6 +42,7 @@ class AdminGameSubjectController extends Controller
         $v = $request->validate([
             'name' => 'required|string|max:256',
             'icon_path' => 'nullable|string|max:1024',
+            'info' => 'nullable|string|max:65535',
             'group_ids' => 'array',
             'group_ids.*' => 'integer|exists:biz_game_group,id',
         ]);
@@ -49,6 +50,7 @@ class AdminGameSubjectController extends Controller
         $this->subjectAdmin->create(
             trim((string) $v['name']),
             trim((string) ($v['icon_path'] ?? '')),
+            (string) ($v['info'] ?? ''),
             AdminGroupIds::fromValidated($v),
         );
 
@@ -67,6 +69,7 @@ class AdminGameSubjectController extends Controller
         $v = $request->validate([
             'name' => 'required|string|max:256',
             'icon_path' => 'nullable|string|max:1024',
+            'info' => 'nullable|string|max:65535',
             'group_ids' => 'array',
             'group_ids.*' => 'integer|exists:biz_game_group,id',
         ]);
@@ -75,6 +78,7 @@ class AdminGameSubjectController extends Controller
             $id,
             trim((string) $v['name']),
             trim((string) ($v['icon_path'] ?? '')),
+            (string) ($v['info'] ?? ''),
             AdminGroupIds::fromValidated($v),
         );
 

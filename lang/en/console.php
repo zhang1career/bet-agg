@@ -206,6 +206,8 @@ return [
         'edit_title' => 'Edit #:id',
         'label_name' => 'Name',
         'label_icon' => 'Icon',
+        'label_info' => 'Introduction',
+        'info_help' => 'Rich-text HTML for team or participant introduction.',
         'icon_set' => 'Set',
         'icon_empty' => 'Empty',
         'icon_path_placeholder' => 'OSS object key (upload or paste)',

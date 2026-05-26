@@ -69,6 +69,7 @@ CREATE TABLE IF NOT EXISTS `biz_game_subject` (
                                                   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
     `name` varchar(256) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '' COMMENT '球队/选手等展示名',
     `icon` varchar(1024) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '' COMMENT 'OSS object key (team/participant emblem)',
+    `info` text COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '富文本介绍（参赛队伍等）',
     `ct` bigint(20) unsigned NOT NULL DEFAULT '0',
     `ut` bigint(20) unsigned NOT NULL DEFAULT '0',
     PRIMARY KEY (`id`)

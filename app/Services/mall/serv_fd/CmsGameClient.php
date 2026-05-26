@@ -13,6 +13,7 @@ use Paganini\Aggregation\Exceptions\DownstreamServiceException;
 use Paganini\Aggregation\Support\DownstreamPayload;
 use RuntimeException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Throwable;
 
 /**
  * CMS content API client for games (e.g. {@code POST/PUT /api/cms/game}), analogous to mall {@see CmsProductClient}.
@@ -169,6 +170,34 @@ final readonly class CmsGameClient
         }
 
         return $out;
+    }
+
+    /**
+     * @param  list<int>  $ids
+     * @return array<int, array<string, mixed>>
+     */
+    public function findManyByIdOrEmpty(array $ids): array
+    {
+        try {
+            return $this->findManyById($ids);
+        } catch (Throwable) {
+            return [];
+        }
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function findOrNull(int $id): ?array
+    {
+        if ($id < 1) {
+            return null;
+        }
+        try {
+            return $this->find($id);
+        } catch (Throwable) {
+            return null;
+        }
     }
 
     /**

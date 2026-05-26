@@ -98,7 +98,7 @@
     <div class="modal fade" id="mallModalSubjectCreate" tabindex="-1" aria-hidden="true"
          data-mall-modal="1" data-mall-strip-query="mall_create"
          @if($mallCreate) data-mall-auto-show="1" @endif>
-        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
             <div class="modal-content">
                 <form method="post" action="{{ route('admin.game-subjects.store') }}">
                     @csrf
@@ -114,6 +114,10 @@
                         @include('admin.game-subjects.partials.icon-upload', [
                             'mediaIdPfx' => 'gsc',
                             'icon_path' => old('icon_path', ''),
+                        ])
+                        @include('admin.game-subjects.partials.info-editor', [
+                            'fieldId' => 'gsc_info',
+                            'info' => old('info', ''),
                         ])
                         <div class="mb-3">
                             <label class="form-label" for="gsc_group_ids">{{ __('console.game_subjects.label_groups') }} <small class="text-muted">{{ __('console.game_subjects.groups_multi') }}</small></label>
@@ -143,7 +147,7 @@
         <div class="modal fade" id="mallModalSubjectEdit" tabindex="-1" aria-hidden="true"
              data-mall-modal="1" data-mall-strip-query="mall_edit"
              data-mall-auto-show="1">
-            <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
                 <div class="modal-content">
                     <form method="post" action="{{ route('admin.game-subjects.update', $modalSubject) }}">
                         @csrf
@@ -160,6 +164,10 @@
                             @include('admin.game-subjects.partials.icon-upload', [
                                 'mediaIdPfx' => 'gse',
                                 'icon_path' => old('icon_path', $modalSubject->icon),
+                            ])
+                            @include('admin.game-subjects.partials.info-editor', [
+                                'fieldId' => 'gse_info',
+                                'info' => old('info', $modalSubject->info),
                             ])
                             <div class="mb-3">
                                 <label class="form-label" for="gse_group_ids">{{ __('console.game_subjects.label_groups') }} <small class="text-muted">y</small></label>
@@ -181,4 +189,8 @@
             </div>
         </div>
     @endif
+@endpush
+
+@push('scripts')
+    @include('admin.game-subjects.partials.info-editor-script')
 @endpush

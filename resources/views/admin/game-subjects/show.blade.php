@@ -40,6 +40,15 @@
                         <span class="text-muted">—</span>
                     @endif
                 </dd>
+                <dt class="col-sm-3">{{ __('console.game_subjects.label_info') }}</dt>
+                <dd class="col-sm-9">
+                    @php $subjectInfo = trim((string) $subject->info); @endphp
+                    @if($subjectInfo !== '')
+                        <div class="mall-rich-text-preview border rounded p-3 bg-body-secondary">{!! $subjectInfo !!}</div>
+                    @else
+                        <span class="text-muted">—</span>
+                    @endif
+                </dd>
             </dl>
         </div>
     </div>

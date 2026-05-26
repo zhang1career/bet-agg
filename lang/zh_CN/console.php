@@ -206,6 +206,8 @@ return [
         'edit_title' => '编辑 #:id',
         'label_name' => '名称',
         'label_icon' => '图标',
+        'label_info' => '介绍',
+        'info_help' => '富文本 HTML，用于展示参赛队伍介绍。',
         'icon_set' => '已设置',
         'icon_empty' => '未设置',
         'icon_path_placeholder' => 'OSS object key（上传或粘贴）',
